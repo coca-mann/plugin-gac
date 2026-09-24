@@ -125,12 +125,13 @@ final class PreConfigSection implements ConfigSection
 
         // 4. Pending reason roles
         $out .= "<h4 class='mt-4'>" . htmlescape(__('Motivos de pendência do ticket', 'gac')) . '</h4>';
+        $out .= "<p class='text-muted'>" . htmlescape(__('Escolha um motivo existente ou crie um novo com o botão + do campo.', 'gac')) . '</p>';
         foreach (self::reasonRoleLabels() as $role => $label) {
             $out .= $this->row($label, Dropdown::show(PendingReason::class, [
                 'name'    => 'pre_reason_' . $role,
                 'value'   => PreSettings::reasonId($s, $role),
                 'display' => false,
-            ]) . $this->createBox('create_reason', $role));
+            ]));
         }
 
         // 5. Actions per outcome
@@ -174,13 +175,6 @@ final class PreConfigSection implements ConfigSection
             . "</label><div class='col-sm-8'>" . $control . '</div></div>';
     }
 
-    /** Explicit "create new" box: creates nothing unless the administrator fills the name and saves. */
-    private function createBox(string $field, string $role): string
-    {
-        return "<div class='mt-2'><input type='text' class='form-control form-control-sm' name='{$field}[{$role}]' placeholder='"
-            . htmlescape(__('ou criar novo (nome) e salvar', 'gac')) . "'></div>";
-    }
-
     public function handlePost(array $post): void
     {
         if (!Session::haveRight('config', UPDATE)) {
@@ -202,13 +196,6 @@ final class PreConfigSection implements ConfigSection
         }
         foreach (PreSettings::REASON_ROLES as $role) {
             $raw['pre_reason_' . $role] = (string) (int) ($post['pre_reason_' . $role] ?? 0);
-            $name = trim((string) ($post['create_reason'][$role] ?? ''));
-            if ($name !== '') {
-                $id = (new PendingReason())->add(['name' => $name, 'entities_id' => 0, 'is_recursive' => 1]);
-                if ($id) {
-                    $raw['pre_reason_' . $role] = (string) $id;
-                }
-            }
         }
 
         $raw['pre_actions'] = json_encode($post['pre_actions'] ?? []);

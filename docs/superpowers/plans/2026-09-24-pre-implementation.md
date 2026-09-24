@@ -2700,12 +2700,13 @@ final class PreConfigSection implements ConfigSection
 
         // 4. Pending reason roles
         $out .= "<h4 class='mt-4'>" . htmlescape(__('Motivos de pendência do ticket', 'gac')) . '</h4>';
+        $out .= "<p class='text-muted'>" . htmlescape(__('Escolha um motivo existente ou crie um novo com o botão + do campo.', 'gac')) . '</p>';
         foreach (self::reasonRoleLabels() as $role => $label) {
             $out .= $this->row($label, Dropdown::show(PendingReason::class, [
                 'name'    => 'pre_reason_' . $role,
                 'value'   => PreSettings::reasonId($s, $role),
                 'display' => false,
-            ]) . $this->createBox('create_reason', $role));
+            ]));
         }
 
         // 5. Actions per outcome
@@ -2749,13 +2750,6 @@ final class PreConfigSection implements ConfigSection
             . "</label><div class='col-sm-8'>" . $control . '</div></div>';
     }
 
-    /** Explicit "create new" box: creates nothing unless the administrator fills the name and saves. */
-    private function createBox(string $field, string $role): string
-    {
-        return "<div class='mt-2'><input type='text' class='form-control form-control-sm' name='{$field}[{$role}]' placeholder='"
-            . htmlescape(__('ou criar novo (nome) e salvar', 'gac')) . "'></div>";
-    }
-
     public function handlePost(array $post): void
     {
         if (!Session::haveRight('config', UPDATE)) {
@@ -2777,13 +2771,6 @@ final class PreConfigSection implements ConfigSection
         }
         foreach (PreSettings::REASON_ROLES as $role) {
             $raw['pre_reason_' . $role] = (string) (int) ($post['pre_reason_' . $role] ?? 0);
-            $name = trim((string) ($post['create_reason'][$role] ?? ''));
-            if ($name !== '') {
-                $id = (new PendingReason())->add(['name' => $name, 'entities_id' => 0, 'is_recursive' => 1]);
-                if ($id) {
-                    $raw['pre_reason_' . $role] = (string) $id;
-                }
-            }
         }
 
         $raw['pre_actions'] = json_encode($post['pre_actions'] ?? []);
@@ -2829,7 +2816,7 @@ Html::footer();
 for f in $(find src front -name '*.php'); do /c/xampp/php/php.exe -l "$f"; done
 ```
 
-No navegador: (a) o ícone de engrenagem do Gac abre a página com uma única seção "Protocolo de Reparo de Equipamentos" e o aviso amarelo de mapeamentos pendentes; (b) escolha duas categorias ITIL, marque "Incluir subcategorias" = Sim, salve, recarregue e confira que os valores persistiram; (c) no campo "Ativo na assistência", use o botão **+** do próprio campo para criar o status `Na assistência` (o modal do GLPI deixa você escolher entidade e recursividade), salve, e confira que ele já aparece selecionado. Os motivos de pendência têm uma caixa "ou criar novo" própria; digite um nome nela e salve para criar o motivo; (d) mapeie os outros papéis e o aviso amarelo desaparece; (e) troque a ação de "Reparado" para "Solucionar", salve e recarregue: a escolha persiste; (f) um usuário sem o direito `config` não vê o item de menu nem abre a URL.
+No navegador: (a) o ícone de engrenagem do Gac abre a página com uma única seção "Protocolo de Reparo de Equipamentos" e o aviso amarelo de mapeamentos pendentes; (b) escolha duas categorias ITIL, marque "Incluir subcategorias" = Sim, salve, recarregue e confira que os valores persistiram; (c) no campo "Ativo na assistência", use o botão **+** do próprio campo para criar o status `Na assistência` (o modal do GLPI deixa você escolher entidade e recursividade), salve, e confira que ele já aparece selecionado. Os motivos de pendência funcionam do mesmo jeito (botão **+** do campo); (d) mapeie os outros papéis e o aviso amarelo desaparece; (e) troque a ação de "Reparado" para "Solucionar", salve e recarregue: a escolha persiste; (f) um usuário sem o direito `config` não vê o item de menu nem abre a URL.
 
 - [ ] **Passo 7: Commit** via `/commit`. Título sugerido: `feat(pre): add plugin configuration page with per-module sections`.
 
