@@ -1,0 +1,30 @@
+<div class="table-responsive">
+    <table class="table table-hover card-table">
+        <thead>
+            <tr>
+                <th>{{ __('Ticket', 'gac') }}</th>
+                <th>{{ __('Tipo', 'gac') }}</th>
+                <th>{{ __('Equipamento', 'gac') }}</th>
+                <th>{{ __('Patrimônio', 'gac') }}</th>
+                <th>{{ __('Nº de série', 'gac') }}</th>
+                <th>{{ __('Descrição para o fornecedor', 'gac') }}</th>
+                <th>{{ __('Situação', 'gac') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in lines %}
+                <tr>
+                    <td><a href="{{ line.ticket_url }}">#{{ line.tickets_id }}</a></td>
+                    <td>{{ line.item_type_label }}</td>
+                    <td>{{ line.item_name }}</td>
+                    <td>{{ line.otherserial|default('—') }}</td>
+                    <td>{{ line.serial|default('—') }}</td>
+                    <td>{{ line.description_supplier|default('—') }}</td>
+                    <td>{{ line.status_label }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="7" class="text-center text-muted">{{ __('Nenhum item neste protocolo.', 'gac') }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

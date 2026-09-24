@@ -1,0 +1,26 @@
+{% extends 'generic_show_form.html.twig' %}
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+{% block form_fields %}
+    {{ fields.readOnlyField('number_display', item.fields['number']|default(__('(gerado ao salvar)', 'gac')), __('Número', 'gac')) }}
+    {{ fields.readOnlyField('status_display', status_label, __('Status')) }}
+
+    {{ fields.dropdownField('Supplier', 'suppliers_id', item.fields['suppliers_id'], __('Fornecedor', 'gac'), {
+        entity: item.fields['entities_id'],
+        entity_sons: true,
+        required: true,
+        readonly: not header_editable,
+    }) }}
+
+    {{ fields.dropdownField('User', 'users_id_tech', item.fields['users_id_tech'], __('Técnico responsável', 'gac'), {
+        entity: item.fields['entities_id'],
+        right: 'all',
+        readonly: not header_editable,
+    }) }}
+
+    {{ fields.dateField('date_issued', item.fields['date_issued'], __('Data de emissão', 'gac'), {
+        disabled: not header_editable,
+    }) }}
+
+    {{ fields.textareaField('comment', item.fields['comment'], __('Comentários')) }}
+{% endblock %}
