@@ -1,30 +1,69 @@
-<div class="table-responsive">
-    <table class="table table-hover card-table">
-        <thead>
-            <tr>
-                <th>{{ __('Ticket', 'gac') }}</th>
-                <th>{{ __('Tipo', 'gac') }}</th>
-                <th>{{ __('Equipamento', 'gac') }}</th>
-                <th>{{ __('Patrimônio', 'gac') }}</th>
-                <th>{{ __('Nº de série', 'gac') }}</th>
-                <th>{{ __('Descrição para o fornecedor', 'gac') }}</th>
-                <th>{{ __('Situação', 'gac') }}</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for line in lines %}
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+<div class="p-3" data-gac-pre data-protocol-id="{{ protocol.getID() }}" data-ajax-send="{{ ajax_send_url }}">
+    {% include '@gac/pre/items_toolbar.html.twig' ignore missing %}
+    {% include '@gac/pre/items_import.html.twig' ignore missing %}
+
+    {% set editing = is_draft and can_edit %}
+    {% if editing %}
+        <form method="post" action="{{ form_url }}">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-hover card-table">
+            <thead>
                 <tr>
-                    <td><a href="{{ line.ticket_url }}">#{{ line.tickets_id }}</a></td>
-                    <td>{{ line.item_type_label }}</td>
-                    <td>{{ line.item_name }}</td>
-                    <td>{{ line.otherserial|default('—') }}</td>
-                    <td>{{ line.serial|default('—') }}</td>
-                    <td>{{ line.description_supplier|default('—') }}</td>
-                    <td>{{ line.status_label }}</td>
+                    <th>{{ __('Ticket', 'gac') }}</th>
+                    <th>{{ __('Tipo', 'gac') }}</th>
+                    <th>{{ __('Equipamento', 'gac') }}</th>
+                    <th>{{ __('Patrimônio', 'gac') }}</th>
+                    <th>{{ __('Nº de série', 'gac') }}</th>
+                    <th>{{ __('Descrição para o fornecedor', 'gac') }}</th>
+                    <th>{{ __('Situação', 'gac') }}</th>
+                    <th>{{ __('Ações', 'gac') }}</th>
                 </tr>
-            {% else %}
-                <tr><td colspan="7" class="text-center text-muted">{{ __('Nenhum item neste protocolo.', 'gac') }}</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for line in lines %}
+                    <tr>
+                        <td><a href="{{ line.ticket_url }}">#{{ line.tickets_id }}</a></td>
+                        <td>{{ line.item_type_label }}</td>
+                        <td>{{ line.item_name }}</td>
+                        <td>{{ line.otherserial|default('—') }}</td>
+                        <td>{{ line.serial|default('—') }}</td>
+                        <td>
+                            {% if editing %}
+                                <textarea class="form-control" rows="2" name="description[{{ line.id }}]">{{ line.description_supplier }}</textarea>
+                            {% else %}
+                                {{ line.description_supplier|default('—') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ line.status_label }}
+                            {% if line.outcome_label %}<div class="small text-muted">{{ line.outcome_label }}{% if line.destination_label and line.destination != 'none' %} · {{ line.destination_label }}{% endif %}</div>{% endif %}
+                        </td>
+                        <td>
+                            {% if editing and line.can_remove_draft %}
+                                <button type="submit" name="remove_line" value="{{ line.id }}" class="btn btn-sm btn-outline-danger">{{ __('Remover', 'gac') }}</button>
+                            {% endif %}
+                            {% include '@gac/pre/line_actions.html.twig' ignore missing with {line: line} %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="8" class="text-center text-muted">{{ __('Nenhum item neste protocolo.', 'gac') }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if editing %}
+            {% if lines is not empty %}
+                <button type="submit" name="save_descriptions" value="1" class="btn btn-primary">{{ __('Salvar descrições', 'gac') }}</button>
+            {% endif %}
+        </form>
+    {% endif %}
+
+    {% include '@gac/pre/items_return_forms.html.twig' ignore missing %}
 </div>

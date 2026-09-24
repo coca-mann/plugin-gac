@@ -31,49 +31,35 @@
  * -------------------------------------------------------------------------
  */
 
-include('../../../../inc/includes.php');
+declare(strict_types=1);
 
-use GlpiPlugin\Gac\Pre\LineService;
-use GlpiPlugin\Gac\Pre\PreMenu;
-use GlpiPlugin\Gac\Pre\ProtocolStatus;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use GlpiPlugin\Gac\Pre\RepairProtocolEvent;
-use GlpiPlugin\Gac\Pre\StateMachine;
+namespace GlpiPlugin\Gac\Pre;
 
-$item = new RepairProtocol();
+/** Outcome of a service call; serialized as-is by the AJAX endpoints. */
+final class ServiceResult
+{
+    /** @param array<string, mixed> $data */
+    private function __construct(
+        public readonly bool $ok,
+        public readonly string $message,
+        public readonly array $data = []
+    ) {}
 
-if (isset($_POST['add'])) {
-    $item->check(-1, CREATE, $_POST);
-    $newid = $item->add($_POST);
-    if ($newid) {
-        Html::redirect(RepairProtocol::getFormURLWithID($newid));
+    /** @param array<string, mixed> $data */
+    public static function ok(string $message = '', array $data = []): self
+    {
+        return new self(true, $message, $data);
     }
-    Html::back();
-} elseif (isset($_POST['update'])) {
-    $item->check($_POST['id'], UPDATE);
-    $item->update($_POST);
-    Html::back();
-} elseif (isset($_POST['cancel_protocol'])) {
-    $item->check($_POST['id'], UPDATE);
-    if (StateMachine::canCancel($item->getStatus())) {
-        LineService::deleteAllLines($item);
-        $item->changeStatus(ProtocolStatus::Canceled);
-        RepairProtocolEvent::log((int) $item->getID(), 'canceled');
-    } else {
-        Session::addMessageAfterRedirect(__('Só é possível cancelar um PRE em rascunho.', 'gac'), false, ERROR);
+
+    /** @param array<string, mixed> $data */
+    public static function fail(string $message, array $data = []): self
+    {
+        return new self(false, $message, $data);
     }
-    Html::back();
-} elseif (isset($_POST['purge'])) {
-    $item->check($_POST['id'], PURGE);
-    $item->delete($_POST, 1);
-    $item->redirectToList();
-} else {
-    Html::header(
-        RepairProtocol::getTypeName(1),
-        $_SERVER['PHP_SELF'],
-        'management',
-        strtolower(PreMenu::class)
-    );
-    $item->display(['id' => $_GET['id'] ?? -1]);
-    Html::footer();
+
+    /** @return array{success: bool, message: string, data: array<string, mixed>} */
+    public function toArray(): array
+    {
+        return ['success' => $this->ok, 'message' => $this->message, 'data' => $this->data];
+    }
 }

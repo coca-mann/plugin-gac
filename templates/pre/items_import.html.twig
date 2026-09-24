@@ -1,0 +1,40 @@
+{% if is_draft and can_edit %}
+    <div class="card mb-3">
+        <div class="card-header"><h4 class="card-title">{{ __('Importar tickets', 'gac') }}</h4></div>
+        <div class="card-body">
+            {% if candidates is empty %}
+                <p class="text-muted mb-0">{{ __('Nenhum ticket elegível. Confira as categorias elegíveis na configuração do Gac e se o ticket tem um ativo associado.', 'gac') }}</p>
+            {% else %}
+                <form method="post" action="{{ form_url }}">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>{{ __('Ticket', 'gac') }}</th>
+                                    <th>{{ __('Título', 'gac') }}</th>
+                                    <th>{{ __('Equipamento', 'gac') }}</th>
+                                    <th>{{ __('Patrimônio', 'gac') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in candidates %}
+                                    <tr>
+                                        <td><input type="checkbox" class="form-check-input" name="select[]" value="{{ c.key }}"></td>
+                                        <td>#{{ c.tickets_id }}</td>
+                                        <td>{{ c.ticket_name }}</td>
+                                        <td>{{ c.item_type_label }} · {{ c.item_name }}</td>
+                                        <td>{{ c.otherserial|default('—') }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" name="import" value="1" class="btn btn-primary">{{ __('Importar selecionados', 'gac') }}</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}

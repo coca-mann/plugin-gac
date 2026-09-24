@@ -34,46 +34,29 @@
 include('../../../../inc/includes.php');
 
 use GlpiPlugin\Gac\Pre\LineService;
-use GlpiPlugin\Gac\Pre\PreMenu;
-use GlpiPlugin\Gac\Pre\ProtocolStatus;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
-use GlpiPlugin\Gac\Pre\RepairProtocolEvent;
-use GlpiPlugin\Gac\Pre\StateMachine;
+use GlpiPlugin\Gac\Pre\ServiceResult;
 
-$item = new RepairProtocol();
-
-if (isset($_POST['add'])) {
-    $item->check(-1, CREATE, $_POST);
-    $newid = $item->add($_POST);
-    if ($newid) {
-        Html::redirect(RepairProtocol::getFormURLWithID($newid));
-    }
-    Html::back();
-} elseif (isset($_POST['update'])) {
-    $item->check($_POST['id'], UPDATE);
-    $item->update($_POST);
-    Html::back();
-} elseif (isset($_POST['cancel_protocol'])) {
-    $item->check($_POST['id'], UPDATE);
-    if (StateMachine::canCancel($item->getStatus())) {
-        LineService::deleteAllLines($item);
-        $item->changeStatus(ProtocolStatus::Canceled);
-        RepairProtocolEvent::log((int) $item->getID(), 'canceled');
-    } else {
-        Session::addMessageAfterRedirect(__('Só é possível cancelar um PRE em rascunho.', 'gac'), false, ERROR);
-    }
-    Html::back();
-} elseif (isset($_POST['purge'])) {
-    $item->check($_POST['id'], PURGE);
-    $item->delete($_POST, 1);
-    $item->redirectToList();
-} else {
-    Html::header(
-        RepairProtocol::getTypeName(1),
-        $_SERVER['PHP_SELF'],
-        'management',
-        strtolower(PreMenu::class)
-    );
-    $item->display(['id' => $_GET['id'] ?? -1]);
-    Html::footer();
+$protocol = new RepairProtocol();
+$protocolId = (int) ($_POST['protocol_id'] ?? 0);
+if ($protocolId === 0 || !$protocol->getFromDB($protocolId)) {
+    Html::displayNotFoundError();
 }
+
+$notify = static function (ServiceResult $r): void {
+    Session::addMessageAfterRedirect(htmlescape($r->message), false, $r->ok ? INFO : ERROR);
+};
+
+if (isset($_POST['import'])) {
+    $protocol->check($protocolId, UPDATE);
+    $notify(LineService::import($protocol, array_map('strval', (array) ($_POST['select'] ?? []))));
+} elseif (isset($_POST['remove_line'])) {
+    $protocol->check($protocolId, UPDATE);
+    $notify(LineService::removeDraftLine($protocol, (int) $_POST['remove_line']));
+} elseif (isset($_POST['save_descriptions'])) {
+    $protocol->check($protocolId, UPDATE);
+    $notify(LineService::saveDescriptions($protocol, (array) ($_POST['description'] ?? [])));
+}
+// (next tasks add: return, lost, reopen, correct, finish_corrections — before this line)
+
+Html::back();

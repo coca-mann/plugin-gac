@@ -31,49 +31,24 @@
  * -------------------------------------------------------------------------
  */
 
-include('../../../../inc/includes.php');
+namespace GlpiPlugin\Gac\Tests\Unit;
 
-use GlpiPlugin\Gac\Pre\LineService;
-use GlpiPlugin\Gac\Pre\PreMenu;
-use GlpiPlugin\Gac\Pre\ProtocolStatus;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use GlpiPlugin\Gac\Pre\RepairProtocolEvent;
-use GlpiPlugin\Gac\Pre\StateMachine;
+use GlpiPlugin\Gac\Pre\ServiceResult;
+use PHPUnit\Framework\TestCase;
 
-$item = new RepairProtocol();
-
-if (isset($_POST['add'])) {
-    $item->check(-1, CREATE, $_POST);
-    $newid = $item->add($_POST);
-    if ($newid) {
-        Html::redirect(RepairProtocol::getFormURLWithID($newid));
+final class ServiceResultTest extends TestCase
+{
+    public function testOk(): void
+    {
+        $r = ServiceResult::ok('feito', ['n' => 2]);
+        $this->assertTrue($r->ok);
+        $this->assertSame(['success' => true, 'message' => 'feito', 'data' => ['n' => 2]], $r->toArray());
     }
-    Html::back();
-} elseif (isset($_POST['update'])) {
-    $item->check($_POST['id'], UPDATE);
-    $item->update($_POST);
-    Html::back();
-} elseif (isset($_POST['cancel_protocol'])) {
-    $item->check($_POST['id'], UPDATE);
-    if (StateMachine::canCancel($item->getStatus())) {
-        LineService::deleteAllLines($item);
-        $item->changeStatus(ProtocolStatus::Canceled);
-        RepairProtocolEvent::log((int) $item->getID(), 'canceled');
-    } else {
-        Session::addMessageAfterRedirect(__('Só é possível cancelar um PRE em rascunho.', 'gac'), false, ERROR);
+
+    public function testFail(): void
+    {
+        $r = ServiceResult::fail('erro');
+        $this->assertFalse($r->ok);
+        $this->assertSame(['success' => false, 'message' => 'erro', 'data' => []], $r->toArray());
     }
-    Html::back();
-} elseif (isset($_POST['purge'])) {
-    $item->check($_POST['id'], PURGE);
-    $item->delete($_POST, 1);
-    $item->redirectToList();
-} else {
-    Html::header(
-        RepairProtocol::getTypeName(1),
-        $_SERVER['PHP_SELF'],
-        'management',
-        strtolower(PreMenu::class)
-    );
-    $item->display(['id' => $_GET['id'] ?? -1]);
-    Html::footer();
 }

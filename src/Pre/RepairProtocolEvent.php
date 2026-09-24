@@ -77,6 +77,28 @@ class RepairProtocolEvent extends CommonDBChild
         ]);
     }
 
+    /**
+     * True when the latest closing-related event is a reopening: the PRE is being corrected
+     * and has not been closed again (plan decision 3).
+     */
+    public static function isReopened(int $protocolId): bool
+    {
+        global $DB;
+
+        $row = $DB->request([
+            'SELECT' => ['event'],
+            'FROM'   => self::getTable(),
+            'WHERE'  => [
+                'plugin_gac_repairprotocols_id' => $protocolId,
+                'event' => ['reopened', 'closed'],
+            ],
+            'ORDER' => ['id DESC'],
+            'LIMIT' => 1,
+        ])->current();
+
+        return $row !== null && $row['event'] === 'reopened';
+    }
+
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         if ($item instanceof RepairProtocol) {
