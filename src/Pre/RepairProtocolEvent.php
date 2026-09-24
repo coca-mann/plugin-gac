@@ -47,6 +47,9 @@ class RepairProtocolEvent extends CommonDBChild
     public static $items_id = 'plugin_gac_repairprotocols_id';
     public $dohistory       = false;
 
+    /** The events tab is the PRE's own history: do not mirror each event into GLPI's native log. */
+    public static $logs_for_parent = false;
+
     public static function getTable($classname = null)
     {
         if ($classname !== null && $classname !== static::class) {

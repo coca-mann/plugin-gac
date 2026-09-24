@@ -1895,6 +1895,9 @@ class RepairProtocolEvent extends CommonDBChild
     public static $items_id = 'plugin_gac_repairprotocols_id';
     public $dohistory       = false;
 
+    /** The events tab is the PRE's own history: do not mirror each event into GLPI's native log. */
+    public static $logs_for_parent = false;
+
     public static function getTable($classname = null)
     {
         if ($classname !== null && $classname !== static::class) {
@@ -2010,6 +2013,18 @@ class RepairProtocolItem extends CommonDBChild
     public static $items_id = 'plugin_gac_repairprotocols_id';
     public static $rightname = 'plugin_gac_pre';
     public $dohistory       = false;
+
+    /**
+     * The line has no "name" column; without this GLPI's native history logs the addition or
+     * removal of a line as "Item (N/A (id))".
+     */
+    public function getName($options = [])
+    {
+        if (empty($this->fields['tickets_id'])) {
+            return parent::getName($options);
+        }
+        return sprintf('#%d · %s', $this->fields['tickets_id'], $this->fields['item_name'] ?? '');
+    }
 
     public static function getTable($classname = null)
     {

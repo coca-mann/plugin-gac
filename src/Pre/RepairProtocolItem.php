@@ -46,6 +46,18 @@ class RepairProtocolItem extends CommonDBChild
     public static $rightname = 'plugin_gac_pre';
     public $dohistory       = false;
 
+    /**
+     * The line has no "name" column; without this GLPI's native history logs the addition or
+     * removal of a line as "Item (N/A (id))".
+     */
+    public function getName($options = [])
+    {
+        if (empty($this->fields['tickets_id'])) {
+            return parent::getName($options);
+        }
+        return sprintf('#%d · %s', $this->fields['tickets_id'], $this->fields['item_name'] ?? '');
+    }
+
     public static function getTable($classname = null)
     {
         if ($classname !== null && $classname !== static::class) {
