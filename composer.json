@@ -9,6 +9,11 @@
         },
         "sort-packages": true
     },
+    "autoload": {
+        "psr-4": {
+            "GlpiPlugin\\Gac\\": "src/"
+        }
+    },
     "autoload-dev": {
         "psr-4": {
             "GlpiPlugin\\Gac\\Tests\\": "tests/"
