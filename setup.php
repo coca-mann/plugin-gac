@@ -59,9 +59,9 @@ function plugin_init_gac(): void
 
     $plugin = new Plugin();
     if ($plugin->isInstalled('gac') && $plugin->isActivated('gac')) {
-        // Array keys must be real $menu sectors: 'assets' and 'config'.
+        // Array keys must be real $menu sectors: 'management' and 'config'.
         $PLUGIN_HOOKS[Hooks::MENU_TOADD]['gac'] = [
-            'assets' => PreMenu::class,
+            'management' => PreMenu::class,
             'config' => ConfigMenu::class,
         ];
 

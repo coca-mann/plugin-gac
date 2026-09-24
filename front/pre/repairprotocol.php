@@ -43,7 +43,7 @@ if (!RepairProtocol::canView()) {
 Html::header(
     RepairProtocol::getTypeName(2),
     $_SERVER['PHP_SELF'],
-    'assets',
+    'management',
     strtolower(PreMenu::class)
 );
 

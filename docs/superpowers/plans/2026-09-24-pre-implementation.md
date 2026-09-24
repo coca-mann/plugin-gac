@@ -37,7 +37,7 @@ O plano toma estas decisões. Nenhuma contradiz a spec; cada uma fecha um ponto 
 2. **Descrição inicial para o fornecedor.** A spec diz "inicia com a observação do snapshot" mas proíbe scraping para a elegibilidade. Para a *observação* (só um texto sugerido, sempre editável em `Rascunho`), o plano porta a extração do app antigo ("Informações adicionais") para PHP com `DOMDocument`. Se não achar, usa o **título do ticket** como texto inicial.
 3. **Depois de reabrir**, o PRE fica em `Retorno parcial` até o técnico clicar **"Concluir correções"**, que grava o evento `closed` e volta a `Encerrado`. Sem isso, o primeiro salvamento de correção já reencerraria o PRE e só permitiria uma edição por reabertura.
 4. **Direitos.** Um direito `plugin_gac_pre` com os bits padrão (READ, UPDATE, CREATE, PURGE) mais três bits próprios: `SEND = 256`, `RETURN = 512`, `REOPEN = 1024`. Na instalação só perfis que já têm o direito nativo `config` recebem tudo; os demais começam sem acesso e o administrador libera pela aba do perfil.
-5. **Menu.** A lista de PREs fica no setor `assets` (Ativos); a configuração no setor `config` e no ícone de engrenagem da lista de plugins.
+5. **Menu.** A lista de PREs fica no setor `management` (Gerência, escolha do dono); a configuração no setor `config` e no ícone de engrenagem da lista de plugins.
 6. **Pendente e motivo.** Entrar em Pendente = acompanhamento com `pending=1` + `pendingreasons_id` (é o caminho suportado pelo GLPI 11). Sair de Pendente = atualizar o `status` do ticket para o `previous_status` guardado (o GLPI apaga o motivo sozinho). Manter Pendente trocando o motivo = acompanhamento com `pending=1` + novo motivo, depois restaurar o `previous_status` original, porque o GLPI sobrescreve esse campo com `Pendente` nesse caminho. Isso está **verificado no código do core, não em execução**: a Tarefa 13 tem um teste manual dedicado.
 7. **Coluna `item_entities_id`** na linha: guarda a entidade do ativo para a validação de `State` (spec seção 10).
 8. **Linha presa em `Enviando`** por mais de 5 minutos volta a `Aguardando envio` na próxima chamada de envio (spec 7.3).
@@ -1767,9 +1767,9 @@ function plugin_init_gac(): void
 
     $plugin = new Plugin();
     if ($plugin->isInstalled('gac') && $plugin->isActivated('gac')) {
-        // Array keys must be real $menu sectors: 'assets' and 'config'.
+        // Array keys must be real $menu sectors: 'management' and 'config'.
         $PLUGIN_HOOKS[Hooks::MENU_TOADD]['gac'] = [
-            'assets' => PreMenu::class,
+            'management' => PreMenu::class,
             'config' => ConfigMenu::class,
         ];
 
@@ -1820,7 +1820,7 @@ Esperado: as 4 tabelas e uma linha `plugin_gac_pre` com `max_rights = 1823` (31 
 
 Atenção: os direitos do perfil são carregados **no login**. Numa sessão que já estava aberta antes da instalação, o menu e as páginas do plugin dão 403 até você trocar de perfil ou entrar de novo (o `POST /Session/ChangeProfile` com o `id` do perfil recarrega os direitos sem novo login). As páginas do plugin ficam em `/plugins/gac/front/...`.
 
-Abra o GLPI local, entre como super-admin e confira: (a) Configurar > Plug-ins mostra "Gac" ativo com o ícone de engrenagem; (b) Administração > Perfis > (um perfil) > aba "Gac - Protocolo de Reparo" mostra a matriz com as caixas Criar, Ler, Atualizar, Purgar, **Enviar, Registrar retorno, Reabrir**; (c) o menu **Ativos** ganhou "Protocolos de Reparo de Equipamento" (a página em si ainda dá 404 até a Tarefa 6).
+Abra o GLPI local, entre como super-admin e confira: (a) Configurar > Plug-ins mostra "Gac" ativo com o ícone de engrenagem; (b) Administração > Perfis > (um perfil) > aba "Gac - Protocolo de Reparo" mostra a matriz com as caixas Criar, Ler, Atualizar, Purgar, **Enviar, Registrar retorno, Reabrir**; (c) o menu **Gerência** ganhou "Protocolos de Reparo de Equipamento" (a página em si ainda dá 404 até a Tarefa 6).
 
 - [ ] **Passo 10: Commit** via `/commit`. Título sugerido: `feat(pre): add database schema, rights and plugin registration`.
 
@@ -2401,7 +2401,7 @@ if (!RepairProtocol::canView()) {
 Html::header(
     RepairProtocol::getTypeName(2),
     $_SERVER['PHP_SELF'],
-    'assets',
+    'management',
     strtolower(PreMenu::class)
 );
 
@@ -2453,7 +2453,7 @@ if (isset($_POST['add'])) {
     Html::header(
         RepairProtocol::getTypeName(1),
         $_SERVER['PHP_SELF'],
-        'assets',
+        'management',
         strtolower(PreMenu::class)
     );
     $item->display(['id' => $_GET['id'] ?? -1]);
@@ -2467,7 +2467,7 @@ if (isset($_POST['add'])) {
 for f in $(find src front -name '*.php'); do /c/xampp/php/php.exe -l "$f"; done
 ```
 
-No navegador (GLPI local, super-admin): (a) Ativos > Protocolos de Reparo de Equipamento abre a lista vazia; (b) "+ Adicionar" abre o formulário; escolha um fornecedor e salve; o PRE nasce como `PRE-2026-001`, status Rascunho, com as abas Itens (vazia), Histórico (1 evento "PRE criado") e Histórico do GLPI; (c) crie um segundo PRE e confira `PRE-2026-002`; (d) sem fornecedor, o salvamento é recusado com a mensagem "Informe o fornecedor."; (e) o botão de purgar exclui um rascunho.
+No navegador (GLPI local, super-admin): (a) Gerência > Protocolos de Reparo de Equipamento abre a lista vazia; (b) "+ Adicionar" abre o formulário; escolha um fornecedor e salve; o PRE nasce como `PRE-2026-001`, status Rascunho, com as abas Itens (vazia), Histórico (1 evento "PRE criado") e Histórico do GLPI; (c) crie um segundo PRE e confira `PRE-2026-002`; (d) sem fornecedor, o salvamento é recusado com a mensagem "Informe o fornecedor."; (e) o botão de purgar exclui um rascunho.
 
 - [ ] **Passo 11: Commit** via `/commit`. Título sugerido: `feat(pre): add repair protocol object with numbering, events and tabs`.
 

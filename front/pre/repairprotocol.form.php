@@ -69,7 +69,7 @@ if (isset($_POST['add'])) {
     Html::header(
         RepairProtocol::getTypeName(1),
         $_SERVER['PHP_SELF'],
-        'assets',
+        'management',
         strtolower(PreMenu::class)
     );
     $item->display(['id' => $_GET['id'] ?? -1]);
