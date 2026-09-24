@@ -2665,8 +2665,10 @@ final class PreConfigSection implements ConfigSection
         // 1. Eligible categories
         $out .= "<h4>" . htmlescape(__('Tickets elegíveis', 'gac')) . '</h4>';
         $out .= $this->row(__('Categorias ITIL elegíveis', 'gac'), Dropdown::show(ITILCategory::class, [
-            'name'     => 'pre_category_ids',
-            'values'   => PreSettings::categoryIds($s),
+            // Multiple dropdowns need the explicit "[]" in the name, and take the selected
+            // values through "value" (Dropdown::show turns it into "values" itself).
+            'name'     => 'pre_category_ids[]',
+            'value'    => PreSettings::categoryIds($s),
             'multiple' => true,
             'display'  => false,
         ]));
@@ -2687,13 +2689,13 @@ final class PreConfigSection implements ConfigSection
 
         // 3. State roles
         $out .= "<h4 class='mt-4'>" . htmlescape(__('Status do ativo', 'gac')) . '</h4>';
-        $out .= "<p class='text-muted'>" . htmlescape(__('Crie estes status na entidade raiz, com recursividade ligada, para valerem em todas as entidades. Nenhum status é criado sem a sua ação.', 'gac')) . '</p>';
+        $out .= "<p class='text-muted'>" . htmlescape(__('Escolha um status existente ou crie um novo com o botão + do campo. Crie-os na entidade raiz, com recursividade ligada, para valerem em todas as entidades. Nenhum status é criado sem a sua ação.', 'gac')) . '</p>';
         foreach (self::stateRoleLabels() as $role => $label) {
             $out .= $this->row($label, Dropdown::show(State::class, [
                 'name'    => 'pre_state_' . $role,
                 'value'   => PreSettings::stateId($s, $role),
                 'display' => false,
-            ]) . $this->createBox('create_state', $role));
+            ]));
         }
 
         // 4. Pending reason roles
@@ -2772,13 +2774,6 @@ final class PreConfigSection implements ConfigSection
 
         foreach (PreSettings::STATE_ROLES as $role) {
             $raw['pre_state_' . $role] = (string) (int) ($post['pre_state_' . $role] ?? 0);
-            $name = trim((string) ($post['create_state'][$role] ?? ''));
-            if ($name !== '') {
-                $id = (new State())->add(['name' => $name, 'entities_id' => 0, 'is_recursive' => 1]);
-                if ($id) {
-                    $raw['pre_state_' . $role] = (string) $id;
-                }
-            }
         }
         foreach (PreSettings::REASON_ROLES as $role) {
             $raw['pre_reason_' . $role] = (string) (int) ($post['pre_reason_' . $role] ?? 0);
@@ -2834,7 +2829,7 @@ Html::footer();
 for f in $(find src front -name '*.php'); do /c/xampp/php/php.exe -l "$f"; done
 ```
 
-No navegador: (a) o ícone de engrenagem do Gac abre a página com uma única seção "Protocolo de Reparo de Equipamentos" e o aviso amarelo de mapeamentos pendentes; (b) escolha duas categorias ITIL, marque "Incluir subcategorias" = Sim, salve, recarregue e confira que os valores persistiram; (c) no campo "ou criar novo" de "Ativo na assistência" digite `Na assistência`, salve, e confira que o status foi criado em Configurar > Listas > Status e já aparece selecionado; (d) mapeie os outros papéis e o aviso amarelo desaparece; (e) troque a ação de "Reparado" para "Solucionar", salve e recarregue: a escolha persiste; (f) um usuário sem o direito `config` não vê o item de menu nem abre a URL.
+No navegador: (a) o ícone de engrenagem do Gac abre a página com uma única seção "Protocolo de Reparo de Equipamentos" e o aviso amarelo de mapeamentos pendentes; (b) escolha duas categorias ITIL, marque "Incluir subcategorias" = Sim, salve, recarregue e confira que os valores persistiram; (c) no campo "Ativo na assistência", use o botão **+** do próprio campo para criar o status `Na assistência` (o modal do GLPI deixa você escolher entidade e recursividade), salve, e confira que ele já aparece selecionado. Os motivos de pendência têm uma caixa "ou criar novo" própria; digite um nome nela e salve para criar o motivo; (d) mapeie os outros papéis e o aviso amarelo desaparece; (e) troque a ação de "Reparado" para "Solucionar", salve e recarregue: a escolha persiste; (f) um usuário sem o direito `config` não vê o item de menu nem abre a URL.
 
 - [ ] **Passo 7: Commit** via `/commit`. Título sugerido: `feat(pre): add plugin configuration page with per-module sections`.
 
