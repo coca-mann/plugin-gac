@@ -3468,6 +3468,7 @@ No navegador, com pelo menos uma categoria ITIL configurada (Tarefa 7): (a) abra
 - Consome: `PreConfig::load`, `PreSettings::missingRolesForSend/stateId/reasonId`, `RepairProtocol::changeStatus/lines`, `RepairProtocolEvent::log`, `StateMachine`, `ServiceResult` (tarefas anteriores).
 - Produz:
   - `StateGuard::isUsable(int $statesId, int $entityId): bool`
+  - `StateGuard::isReasonUsable(int $reasonId, int $entityId): bool` (o motivo de pendência mapeado precisa valer para a entidade **do ticket**; a pré-checagem do "Enviar" bloqueia com uma mensagem por ticket)
   - `TicketOps::followup(Ticket $t, string $content, ?int $pendingReasonsId = null): void` (lança `\RuntimeException`)
   - `TicketOps::keepPendingWithReason(Ticket $t, int $reasonId, string $content): void`
   - `TicketOps::leavePending(Ticket $t, string $content): void`
@@ -3486,11 +3487,13 @@ No navegador, com pelo menos uma categoria ITIL configurada (Tarefa 7): (a) abra
 
 namespace GlpiPlugin\Gac\Pre;
 
+use PendingReason;
 use State;
 
 /**
- * A State belongs to an entity and is visible to that entity, and to its descendants only
- * when recursive (spec section 10). The global mapping must be valid for each asset's entity.
+ * A State or a PendingReason belongs to an entity and is visible to that entity, and to its
+ * descendants only when recursive (spec section 10). The global mapping must be valid for the
+ * entity where it is applied: the asset's entity for a State, the ticket's for a PendingReason.
  */
 final class StateGuard
 {
@@ -3503,14 +3506,30 @@ final class StateGuard
         if (!$state->getFromDB($statesId)) {
             return false;
         }
-        $stateEntity = (int) $state->fields['entities_id'];
-        if ($stateEntity === $entityId) {
-            return true;
-        }
-        if (!$state->fields['is_recursive']) {
+        return self::isVisible((int) $state->fields['entities_id'], (bool) $state->fields['is_recursive'], $entityId);
+    }
+
+    public static function isReasonUsable(int $reasonId, int $entityId): bool
+    {
+        if ($reasonId <= 0) {
             return false;
         }
-        return in_array($stateEntity, array_map('intval', getAncestorsOf('glpi_entities', $entityId)), true);
+        $reason = new PendingReason();
+        if (!$reason->getFromDB($reasonId)) {
+            return false;
+        }
+        return self::isVisible((int) $reason->fields['entities_id'], (bool) $reason->fields['is_recursive'], $entityId);
+    }
+
+    private static function isVisible(int $ownerEntity, bool $recursive, int $entityId): bool
+    {
+        if ($ownerEntity === $entityId) {
+            return true;
+        }
+        if (!$recursive) {
+            return false;
+        }
+        return in_array($ownerEntity, array_map('intval', getAncestorsOf('glpi_entities', $entityId)), true);
     }
 }
 ```
@@ -3549,7 +3568,7 @@ final class TicketOps
             $input['pendingreasons_id'] = $pendingReasonsId;
         }
         if (!(new ITILFollowup())->add($input)) {
-            throw new \RuntimeException(sprintf('Could not add the follow-up to ticket #%d.', $ticket->getID()));
+            throw new \RuntimeException(sprintf(__('Não foi possível registrar o acompanhamento no ticket #%d.', 'gac'), $ticket->getID()));
         }
     }
 
@@ -3576,7 +3595,7 @@ final class TicketOps
                 $back = Ticket::ASSIGNED;
             }
             if (!$ticket->update(['id' => $ticket->getID(), 'status' => $back])) {
-                throw new \RuntimeException(sprintf('Could not change the status of ticket #%d.', $ticket->getID()));
+                throw new \RuntimeException(sprintf(__('Não foi possível alterar o status do ticket #%d.', 'gac'), $ticket->getID()));
             }
         }
         self::followup($ticket, $content);
@@ -3590,7 +3609,7 @@ final class TicketOps
             'content'  => $content,
         ]);
         if (!$id) {
-            throw new \RuntimeException(sprintf('Could not solve ticket #%d.', $ticket->getID()));
+            throw new \RuntimeException(sprintf(__('Não foi possível solucionar o ticket #%d.', 'gac'), $ticket->getID()));
         }
     }
 
@@ -3605,7 +3624,7 @@ final class TicketOps
             'entities_id' => (int) $ticket->fields['entities_id'],
         ]);
         if (!$id) {
-            throw new \RuntimeException(sprintf('Could not add the cost to ticket #%d.', $ticket->getID()));
+            throw new \RuntimeException(sprintf(__('Não foi possível registrar o custo no ticket #%d.', 'gac'), $ticket->getID()));
         }
         return (int) $id;
     }
@@ -3671,6 +3690,7 @@ final class SendService
     {
         $errors     = [];
         $stateId    = PreSettings::stateId($settings, 'at_supplier');
+        $reasonId   = PreSettings::reasonId($settings, 'at_supplier');
         $activeElse = self::activeElsewhere((int) $p->getID());
 
         foreach ($lines as $line) {
@@ -3683,6 +3703,12 @@ final class SendService
             }
             if (in_array((int) $ticket->fields['status'], [Ticket::SOLVED, Ticket::CLOSED], true)) {
                 $errors[] = sprintf(__('Ticket %s já está solucionado ou fechado.', 'gac'), $label);
+            }
+            if (!StateGuard::isReasonUsable($reasonId, (int) $ticket->fields['entities_id'])) {
+                $errors[] = sprintf(
+                    __('O motivo de pendência "Ticket na assistência" não é válido para a entidade do ticket %s. Crie-o na entidade raiz com recursividade.', 'gac'),
+                    $label
+                );
             }
 
             $asset = getItemForItemtype($line['itemtype']);
@@ -3761,16 +3787,16 @@ final class SendService
 
             $ticket = new Ticket();
             if (!$ticket->getFromDB((int) $line->fields['tickets_id'])) {
-                throw new \RuntimeException('Ticket not found.');
+                throw new \RuntimeException(__('Ticket não encontrado.', 'gac'));
             }
             $asset = getItemForItemtype($line->fields['itemtype']);
             if (!$asset || !$asset->getFromDB((int) $line->fields['items_id'])) {
-                throw new \RuntimeException('Asset not found.');
+                throw new \RuntimeException(__('Ativo não encontrado.', 'gac'));
             }
 
             $before = (int) $asset->fields['states_id'];
             if (!$asset->update(['id' => $asset->getID(), 'states_id' => PreSettings::stateId($settings, 'at_supplier')])) {
-                throw new \RuntimeException('Could not change the asset status.');
+                throw new \RuntimeException(__('Não foi possível alterar o status do ativo.', 'gac'));
             }
 
             TicketOps::followup(
@@ -4125,7 +4151,7 @@ $respond($result);
 for f in $(find src front ajax -name '*.php'); do /c/xampp/php/php.exe -l "$f"; done
 ```
 
-No navegador (a configuração completa da Tarefa 7 é pré-requisito: papéis de status e motivos mapeados). (a) Com um PRE em rascunho e 2 linhas, o botão **Enviar** aparece; clique: a barra mostra "Enviando 1 de 2...", a página recarrega, o PRE está `Enviado` e as 2 linhas `Na assistência`; (b) no ticket: acompanhamento "Equipamento ... enviado à assistência técnica..." e status **Pendente** com o motivo mapeado; (c) no ativo: o status virou o de "na assistência" e o histórico do ativo registra a mudança; (d) o histórico do PRE tem "Envio iniciado" e "PDF de envio gerado"; (e) sem o mapeamento de status configurado, "Enviar" recusa com a lista dos papéis faltantes **e não altera nenhum ticket**; (f) desmapeie o status para uma entidade em que ele não vale: a pré-checagem bloqueia citando o ticket; (g) simule falha de uma linha (apague o ativo de um ticket já em `Aguardando envio` no meio do processo, ou renomeie a classe no banco): a linha fica `Aguardando envio` com o erro, "Continuar envio" reprocessa só as pendentes; (h) "Remover linha com falha" exige o motivo e grava o evento; removendo a última linha, o PRE vira `Cancelado`; (i) clique duplo em "Enviar" não duplica acompanhamentos; (j) um usuário sem o direito **Enviar** recebe 403 no endpoint e não vê o botão.
+No navegador (a configuração completa da Tarefa 7 é pré-requisito: papéis de status e motivos mapeados). (a) Com um PRE em rascunho e 2 linhas, o botão **Enviar** aparece; clique: a barra mostra "Enviando 1 de 2...", a página recarrega, o PRE está `Enviado` e as 2 linhas `Na assistência`; (b) no ticket: acompanhamento "Equipamento ... enviado à assistência técnica..." e status **Pendente** com o motivo mapeado; (c) no ativo: o status virou o de "na assistência" e o histórico do ativo registra a mudança; (d) o histórico do PRE tem "Envio iniciado" e "PDF de envio gerado"; (e) sem o mapeamento de status configurado, "Enviar" recusa com a lista dos papéis faltantes **e não altera nenhum ticket**; (f) desmapeie o status para uma entidade em que ele não vale, ou mapeie um motivo de pendência que só existe numa subentidade: a pré-checagem bloqueia citando o ticket, e **nada** muda em ticket, ativo ou acompanhamentos; (g) simule falha de uma linha (apague o ativo de um ticket já em `Aguardando envio` no meio do processo, ou renomeie a classe no banco): a linha fica `Aguardando envio` com o erro, "Continuar envio" reprocessa só as pendentes; (h) "Remover linha com falha" exige o motivo e grava o evento; removendo a última linha, o PRE vira `Cancelado`; (i) clique duplo em "Enviar" não duplica acompanhamentos; (j) um usuário sem o direito **Enviar** recebe 403 no endpoint e não vê o botão.
 
 - [ ] **Passo 8: Commit** via `/commit`. Título sugerido: `feat(pre): send protocols line by line with progress`.
 
