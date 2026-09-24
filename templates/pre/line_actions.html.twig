@@ -1,0 +1,9 @@
+{% if line.can_remove_failed and can_send %}
+    <div class="input-group input-group-sm">
+        <input type="text" class="form-control" placeholder="{{ __('Motivo', 'gac') }}" data-gac-remove-reason>
+        <button type="button" class="btn btn-outline-danger" data-gac-remove-failed="{{ line.id }}">{{ __('Remover linha com falha', 'gac') }}</button>
+    </div>
+{% endif %}
+{% if line.last_error %}
+    <div class="text-danger small mt-1">{{ line.last_error }}</div>
+{% endif %}

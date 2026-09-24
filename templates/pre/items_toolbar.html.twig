@@ -1,0 +1,27 @@
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    {% if can_send %}
+        {% if send_mode == 'start' %}
+            <button type="button" class="btn btn-primary" data-gac-send="start">
+                <i class="ti ti-send"></i> {{ __('Enviar', 'gac') }}
+            </button>
+        {% elseif send_mode == 'continue' %}
+            <button type="button" class="btn btn-warning" data-gac-send="continue" data-line-ids="{{ pending_line_ids|json_encode }}">
+                {{ __('Continuar envio', 'gac') }}
+            </button>
+        {% elseif send_mode == 'finalize' %}
+            <button type="button" class="btn btn-warning" data-gac-send="finalize">
+                {{ __('Concluir envio (gerar documento)', 'gac') }}
+            </button>
+        {% endif %}
+    {% endif %}
+
+    {% if is_draft and can_edit %}
+        <form method="post" action="{{ protocol_form_url }}" class="d-inline">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="id" value="{{ protocol.getID() }}">
+            <button type="submit" name="cancel_protocol" value="1" class="btn btn-outline-danger">{{ __('Cancelar PRE', 'gac') }}</button>
+        </form>
+    {% endif %}
+
+    <div class="flex-grow-1" data-gac-progress></div>
+</div>
