@@ -2,7 +2,7 @@
 
 /**
  * -------------------------------------------------------------------------
- * {NAME} plugin for GLPI
+ * Gac plugin for GLPI
  * -------------------------------------------------------------------------
  *
  * MIT License
@@ -26,7 +26,7 @@
  * SOFTWARE.
  * -------------------------------------------------------------------------
  * @license   MIT https://opensource.org/licenses/mit-license.php
- * @link      https://github.com/pluginsGLPI/{LNAME}
+ * @link      https://github.com/coca-mann/plugin-gac
  * -------------------------------------------------------------------------
  */
 

@@ -1,33 +1,33 @@
 <root>
-   <name>{NAME}</name>
-   <key>{LNAME}</key>
+   <name>Gac</name>
+   <key>gac</key>
    <!-- stable, beta, development, alpha, ... -->
    <state>stable</state>
-   <logo>https://raw.githubusercontent.com/pluginsGLPI/{LNAME}/main/{LNAME}.png</logo>
+   <logo>https://raw.githubusercontent.com/coca-mann/plugin-gac/main/gac.png</logo>
    <description>
       <short>
          <!-- Add as many lang tag you want -->
-         <en>{NAME} GLPI plugin</en>
-         <fr>Plugin GLPI {NAME}</fr>
+         <en>Gac GLPI plugin</en>
+         <fr>Plugin GLPI Gac</fr>
       </short>
       <long>
          <!-- Add as many lang tag you want -->
-         <en>A long description for {NAME} GLPI plugin.</en>
-         <fr>Une description longue pour le plugin GLPI {NAME}.</fr>
+         <en>A long description for Gac GLPI plugin.</en>
+         <fr>Une description longue pour le plugin GLPI Gac.</fr>
       </long>
    </description>
-   <homepage>https://github.com/pluginsGLPI/{LNAME}</homepage>
-   <download>https://github.com/pluginsGLPI/{LNAME}/releases</download>
-   <issues>https://github.com/pluginsGLPI/{LNAME}/issues</issues>
-   <readme>https://github.com/pluginsGLPI/{LNAME}/blob/main/README.md</readme>
+   <homepage>https://github.com/coca-mann/plugin-gac</homepage>
+   <download>https://github.com/coca-mann/plugin-gac/releases</download>
+   <issues>https://github.com/coca-mann/plugin-gac/issues</issues>
+   <readme>https://github.com/coca-mann/plugin-gac/blob/main/README.md</readme>
    <authors>
       <!-- Add as many author tag you want -->
-      <author>Teclib'</author>
+      <author>Juliano Ostroski</author>
    </authors>
    <versions>
       <!-- Add as many version tag you want -->
       <version>
-         <num>{VERSION}</num>
+         <num>0.0.1</num>
          <!-- Add as many compatibility tag you want -->
          <compatibility>~11.0.0</compatibility>
       </version>
@@ -49,7 +49,7 @@
       </fr>
    </tags-->
    <!--screenshots>
-      <screenshot>https://github.com/pluginsGLPI/{LNAME}/raw/main/screenshot.png</screenshot>
-      <screenshot>https://github.com/pluginsGLPI/{LNAME}/raw/main/screenshot2.png</screenshot>
+      <screenshot>https://github.com/coca-mann/plugin-gac/raw/main/screenshot.png</screenshot>
+      <screenshot>https://github.com/coca-mann/plugin-gac/raw/main/screenshot2.png</screenshot>
    </screenshots-->
 </root>

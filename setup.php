@@ -2,7 +2,7 @@
 
 /**
  * -------------------------------------------------------------------------
- * {NAME} plugin for GLPI
+ * Gac plugin for GLPI
  * -------------------------------------------------------------------------
  *
  * MIT License
@@ -25,28 +25,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  * -------------------------------------------------------------------------
- * @copyright Copyright (C) {YEAR} by the {NAME} plugin team.
+ * @copyright Copyright (C) 2026 by the Gac plugin team.
  * @license   MIT https://opensource.org/licenses/mit-license.php
- * @link      https://github.com/pluginsGLPI/{LNAME}
+ * @link      https://github.com/coca-mann/plugin-gac
  * -------------------------------------------------------------------------
  */
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_{UNAME}_VERSION', '{VERSION}');
+define('PLUGIN_GAC_VERSION', '0.0.1');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define("PLUGIN_{UNAME}_MIN_GLPI_VERSION", "11.0.0");
+define("PLUGIN_GAC_MIN_GLPI_VERSION", "11.0.0");
 
 // Maximum GLPI version, exclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define("PLUGIN_{UNAME}_MAX_GLPI_VERSION", "11.0.99");
+define("PLUGIN_GAC_MAX_GLPI_VERSION", "11.0.99");
 
 /**
  * Init hooks of the plugin.
  * REQUIRED
  */
-function plugin_init_{LNAME}(): void {}
+function plugin_init_gac(): void {}
 
 /**
  * Get the name and the version of the plugin
@@ -66,18 +66,18 @@ function plugin_init_{LNAME}(): void {}
  *      }
  * }
  */
-function plugin_version_{LNAME}(): array
+function plugin_version_gac(): array
 {
     return [
-        'name'           => '{NAME}',
-        'version'        => PLUGIN_{UNAME}_VERSION,
-        'author'         => '<a href="http://www.teclib.com">Teclib\'</a>',
+        'name'           => 'Gac',
+        'version'        => PLUGIN_GAC_VERSION,
+        'author'         => 'Juliano Ostroski',
         'license'        => '',
-        'homepage'       => '',
+        'homepage'       => 'https://github.com/coca-mann/plugin-gac',
         'requirements'   => [
             'glpi' => [
-                'min' => PLUGIN_{UNAME}_MIN_GLPI_VERSION,
-                'max' => PLUGIN_{UNAME}_MAX_GLPI_VERSION,
+                'min' => PLUGIN_GAC_MIN_GLPI_VERSION,
+                'max' => PLUGIN_GAC_MAX_GLPI_VERSION,
             ],
         ],
     ];
@@ -87,7 +87,7 @@ function plugin_version_{LNAME}(): array
  * Check pre-requisites before install
  * OPTIONAL
  */
-function plugin_{LNAME}_check_prerequisites(): bool
+function plugin_gac_check_prerequisites(): bool
 {
     return true;
 }
@@ -98,14 +98,14 @@ function plugin_{LNAME}_check_prerequisites(): bool
  *
  * @param bool $verbose Whether to display message on failure. Defaults to false.
  */
-function plugin_{LNAME}_check_config(bool $verbose = false): bool
+function plugin_gac_check_config(bool $verbose = false): bool
 {
     // Your configuration check
     return true;
 
     // Example:
     // if ($verbose) {
-    //    echo __('Installed / not configured', '{LNAME}');
+    //    echo __('Installed / not configured', 'gac');
     // }
     // return false;
 }

@@ -11,7 +11,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "GlpiPlugin\\{NS_NAME}\\Tests\\": "tests/"
+            "GlpiPlugin\\Gac\\Tests\\": "tests/"
         }
     }
 }

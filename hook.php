@@ -2,7 +2,7 @@
 
 /**
  * -------------------------------------------------------------------------
- * {NAME} plugin for GLPI
+ * Gac plugin for GLPI
  * -------------------------------------------------------------------------
  *
  * MIT License
@@ -25,16 +25,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  * -------------------------------------------------------------------------
- * @copyright Copyright (C) {YEAR} by the {NAME} plugin team.
+ * @copyright Copyright (C) 2026 by the Gac plugin team.
  * @license   MIT https://opensource.org/licenses/mit-license.php
- * @link      https://github.com/pluginsGLPI/{LNAME}
+ * @link      https://github.com/coca-mann/plugin-gac
  * -------------------------------------------------------------------------
  */
 
 /**
  * Plugin install process
  */
-function plugin_{LNAME}_install(): bool
+function plugin_gac_install(): bool
 {
     return true;
 }
@@ -42,7 +42,7 @@ function plugin_{LNAME}_install(): bool
 /**
  * Plugin uninstall process
  */
-function plugin_{LNAME}_uninstall(): bool
+function plugin_gac_uninstall(): bool
 {
     return true;
 }
