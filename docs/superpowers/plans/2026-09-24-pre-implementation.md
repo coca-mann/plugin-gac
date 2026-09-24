@@ -42,7 +42,7 @@ O plano toma estas decisões. Nenhuma contradiz a spec; cada uma fecha um ponto 
 7. **Coluna `item_entities_id`** na linha: guarda a entidade do ativo para a validação de `State` (spec seção 10).
 8. **Linha presa em `Enviando`** por mais de 5 minutos volta a `Aguardando envio` na próxima chamada de envio (spec 7.3).
 9. **PRE sem linhas depois de "Remover linha com falha"** nunca enviou nada e vira `Cancelado` (a spec só permite cancelar rascunho; este é o único caminho para o estado fora do rascunho).
-10. **Classes em `src/Pre/` (subnamespace).** O GLPI deriva o nome da tabela e as URLs de `front/` a partir do nome da classe e, com o subnamespace `Pre`, o resultado seria `glpi_plugin_gac_pres_...` e `front/pre/...`. Por isso cada classe de dados sobrescreve `getTable()` e os arquivos de front ficam em `front/pre/`.
+10. **Classes em `src/Pre/` (subnamespace).** O GLPI deriva o nome da tabela e as URLs de `front/` a partir do nome da classe e, com o subnamespace `Pre`, o resultado seria `glpi_plugin_gac_pres_...` e `front/pre/...`. Por isso cada classe de dados sobrescreve `getTable()` e os arquivos de front ficam em `front/pre/`. Pelo mesmo motivo, a opção de busca `itemlink` declara `'itemtype' => self::class`: sem isso a **lista quebra assim que existe a primeira linha** (o GLPI tenta mapear a tabela de volta para a classe e falha; a lista vazia não denuncia o erro).
 11. **Contador de numeração** em tabela própria (`glpi_plugin_gac_protocolsequences`); ver decisão 1.
 
 ## Mapa de arquivos
@@ -2297,7 +2297,9 @@ class RepairProtocol extends CommonDBTM
             ['id' => 'common', 'name' => self::getTypeName(2)],
             [
                 'id' => 1, 'table' => $t, 'field' => 'number', 'name' => __('Número', 'gac'),
-                'datatype' => 'itemlink', 'massiveaction' => false, 'autocomplete' => true,
+                // Without 'itemtype' GLPI maps the table back to a class, which fails for a
+                // class in a sub-namespace (same reason getTable() is overridden).
+                'datatype' => 'itemlink', 'itemtype' => self::class, 'massiveaction' => false, 'autocomplete' => true,
             ],
             ['id' => 2, 'table' => $t, 'field' => 'id', 'name' => __('ID'), 'datatype' => 'number', 'massiveaction' => false],
             [

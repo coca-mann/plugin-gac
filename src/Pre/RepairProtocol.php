@@ -224,7 +224,9 @@ class RepairProtocol extends CommonDBTM
             ['id' => 'common', 'name' => self::getTypeName(2)],
             [
                 'id' => 1, 'table' => $t, 'field' => 'number', 'name' => __('Número', 'gac'),
-                'datatype' => 'itemlink', 'massiveaction' => false, 'autocomplete' => true,
+                // Without 'itemtype' GLPI maps the table back to a class, which fails for a
+                // class in a sub-namespace (same reason getTable() is overridden).
+                'datatype' => 'itemlink', 'itemtype' => self::class, 'massiveaction' => false, 'autocomplete' => true,
             ],
             ['id' => 2, 'table' => $t, 'field' => 'id', 'name' => __('ID'), 'datatype' => 'number', 'massiveaction' => false],
             [
