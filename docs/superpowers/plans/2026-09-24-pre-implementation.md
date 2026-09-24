@@ -25,6 +25,7 @@ Toda tarefa herda estas restrições, copiadas da spec e do `CLAUDE.md`:
 - Todo arquivo PHP novo começa com o cabeçalho de licença de `tools/HEADER` (copie as linhas 1 a 30 de `setup.php`). Os blocos de código deste plano omitem o cabeçalho para ficar curtos.
 - `php` não está no PATH. Use `/c/xampp/php/php.exe` (PHP 8.2.12). Para lint: `/c/xampp/php/php.exe -l <arquivo>`.
 - A cópia local do GLPI 11.0.8 é uma **release, não um checkout de desenvolvimento**: PHPUnit/PHPStan do GLPI não rodam lá. Os testes automatizados deste plano cobrem só as classes puras (`tests/Unit/`), com PHPUnit em `.phar`. O resto tem **roteiro de teste manual** (Tarefa 13).
+- **Cache do GLPI.** O GLPI local roda em modo `production`: ele **não recompila** templates Twig editados. Depois de mudar qualquer `.twig`, rode `cd /c/Users/juliano/VSCode/glpi-xampp-dev-plugin && /c/xampp/php/php.exe bin/console cache:clear`, senão a tela continua mostrando o template antigo (foi assim que a Tarefa 8 pareceu não funcionar na primeira verificação).
 - O plugin já está ligado ao GLPI local por junção: `C:\Users\juliano\VSCode\glpi-xampp-dev-plugin\plugins\gac` → este diretório.
 - As chaves de configuração do PRE usam o prefixo `pre_`, guardadas em `glpi_configs` no contexto `plugin:gac` (D16).
 - Nomes de coluna: a FK do PRE nas tabelas filhas é `plugin_gac_repairprotocols_id`; a da linha nos eventos é `plugin_gac_repairprotocolitems_id`.
