@@ -1811,12 +1811,14 @@ Esperado: `gac` com estado `Enabled`. (`glpi` é o login do super-admin padrão;
 Confirme as tabelas e o direito:
 
 ```bash
-/c/xampp/mysql/bin/mysql.exe -u glpi-dev -p glpi-dev -e "SHOW TABLES LIKE 'glpi_plugin_gac%'; SELECT name, COUNT(*) profiles, MAX(rights) max_rights FROM glpi_profilerights WHERE name='plugin_gac_pre' GROUP BY name;"
+/c/xampp/mysql/bin/mysql.exe -h 127.0.0.1 -P 3307 -u glpi-dev -p glpi-dev -e "SHOW TABLES LIKE 'glpi_plugin_gac%'; SELECT name, COUNT(*) profiles, MAX(rights) max_rights FROM glpi_profilerights WHERE name='plugin_gac_pre' GROUP BY name;"
 ```
 
-Esperado: as 4 tabelas e uma linha `plugin_gac_pre` com `max_rights = 1823` (31 + 256 + 512 + 1024) para o perfil administrativo. (O usuário e o banco vêm de `config/config_db.php`; a senha também está lá.)
+Esperado: as 4 tabelas e uma linha `plugin_gac_pre` com `max_rights = 1823` (31 + 256 + 512 + 1024) para o perfil administrativo. (Host, porta, usuário e banco vêm de `config/config_db.php`: neste GLPI de desenvolvimento a porta é **3307**, não a padrão; a senha também está lá.)
 
 - [ ] **Passo 9: Verificação manual no navegador**
+
+Atenção: os direitos do perfil são carregados **no login**. Numa sessão que já estava aberta antes da instalação, o menu e as páginas do plugin dão 403 até você trocar de perfil ou entrar de novo (o `POST /Session/ChangeProfile` com o `id` do perfil recarrega os direitos sem novo login). As páginas do plugin ficam em `/plugins/gac/front/...`.
 
 Abra o GLPI local, entre como super-admin e confira: (a) Configurar > Plug-ins mostra "Gac" ativo com o ícone de engrenagem; (b) Administração > Perfis > (um perfil) > aba "Gac - Protocolo de Reparo" mostra a matriz com as caixas Criar, Ler, Atualizar, Purgar, **Enviar, Registrar retorno, Reabrir**; (c) o menu **Ativos** ganhou "Protocolos de Reparo de Equipamento" (a página em si ainda dá 404 até a Tarefa 6).
 
@@ -2132,6 +2134,12 @@ class RepairProtocol extends CommonDBTM
     public static function getTypeName($nb = 0)
     {
         return _n('Protocolo de Reparo de Equipamento', 'Protocolos de Reparo de Equipamento', $nb, 'gac');
+    }
+
+    /** The PRE has no "name" column: the number is what identifies it in titles and logs. */
+    public static function getNameField()
+    {
+        return 'number';
     }
 
     public static function getIcon()
