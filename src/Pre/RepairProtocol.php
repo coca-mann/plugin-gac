@@ -220,7 +220,7 @@ class RepairProtocol extends CommonDBTM
     public function rawSearchOptions()
     {
         $t = self::getTable();
-        return [
+        $options = [
             ['id' => 'common', 'name' => self::getTypeName(2)],
             [
                 'id' => 1, 'table' => $t, 'field' => 'number', 'name' => __('Número', 'gac'),
@@ -249,6 +249,18 @@ class RepairProtocol extends CommonDBTM
                 'name' => Entity::getTypeName(1), 'datatype' => 'dropdown', 'massiveaction' => false,
             ],
         ];
+
+        // GLPI maps a column's table back to a class to render it, which fails for a class in a
+        // sub-namespace (same reason getTable() is overridden): declare the itemtype on every
+        // column that belongs to the PRE table, not only on the number.
+        foreach ($options as &$option) {
+            if (($option['table'] ?? null) === $t && !isset($option['itemtype'])) {
+                $option['itemtype'] = self::class;
+            }
+        }
+        unset($option);
+
+        return $options;
     }
 
     public static function getSpecificValueToDisplay($field, $values, array $options = [])

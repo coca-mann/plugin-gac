@@ -179,6 +179,17 @@ function plugin_gac_install(): bool
         }
     }
 
+    // Default list columns (users_id = 0 is the global default): the PRE number is always
+    // shown by GLPI; add the status. Only on first install, never over an admin's choice.
+    if (countElementsInTable('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]) === 0) {
+        $DB->insert('glpi_displaypreferences', [
+            'itemtype' => RepairProtocol::class,
+            'num'      => 3, // search option 3 = status (see RepairProtocol::rawSearchOptions())
+            'rank'     => 1,
+            'users_id' => 0,
+        ]);
+    }
+
     $migration->executeMigration();
 
     return true;
@@ -203,6 +214,7 @@ function plugin_gac_uninstall(): bool
     }
 
     $DB->delete(ProfileRight::getTable(), ['name' => RepairProtocol::$rightname]);
+    $DB->delete('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]);
     Config::deleteConfigurationValues('plugin:gac', array_keys(PreSettings::defaults()));
 
     return true;
