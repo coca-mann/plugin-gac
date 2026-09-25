@@ -40,5 +40,12 @@
         </form>
     {% endif %}
 
+    {% if can_pdf %}
+        <a class="btn btn-outline-secondary" href="{{ pdf_url }}" target="_blank" rel="noopener">
+            <i class="ti ti-file-type-pdf"></i>
+            {{ is_draft ? __('Pré-visualizar PDF', 'gac') : __('Baixar PDF de envio', 'gac') }}
+        </a>
+    {% endif %}
+
     <div class="flex-grow-1" data-gac-progress></div>
 </div>

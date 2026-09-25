@@ -1,0 +1,103 @@
+<style>
+    body { font-family: dejavusans, sans-serif; font-size: 9pt; color: #2b2f36; }
+    table { border-collapse: collapse; }
+    .header { width: 100%; margin-bottom: 4mm; }
+    .header td { vertical-align: middle; }
+    .logo img { max-height: 16mm; }
+    .company { text-align: right; font-size: 8pt; line-height: 1.45; color: #4a5260; }
+    .company .name { font-size: 10.5pt; font-weight: bold; color: #1f3a5f; }
+    .rule { border-top: 0.6mm solid #1f3a5f; margin: 0 0 4mm 0; }
+    .title { font-size: 17pt; font-weight: bold; color: #1f3a5f; text-align: left; margin: 0; }
+    .subtitle { font-size: 8.5pt; color: #6b7280; margin: 0 0 4mm 0; }
+    .meta { width: 100%; margin-bottom: 5mm; }
+    .meta td { padding: 2.2mm 3mm; border: 0.2mm solid #d5dae1; font-size: 8.8pt; }
+    .meta td.label { background-color: #eef1f6; color: #1f3a5f; font-weight: bold; width: 38mm; }
+    .meta td.value { width: 40%; }
+    .items { width: 100%; margin-bottom: 4mm; }
+    .items th { background-color: #1f3a5f; color: #ffffff; font-size: 8pt; text-align: left; padding: 2.4mm 2mm; border: 0.2mm solid #1f3a5f; }
+    .items td { font-size: 8pt; padding: 2mm; border: 0.2mm solid #d5dae1; vertical-align: top; }
+    .items tr.zebra td { background-color: #f6f8fb; }
+    .total { text-align: right; font-size: 10pt; font-weight: bold; color: #1f3a5f; margin: 2mm 0 6mm 0; }
+    .receipt { font-size: 9pt; margin: 4mm 0 2mm 0; }
+    .signatures { width: 100%; margin-top: 16mm; }
+    .signatures td.sigcell { width: 40%; text-align: center; border-top: 0.3mm solid #4a5260; padding-top: 1.5mm; }
+    .signatures td.gap { width: 20%; }
+    .signame { font-weight: bold; font-size: 9.5pt; }
+    .sigrole { font-size: 8pt; color: #6b7280; font-style: italic; }
+</style>
+
+<table class="header">
+    <tr>
+        <td class="logo">{% if company.logo_data_uri %}<img src="{{ company.logo_data_uri }}" alt="">{% endif %}</td>
+        <td class="company">
+            <div class="name">{{ company.name }}</div>
+            {% if company.registration_number %}<div>{{ company.registration_number }}</div>{% endif %}
+            {% if company.address_line %}<div>{{ company.address_line }}</div>{% endif %}
+            {% if company.phone %}<div>{{ company.phone }}</div>{% endif %}
+        </td>
+    </tr>
+</table>
+<div class="rule"></div>
+
+<p class="title">{{ __('PROTOCOLO DE REPARO DE EQUIPAMENTO', 'gac') }}</p>
+<p class="subtitle">{{ protocol.number }}</p>
+
+<table class="meta">
+    <tr>
+        <td class="label">{{ __('Fornecedor', 'gac') }}</td>
+        <td class="value"><strong>{{ protocol.supplier_name }}</strong></td>
+        <td class="label">{{ __('Nº do protocolo', 'gac') }}</td>
+        <td class="value"><strong>{{ protocol.number }}</strong></td>
+    </tr>
+    <tr>
+        <td class="label">{{ __('Técnico responsável', 'gac') }}</td>
+        <td class="value">{{ protocol.technician }}</td>
+        <td class="label">{{ __('Data de emissão', 'gac') }}</td>
+        <td class="value">{{ protocol.date_issued }}</td>
+    </tr>
+</table>
+
+<table class="items">
+    <thead>
+        <tr>
+            <th style="width: 9%;">{{ __('Ticket', 'gac') }}</th>
+            <th style="width: 11%;">{{ __('Tipo', 'gac') }}</th>
+            <th style="width: 17%;">{{ __('Equipamento', 'gac') }}</th>
+            <th style="width: 11%;">{{ __('Patrimônio', 'gac') }}</th>
+            <th style="width: 14%;">{{ __('Nº de série', 'gac') }}</th>
+            <th style="width: 38%;">{{ __('Descrição para o fornecedor', 'gac') }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+            <tr class="{{ loop.index is even ? 'zebra' : '' }}">
+                <td>#{{ row.tickets_id }}</td>
+                <td>{{ row.type }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.otherserial|default('—') }}</td>
+                <td>{{ row.serial|default('—') }}</td>
+                <td>{{ row.description|default('—') }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="6" style="text-align: center;">{{ __('Nenhum item neste protocolo.', 'gac') }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="total">{{ __('Quantidade total de itens', 'gac') }}: {{ rows|length }}</div>
+
+<div class="receipt">{{ __('Recebido em', 'gac') }}: ____/____/________ &nbsp;&nbsp;&nbsp; {{ __('às', 'gac') }} ____:____</div>
+
+<table class="signatures" style="page-break-inside: avoid;">
+    <tr>
+        <td class="sigcell">
+            <div class="signame">{{ protocol.supplier_name }}</div>
+            <div class="sigrole">{{ __('Fornecedor', 'gac') }}</div>
+        </td>
+        <td class="gap"></td>
+        <td class="sigcell">
+            <div class="signame">{{ protocol.technician }}</div>
+            <div class="sigrole">{{ __('Técnico', 'gac') }}</div>
+        </td>
+    </tr>
+</table>

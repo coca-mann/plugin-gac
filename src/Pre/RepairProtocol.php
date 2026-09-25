@@ -197,6 +197,7 @@ class RepairProtocol extends CommonDBTM
         $this->addDefaultFormTab($tabs);
         $this->addStandardTab(RepairProtocolItem::class, $tabs, $options);
         $this->addStandardTab(RepairProtocolEvent::class, $tabs, $options);
+        $this->addStandardTab(\Document_Item::class, $tabs, $options);
         $this->addStandardTab('Log', $tabs, $options);
         return $tabs;
     }

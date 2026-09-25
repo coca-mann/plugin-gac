@@ -179,6 +179,16 @@ function plugin_gac_install(): bool
         }
     }
 
+    // The definitive PDF is stored through Document, which only accepts registered types.
+    if (countElementsInTable('glpi_documenttypes', ['ext' => 'pdf']) === 0) {
+        $DB->insert('glpi_documenttypes', [
+            'name'          => 'PDF',
+            'ext'           => 'pdf',
+            'mime'          => 'application/pdf',
+            'is_uploadable' => 1,
+        ]);
+    }
+
     // Default list columns (users_id = 0 is the global default): the PRE number is always
     // shown by GLPI; add the status. Only on first install, never over an admin's choice.
     if (countElementsInTable('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]) === 0) {

@@ -256,12 +256,17 @@ final class SendService
         );
     }
 
-    /** Last step: every line is at the supplier. The PDF is added by task 12. */
+    /** Last step: every line is at the supplier; generate and attach the definitive PDF (D11). */
     public static function finalize(RepairProtocol $p): ServiceResult
     {
         if ($p->getStatus() !== ProtocolStatus::Sent) {
             return ServiceResult::fail(__('O PRE não está em envio.', 'gac'));
         }
+        // Idempotent: the document already exists.
+        if ((int) $p->fields['documents_id_sent'] > 0) {
+            return ServiceResult::ok();
+        }
+
         $pending = 0;
         foreach ($p->lines() as $line) {
             if ($line['status'] !== ItemStatus::AtSupplier->value) {
@@ -275,7 +280,16 @@ final class SendService
             ));
         }
 
+        try {
+            $documentId = PdfRenderer::attachFinal($p);
+        } catch (\Throwable $e) {
+            Toolbox::logInFile('gac', sprintf("finalize %d failed: %s\n", $p->getID(), $e->getMessage()));
+            return ServiceResult::fail(__('Não foi possível gerar o PDF. Tente "Concluir envio" novamente.', 'gac'));
+        }
+
+        $p->changeStatus(ProtocolStatus::Sent, ['documents_id_sent' => $documentId]);
         RepairProtocolEvent::log((int) $p->getID(), 'send_finalized');
+
         return ServiceResult::ok();
     }
 

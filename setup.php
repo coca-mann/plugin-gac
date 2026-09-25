@@ -117,6 +117,10 @@ function plugin_version_gac(): array
  */
 function plugin_gac_check_prerequisites(): bool
 {
+    if (!is_file(__DIR__ . '/vendor/autoload.php')) {
+        echo __('Dependências ausentes (mPDF): use o pacote de release do plugin ou rode "composer install --no-dev" na pasta do plugin.', 'gac');
+        return false;
+    }
     return true;
 }
 
