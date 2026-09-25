@@ -5167,7 +5167,8 @@ Esperado: `mpdf/mpdf` (8.3.x) instalado, sem erro. O `composer update` local ins
     .items tr.zebra td { background-color: #f6f8fb; }
     .total { text-align: right; font-size: 10pt; font-weight: bold; color: #1f3a5f; margin: 2mm 0 6mm 0; }
     .receipt { font-size: 9pt; margin: 4mm 0 2mm 0; }
-    .signatures { width: 100%; margin-top: 16mm; }
+    .signatures { width: 100%; }
+    .signature-gap { height: 30mm; }
     .signatures td.sigcell { width: 40%; text-align: center; border-top: 0.3mm solid #4a5260; padding-top: 1.5mm; }
     .signatures td.gap { width: 20%; }
     .signame { font-weight: bold; font-size: 9.5pt; }
@@ -5235,6 +5236,8 @@ Esperado: `mpdf/mpdf` (8.3.x) instalado, sem erro. O `composer update` local ins
 <div class="total">{{ __('Quantidade total de itens', 'gac') }}: {{ rows|length }}</div>
 
 <div class="receipt">{{ __('Recebido em', 'gac') }}: ____/____/________ &nbsp;&nbsp;&nbsp; {{ __('às', 'gac') }} ____:____</div>
+
+<div class="signature-gap"></div>
 
 <table class="signatures" style="page-break-inside: avoid;">
     <tr>
