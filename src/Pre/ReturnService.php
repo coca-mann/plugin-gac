@@ -115,18 +115,28 @@ final class ReturnService
                 }
             }
 
-            // Ticket action
-            match ($actions['ticket']['type']) {
-                'reopen'       => TicketOps::leavePending($ticket, $summary),
-                'solve'        => TicketOps::solve($ticket, $summary),
-                'keep_pending' => TicketOps::keepPendingWithReason($ticket, $actions['ticket']['pendingreasons_id'], $summary),
-            };
+            // Ticket action. While another line of the same ticket is still out (another asset
+            // of a multi-asset ticket), the ticket keeps its status and reason: only the
+            // summary follow-up is written. The last line to come back decides the status.
+            if (self::hasOtherActiveLines($line)) {
+                TicketOps::followup($ticket, $summary);
+            } else {
+                match ($actions['ticket']['type']) {
+                    'reopen'       => TicketOps::leavePending($ticket, $summary),
+                    'solve'        => TicketOps::solve($ticket, $summary),
+                    'keep_pending' => TicketOps::keepPendingWithReason($ticket, $actions['ticket']['pendingreasons_id'], $summary),
+                };
+            }
 
             $costId = 0;
             if ($cost !== null && $cost > 0) {
                 $costId = TicketOps::addCost(
                     $ticket,
-                    sprintf('PRE %s - %s', $protocol->fields['number'], $line->fields['item_name']),
+                    CostLabel::name(
+                        (string) $protocol->fields['supplier_name'],
+                        (string) ($data['supplier_ref'] ?? ''),
+                        (string) $line->fields['item_name']
+                    ),
                     $cost,
                     $dateReturn
                 );
@@ -229,6 +239,20 @@ final class ReturnService
         }
 
         return ServiceResult::ok(__('Linha marcada como extraviada.', 'gac'));
+    }
+
+    /** True when the same ticket still has another active line (in any PRE). */
+    private static function hasOtherActiveLines(RepairProtocolItem $line): bool
+    {
+        return countElementsInTable(RepairProtocolItem::getTable(), [
+            'tickets_id' => (int) $line->fields['tickets_id'],
+            'status'     => [
+                ItemStatus::PendingSend->value,
+                ItemStatus::Sending->value,
+                ItemStatus::AtSupplier->value,
+            ],
+            ['NOT' => ['id' => (int) $line->getID()]],
+        ]) > 0;
     }
 
     /** Recomputes the PRE status from its lines; closing is automatic (spec D9). */
