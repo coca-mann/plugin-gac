@@ -1572,6 +1572,7 @@ class ConfigMenu
 
 ```php
 use GlpiPlugin\Gac\Pre\PreSettings;
+use GlpiPlugin\Gac\Pre\PreSettings;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 
 /**
@@ -1719,6 +1720,17 @@ function plugin_gac_install(): bool
         }
     }
 
+    // Default list columns (users_id = 0 is the global default): the PRE number is always
+    // shown by GLPI; add the status. Only on first install, never over an admin's choice.
+    if (countElementsInTable('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]) === 0) {
+        $DB->insert('glpi_displaypreferences', [
+            'itemtype' => RepairProtocol::class,
+            'num'      => 3, // search option 3 = status (see RepairProtocol::rawSearchOptions())
+            'rank'     => 1,
+            'users_id' => 0,
+        ]);
+    }
+
     $migration->executeMigration();
 
     return true;
@@ -1743,6 +1755,7 @@ function plugin_gac_uninstall(): bool
     }
 
     $DB->delete(ProfileRight::getTable(), ['name' => RepairProtocol::$rightname]);
+    $DB->delete('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]);
     Config::deleteConfigurationValues('plugin:gac', array_keys(PreSettings::defaults()));
 
     return true;
@@ -2312,7 +2325,7 @@ class RepairProtocol extends CommonDBTM
     public function rawSearchOptions()
     {
         $t = self::getTable();
-        return [
+        $options = [
             ['id' => 'common', 'name' => self::getTypeName(2)],
             [
                 'id' => 1, 'table' => $t, 'field' => 'number', 'name' => __('Número', 'gac'),
@@ -2341,6 +2354,18 @@ class RepairProtocol extends CommonDBTM
                 'name' => Entity::getTypeName(1), 'datatype' => 'dropdown', 'massiveaction' => false,
             ],
         ];
+
+        // GLPI maps a column's table back to a class to render it, which fails for a class in a
+        // sub-namespace (same reason getTable() is overridden): declare the itemtype on every
+        // column that belongs to the PRE table, not only on the number.
+        foreach ($options as &$option) {
+            if (($option['table'] ?? null) === $t && !isset($option['itemtype'])) {
+                $option['itemtype'] = self::class;
+            }
+        }
+        unset($option);
+
+        return $options;
     }
 
     public static function getSpecificValueToDisplay($field, $values, array $options = [])
