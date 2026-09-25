@@ -107,6 +107,25 @@
         }
     });
 
+    // "Marcar todos" in the import list: toggles every candidate and reflects a partial selection.
+    document.addEventListener('change', function (event) {
+        const all = event.target.closest('[data-gac-select-all]');
+        const form = event.target.closest('form');
+        if (!form) {
+            return;
+        }
+        const rows = form.querySelectorAll('input[name="select[]"]');
+        const master = form.querySelector('[data-gac-select-all]');
+        if (all) {
+            rows.forEach(function (box) { box.checked = all.checked; });
+            all.indeterminate = false;
+        } else if (master && event.target.matches('input[name="select[]"]')) {
+            const checked = form.querySelectorAll('input[name="select[]"]:checked').length;
+            master.checked = checked === rows.length;
+            master.indeterminate = checked > 0 && checked < rows.length;
+        }
+    });
+
     // The items list can be collapsed while return cards are open; the choice is remembered per PRE.
     function listKey(root) {
         return 'gac_pre_list_collapsed_' + root.dataset.protocolId;
