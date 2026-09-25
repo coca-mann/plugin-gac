@@ -42,8 +42,11 @@ use Toolbox;
  */
 final class ReturnService
 {
-    /** @param array<string, mixed> $data */
-    public static function registerReturn(int $lineId, array $data): ServiceResult
+    /**
+     * @param array<string, mixed> $data
+     * @param list<array{name: string, tmp_name: string, error: int}> $files uploads from ReturnAttachments::collect()
+     */
+    public static function registerReturn(int $lineId, array $data, array $files = []): ServiceResult
     {
         global $DB;
 
@@ -179,6 +182,14 @@ final class ReturnService
             }
             Toolbox::logInFile('gac', sprintf("registerReturn %d failed: %s\n", $lineId, $e->getMessage()));
             return ServiceResult::fail($e->getMessage());
+        }
+
+        // After the commit: a rejected file must not undo a return that already changed the ticket.
+        $problems = $files === [] ? [] : ReturnAttachments::attach($files, $protocol, $line, $ticket);
+        if ($problems !== []) {
+            return ServiceResult::ok(
+                __('Retorno registrado, mas nem todos os documentos foram anexados:', 'gac') . ' ' . implode(' ', $problems)
+            );
         }
 
         return ServiceResult::ok(__('Retorno registrado.', 'gac'));

@@ -34,6 +34,7 @@
 use GlpiPlugin\Gac\Pre\LineService;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 use GlpiPlugin\Gac\Pre\ReopenService;
+use GlpiPlugin\Gac\Pre\ReturnAttachments;
 use GlpiPlugin\Gac\Pre\ReturnService;
 use GlpiPlugin\Gac\Pre\ServiceResult;
 
@@ -65,7 +66,7 @@ if (isset($_POST['import'])) {
     }
     $lineId = (int) ($_POST['line_id'] ?? 0);
     $notify(isset($_POST['return'])
-        ? ReturnService::registerReturn($lineId, $_POST)
+        ? ReturnService::registerReturn($lineId, $_POST, ReturnAttachments::collect($_FILES))
         : ReturnService::markLost($lineId, (string) ($_POST['reason'] ?? '')));
 } elseif (isset($_POST['reopen']) || isset($_POST['correct']) || isset($_POST['finish_corrections'])) {
     if (

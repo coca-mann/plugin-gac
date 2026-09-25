@@ -83,6 +83,7 @@ final class Labels
             'sent'           => __('Envio iniciado', 'gac'),
             'send_finalized' => __('PDF de envio gerado', 'gac'),
             'line_returned'  => __('Retorno registrado', 'gac'),
+            'line_document_attached' => __('Documento anexado ao retorno', 'gac'),
             'line_lost'      => __('Linha marcada como extraviada', 'gac'),
             'line_removed'   => __('Linha removida', 'gac'),
             'line_corrected' => __('Dados de retorno corrigidos', 'gac'),

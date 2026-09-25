@@ -49,6 +49,7 @@ com o motivo.
 | 26 | Ticket com dois ativos | Devolver uma linha enquanto a outra está fora | Ticket mantém status e motivo, só acompanhamento; a última linha aplica a ação | OK |
 | 27 | Nome do custo | Retorno com custo e nº da OS | Custo do ticket chamado `Fornecedor - OS - Ativo` | OK |
 | 28 | Ativo customizado | Ticket ligado a um ativo de tipo definido (Nobreak) | Importa, envia, devolve (reparado e baixa) e fecha como qualquer ativo | OK |
+| 29 | Documentos no retorno | Registrar retorno anexando 2 arquivos permitidos e 1 recusado pelo GLPI (`.exe`) | Os 2 viram Documentos ligados ao ticket e ao PRE; o recusado gera aviso e o retorno continua registrado; evento `Documento anexado ao retorno` no histórico | OK (via POST multipart; a mensagem de aviso do arquivo recusado não foi conferida na tela) |
 
 **Nota do cenário 25 (PDF).** Prévia em rascunho com marca d'água "RASCUNHO"; cabeçalho com nome,
 CNPJ, endereço e telefone da entidade; logo do documento mais recente da categoria configurada,
