@@ -54,6 +54,7 @@ com o motivo.
 | 31 | Recolher a lista | Com cartões de retorno visíveis, recolher a lista de itens, registrar um retorno e recarregar a página | A lista continua recolhida nos dois casos; "Expandir" a mostra de novo; sem cartões de retorno o botão não aparece | OK (o botão ausente não foi conferido na tela) |
 | 32 | Marcar todos na importação | Num rascunho com tickets elegíveis, usar a caixa do cabeçalho da lista "Importar tickets" | Marca e desmarca todos; marcar só alguns deixa a caixa do cabeçalho em estado parcial; marcar todos um a um marca a caixa do cabeçalho | OK (13 candidatos; a importação em si não foi refeita) |
 | 33 | Histórico único | Abrir um PRE com eventos; reabrir com motivo e concluir as correções | Só existe uma aba "Histórico"; cada evento aparece com Campo "Evento" e o texto (ex. "PRE reaberto: motivo", "Retorno registrado (#71 · NB-1): Reparado"); eventos antigos também aparecem | OK |
+| 34 | PDF sem logomarca na cadeia | Categoria de logomarca configurada, mas nenhuma logomarca na entidade nem nas ancestrais; entidade raiz com `entities_id` NULL (como em bancos migrados de versões antigas) | O PDF sai sem logo em menos de 1 s, sem ficar em laço | OK (reproduzido no banco de produção pelo slowlog do PHP-FPM; verificado depois da correção) |
 
 **Nota do cenário 25 (PDF).** Prévia em rascunho com marca d'água "RASCUNHO"; cabeçalho com nome,
 CNPJ, endereço e telefone da entidade; logo do documento mais recente da categoria configurada,

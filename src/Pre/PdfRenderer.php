@@ -116,7 +116,9 @@ final class PdfRenderer
         }
 
         $entity = new Entity();
-        for ($e = $entityId; $e >= 0; ) {
+        $visited = [];
+        for ($e = $entityId; $e !== null && !isset($visited[$e]) && count($visited) < EntityChain::MAX_DEPTH; ) {
+            $visited[$e] = true;
             $row = $DB->request([
                 'SELECT'     => ['glpi_documents.filepath', 'glpi_documents.mime'],
                 'FROM'       => 'glpi_documents_items',
@@ -146,7 +148,8 @@ final class PdfRenderer
             if (!$entity->getFromDB($e)) {
                 break;
             }
-            $e = (int) $entity->fields['entities_id']; // root entity's parent is -1: loop ends
+            // The root's parent is -1 or NULL depending on the database: see EntityChain.
+            $e = EntityChain::parentOf($e, $entity->fields['entities_id'] ?? null);
         }
         return null;
     }
