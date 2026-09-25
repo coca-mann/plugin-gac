@@ -5027,6 +5027,7 @@ Com um PRE `Encerrado`: (a) só um usuário com o direito **Reabrir** vê o camp
 - Consome: `PreConfig::load`, `PreSettings::logoCategoryId` (Tarefas 4, 7), `RepairProtocol::lines/getStatus/changeStatus` (Tarefa 6), `SendService::finalize` (Tarefa 9).
 - Produz:
   - `ReportFormatter::addressLine(string $address, string $postcode, string $town, string $state): string`
+  - `ReportFormatter::date(string $ymd): string` (`2026-09-25` → `25/09/2026`; o relatório usa sempre o formato brasileiro, não a preferência de data do usuário)
   - `PdfRenderer::render(RepairProtocol $p, bool $draft): array{bytes: string, filename: string}`
   - `PdfRenderer::attachFinal(RepairProtocol $p): int` (id do `Document` anexado ao PRE)
   - `PdfRenderer::logoDataUri(int $entityId): ?string`
@@ -5065,6 +5066,19 @@ final class ReportFormatterTest extends TestCase
     {
         $this->assertSame('RO', ReportFormatter::addressLine('', '', '', 'RO'));
     }
+
+    public function testBrazilianDate(): void
+    {
+        $this->assertSame('25/09/2026', ReportFormatter::date('2026-09-25'));
+        $this->assertSame('01/01/2027', ReportFormatter::date('2027-01-01'));
+    }
+
+    public function testInvalidOrEmptyDateIsReturnedAsIs(): void
+    {
+        $this->assertSame('', ReportFormatter::date(''));
+        $this->assertSame('não é data', ReportFormatter::date('não é data'));
+        $this->assertSame('2026-13-45', ReportFormatter::date('2026-13-45'));
+    }
 }
 ```
 
@@ -5086,6 +5100,13 @@ namespace GlpiPlugin\Gac\Pre;
 /** Pure text formatting for the report header. */
 final class ReportFormatter
 {
+    /** "2026-09-25" -> "25/09/2026"; anything that is not a valid Y-m-d date is returned as is. */
+    public static function date(string $ymd): string
+    {
+        $d = \DateTimeImmutable::createFromFormat('Y-m-d', $ymd);
+        return ($d !== false && $d->format('Y-m-d') === $ymd) ? $d->format('d/m/Y') : $ymd;
+    }
+
     public static function addressLine(string $address, string $postcode, string $town, string $state): string
     {
         $address  = trim($address);
@@ -5311,7 +5332,6 @@ namespace GlpiPlugin\Gac\Pre;
 use Document;
 use Entity;
 use Glpi\Application\View\TemplateRenderer;
-use Html;
 
 /**
  * PDF of the PRE (spec section 9): Twig template -> HTML -> mPDF. The final PDF is generated
@@ -5463,7 +5483,7 @@ final class PdfRenderer
                 'number'        => (string) $p->fields['number'],
                 'supplier_name' => (string) $p->fields['supplier_name'],
                 'technician'    => getUserName((int) $p->fields['users_id_tech']),
-                'date_issued'   => Html::convDate((string) $p->fields['date_issued']),
+                'date_issued'   => ReportFormatter::date((string) $p->fields['date_issued']),
             ],
             'rows' => $rows,
         ];
@@ -5645,7 +5665,7 @@ cd /c/Users/juliano/VSCode/glpi-xampp-dev-plugin
 
 - [ ] **Passo 13: Teste manual**
 
-(a) Em um PRE em rascunho com linhas, **Pré-visualizar PDF** abre o PDF A4 paisagem com a marca d'água clara "RASCUNHO", o cabeçalho da entidade do PRE e a tabela com a **descrição para o fornecedor** (nunca o título do ticket); (b) edite a descrição de uma linha, salve, e a prévia reflete a mudança; (c) no cadastro da **entidade** (aba Documentos), anexe uma imagem PNG cuja categoria de documento seja a escolhida na configuração: a logo aparece no cabeçalho; anexe uma segunda imagem na mesma categoria: vale a **última enviada**; numa subentidade **sem** logo, vale a da entidade pai; sem nenhuma, o PDF sai sem logo, sem erro; (d) o cabeçalho traz nome, CNPJ (`registration_number`), endereço e telefone do cadastro da entidade; (e) **Enviar** até o fim: o PDF definitivo (sem marca d'água) fica anexado na aba **Documentos** do PRE e o botão vira **Baixar PDF de envio**; (f) abra o PDF baixado depois de alterar a descrição de uma linha direto no banco: o arquivo **não muda** (é o arquivo guardado); (g) sem o `vendor/`, a ativação do plugin é recusada com a mensagem de dependências ausentes; (h) 50 linhas geram um PDF de vários trechos com o cabeçalho da tabela repetido e a numeração "Página X / Y".
+(a) Em um PRE em rascunho com linhas, **Pré-visualizar PDF** abre o PDF A4 paisagem com a marca d'água clara "RASCUNHO", o cabeçalho da entidade do PRE e a tabela com a **descrição para o fornecedor** (nunca o título do ticket); (b) edite a descrição de uma linha, salve, e a prévia reflete a mudança; (c) no cadastro da **entidade** (aba Documentos), anexe uma imagem PNG cuja categoria de documento seja a escolhida na configuração: a logo aparece no cabeçalho; anexe uma segunda imagem na mesma categoria: vale a **última enviada**; numa subentidade **sem** logo, vale a da entidade pai; sem nenhuma, o PDF sai sem logo, sem erro; (d) o cabeçalho traz nome, CNPJ (`registration_number`), endereço e telefone do cadastro da entidade; (e) **Enviar** até o fim: o PDF definitivo (sem marca d'água) fica anexado na aba **Documentos** do PRE e o botão vira **Baixar PDF de envio**; (f) abra o PDF baixado depois de alterar a descrição de uma linha direto no banco: o arquivo **não muda** (é o arquivo guardado); (g) sem o `vendor/`, a ativação do plugin é recusada com a mensagem de dependências ausentes; (h) 50 linhas geram um PDF de vários trechos com o cabeçalho da tabela repetido e a numeração "Página X / Y". Dica: o visualizador de PDF do Chrome demora alguns segundos para desenhar a página; uma tela em branco logo após abrir não é erro.
 
 - [ ] **Passo 14: Commit** via `/commit` (inclua `composer.lock`). Título sugerido: `feat(pre): generate and attach the PDF with mPDF`.
 
