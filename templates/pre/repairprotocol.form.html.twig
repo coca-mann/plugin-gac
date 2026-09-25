@@ -29,7 +29,8 @@
         <div class="d-none" data-gac-cancel-holder>
             <button type="submit" name="cancel_protocol" value="1" class="btn btn-outline-danger me-2"
                     formnovalidate onclick="return confirm('{{ __('Cancelar este PRE? As linhas serão removidas.', 'gac')|e('js') }}');">
-                <i class="ti ti-ban"></i> {{ __('Cancelar PRE', 'gac') }}
+                <i class="ti ti-ban"></i>
+                <span>{{ __('Cancelar PRE', 'gac') }}</span>
             </button>
         </div>
         <script>
