@@ -44,6 +44,9 @@ use Glpi\Application\View\TemplateRenderer;
 final class PdfRenderer
 {
     private const LOGO_MAX_BYTES = 2_000_000;
+    /** Box the logo is fitted into on the report header, in millimetres. */
+    private const LOGO_BOX_WIDTH_MM = 50.0;
+    private const LOGO_BOX_HEIGHT_MM = 10.0;
 
     /** @return array{bytes: string, filename: string} */
     public static function render(RepairProtocol $p, bool $draft): array
@@ -173,6 +176,16 @@ final class PdfRenderer
             ];
         }
 
+        // mPDF ignores max-width/max-height on images, so the size is computed here.
+        $logo     = self::logoDataUri((int) $p->fields['entities_id']);
+        $logoSize = null;
+        if ($logo !== null) {
+            $info = getimagesizefromstring((string) base64_decode(substr($logo, (int) strpos($logo, ',') + 1), true));
+            if ($info !== false) {
+                $logoSize = LogoFit::fit((int) $info[0], (int) $info[1], self::LOGO_BOX_WIDTH_MM, self::LOGO_BOX_HEIGHT_MM);
+            }
+        }
+
         return [
             'company' => [
                 'name'                => (string) ($f['name'] ?? ''),
@@ -184,7 +197,8 @@ final class PdfRenderer
                     (string) ($f['state'] ?? '')
                 ),
                 'phone'               => (string) ($f['phonenumber'] ?? ''),
-                'logo_data_uri'       => self::logoDataUri((int) $p->fields['entities_id']),
+                'logo_data_uri'       => $logo,
+                'logo_size'           => $logoSize,
             ],
             'protocol' => [
                 'number'        => (string) $p->fields['number'],

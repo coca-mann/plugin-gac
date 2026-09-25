@@ -55,6 +55,7 @@ com o motivo.
 | 32 | Marcar todos na importação | Num rascunho com tickets elegíveis, usar a caixa do cabeçalho da lista "Importar tickets" | Marca e desmarca todos; marcar só alguns deixa a caixa do cabeçalho em estado parcial; marcar todos um a um marca a caixa do cabeçalho | OK (13 candidatos; a importação em si não foi refeita) |
 | 33 | Histórico único | Abrir um PRE com eventos; reabrir com motivo e concluir as correções | Só existe uma aba "Histórico"; cada evento aparece com Campo "Evento" e o texto (ex. "PRE reaberto: motivo", "Retorno registrado (#71 · NB-1): Reparado"); eventos antigos também aparecem | OK |
 | 34 | PDF sem logomarca na cadeia | Categoria de logomarca configurada, mas nenhuma logomarca na entidade nem nas ancestrais; entidade raiz com `entities_id` NULL (como em bancos migrados de versões antigas) | O PDF sai sem logo em menos de 1 s, sem ficar em laço | OK (reproduzido no banco de produção pelo slowlog do PHP-FPM; verificado depois da correção) |
+| 35 | Tamanho da logomarca no PDF | Logomarca grande (imagem quadrada) na entidade raiz; abrir a prévia do PDF | A logo cabe em 50 x 10 mm, sem abrir espaço no cabeçalho, ao lado dos dados da empresa | OK |
 
 **Nota do cenário 25 (PDF).** Prévia em rascunho com marca d'água "RASCUNHO"; cabeçalho com nome,
 CNPJ, endereço e telefone da entidade; logo do documento mais recente da categoria configurada,
