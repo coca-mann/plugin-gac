@@ -64,17 +64,57 @@ final class Config
     {
         echo "<div class='container-fluid'>";
         foreach (self::sections() as $section) {
+            $key  = htmlescape($section->key());
+            $body = 'gac-config-' . $key;
             echo "<form method='post' action='" . htmlescape(self::pageUrl()) . "' class='card mb-4'>";
-            echo "<div class='card-header'><h3 class='card-title'>" . htmlescape($section->title()) . '</h3></div>';
+            // The whole section can be collapsed; the choice is remembered in the browser.
+            echo "<div class='card-header d-flex align-items-center'>";
+            echo "<h3 class='card-title mb-0 flex-grow-1'>" . htmlescape($section->title()) . '</h3>';
+            echo "<button type='button' class='btn btn-sm btn-outline-secondary' data-bs-toggle='collapse'"
+                . " data-bs-target='#" . $body . "' aria-controls='" . $body . "' aria-expanded='true' data-gac-config-toggle='" . $key . "'>"
+                . "<i class='ti ti-chevron-up'></i> <span>" . htmlescape(__('Recolher', 'gac')) . '</span></button>';
+            echo '</div>';
+            echo "<div class='collapse show' id='" . $body . "' data-gac-config-body='" . $key . "'>";
             echo "<div class='card-body'>";
             echo $section->render();
             echo '</div>';
             echo "<div class='card-footer'>";
-            echo "<input type='hidden' name='section' value='" . htmlescape($section->key()) . "'>";
+            echo "<input type='hidden' name='section' value='" . $key . "'>";
             echo Html::submit(_sx('button', 'Save'), ['class' => 'btn btn-primary', 'name' => 'save', 'icon' => 'ti ti-device-floppy']);
+            echo '</div>';
             echo '</div>';
             Html::closeForm();
         }
+        echo <<<'HTML'
+<script>
+(function () {
+    document.querySelectorAll('[data-gac-config-body]').forEach(function (body) {
+        const key = body.dataset.gacConfigBody;
+        const button = document.querySelector('[data-gac-config-toggle="' + key + '"]');
+        const storeKey = 'gac_config_collapsed_' + key;
+        const labels = { collapse: button.querySelector('span').textContent, expand: 'Expandir' };
+        const paint = function (collapsed) {
+            button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            button.querySelector('span').textContent = collapsed ? labels.expand : labels.collapse;
+            button.querySelector('i').className = 'ti ' + (collapsed ? 'ti-chevron-down' : 'ti-chevron-up');
+        };
+        try {
+            if (window.localStorage.getItem(storeKey) === '1') {
+                body.classList.remove('show');
+                paint(true);
+            }
+        } catch (e) {
+            // storage unavailable: start expanded
+        }
+        body.addEventListener('hidden.bs.collapse', function () { paint(true); save(1); });
+        body.addEventListener('shown.bs.collapse', function () { paint(false); save(0); });
+        function save(v) {
+            try { window.localStorage.setItem(storeKey, String(v)); } catch (e) { /* not remembered */ }
+        }
+    });
+})();
+</script>
+HTML;
         echo '</div>';
     }
 
