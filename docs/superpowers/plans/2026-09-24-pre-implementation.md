@@ -5942,7 +5942,7 @@ COMPOSER_BIN="/c/xampp/php/php.exe $(pwd)/var/tools/composer.phar" bash tools/bu
 unzip -l dist/gac-*.zip | tail -3 2>/dev/null || /c/xampp/php/php.exe -r '$z=new ZipArchive; $z->open(glob("dist/gac-*.zip")[0]); echo $z->numFiles, " files\n"; for($i=0;$i<$z->numFiles;$i++){ $n=$z->getNameIndex($i); if(preg_match("#^gac/[^/]+/?$#",$n)) echo $n,"\n"; }'
 ```
 
-Esperado: `Built .../dist/gac-0.1.0.zip (~4 MB)` (o tamanho exato varia com a versão do mPDF; medido na elaboração: 4,0 MB, 705 arquivos) e a raiz do zip contendo `gac/` com `setup.php`, `hook.php`, `gac.xml`, `src/`, `front/`, `ajax/`, `public/`, `templates/`, `vendor/` e **sem** `tests/`, `docs/`, `tools/`, `.github/`, `var/`, `CLAUDE.md`. Confirme também que `vendor/mpdf/mpdf/ttfonts/` tem só 4 arquivos.
+Esperado: `Built .../dist/gac-0.1.0.zip (~3,3 MB)` (o tamanho varia com a versão do mPDF; medido na execução: 3,3 MB, 758 arquivos) e a raiz do zip contendo `gac/` com `setup.php`, `hook.php`, `gac.xml`, `src/`, `front/`, `ajax/`, `public/`, `templates/`, `vendor/` e **sem** `tests/`, `docs/`, `tools/`, `.github/`, `var/`, `CLAUDE.md`. Confirme também que `vendor/mpdf/mpdf/ttfonts/` tem só 4 arquivos.
 
 Teste a trava de versão:
 
@@ -5953,6 +5953,8 @@ EXPECTED_VERSION=9.9.9 COMPOSER_BIN="/c/xampp/php/php.exe $(pwd)/var/tools/compo
 Esperado: `Version mismatch: tag=9.9.9 setup.php=0.1.0` e `exit=1`.
 
 - [ ] **Passo 5: Teste de instalação do pacote.** Descompacte o zip numa pasta `plugins/gac` de um GLPI **de teste** (ou renomeie temporariamente a junção do GLPI de desenvolvimento), instale e ative o plugin e execute os cenários 8 e 25 do roteiro. O pacote precisa funcionar **sem** `composer` no servidor.
+
+  **Resultado da execução (25/09/2026):** o pacote foi extraído numa pasta à parte e verificado sem Composer: `php -l` limpo em todos os arquivos e o mPDF gerou um PDF com acentos, negrito e itálico usando só o `vendor/` do pacote e as 4 fontes reduzidas (66 KB). Não foi instalado por cima da junção do GLPI de desenvolvimento (o que interromperia a sua sessão de testes); o `gac` já instalado lá é a mesma base de código. O workflow do GitHub Actions **não pôde ser executado localmente**: só foi validado o YAML e a lógica do script que ele chama.
 
 - [ ] **Passo 6: Commit** via `/commit`. Título sugerido: `ci(release): add release packaging workflow`. Em seguida, o dono cria a tag `v0.1.0` quando decidir publicar (o plano não cria tags nem publica nada).
 
