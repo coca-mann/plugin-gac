@@ -46,6 +46,8 @@ O plano toma estas decisões. Nenhuma contradiz a spec; cada uma fecha um ponto 
 9. **PRE sem linhas depois de "Remover linha com falha"** nunca enviou nada e vira `Cancelado` (a spec só permite cancelar rascunho; este é o único caminho para o estado fora do rascunho).
 10. **Classes em `src/Pre/` (subnamespace).** O GLPI deriva o nome da tabela e as URLs de `front/` a partir do nome da classe e, com o subnamespace `Pre`, o resultado seria `glpi_plugin_gac_pres_...` e `front/pre/...`. Por isso cada classe de dados sobrescreve `getTable()` e os arquivos de front ficam em `front/pre/`. Pelo mesmo motivo, a opção de busca `itemlink` declara `'itemtype' => self::class`: sem isso a **lista quebra assim que existe a primeira linha** (o GLPI tenta mapear a tabela de volta para a classe e falha; a lista vazia não denuncia o erro).
 11. **Contador de numeração** em tabela própria (`glpi_plugin_gac_protocolsequences`); ver decisão 1.
+12. **Ticket com mais de um ativo (decisão do dono).** A ação de ticket configurada para o resultado (Reabrir, Solucionar ou Manter pendente) só é aplicada quando a linha que voltou é a **última linha ativa daquele ticket**, em qualquer PRE. Enquanto outra linha do mesmo ticket ainda está fora, o ticket mantém status e motivo de pendência e recebe **só o acompanhamento-resumo**. A ação sobre o **ativo** vale sempre, por linha. Quem devolve a última linha decide o status do ticket.
+13. **Nome do custo do ticket (decisão do dono):** `Fornecedor - Nº OS/NF - Ativo` (partes vazias são omitidas), gerado por `CostLabel::name()`.
 
 ## Mapa de arquivos
 
@@ -4161,18 +4163,85 @@ No navegador (a configuração completa da Tarefa 7 é pré-requisito: papéis d
 ### Tarefa 10: Registrar retorno, extravio e encerramento automático
 
 **Arquivos:**
-- Criar: `src/Pre/ReturnService.php`, `templates/pre/items_return_forms.html.twig`
+- Criar: `src/Pre/CostLabel.php`, `src/Pre/ReturnService.php`, `templates/pre/items_return_forms.html.twig`
 - Modificar: `front/pre/repairprotocolitem.form.php`, `public/js/pre.js`
+- Testar: `tests/Unit/CostLabelTest.php`
 
 **Interfaces:**
 - Consome: `TicketOps`, `StateGuard`, `ReturnActionResolver`, `PreSettings`, `StateMachine::normalizeDestination/deriveProtocolStatus/canRegisterReturn`, `RepairProtocolEvent::log`, `ServiceResult`.
 - Produz:
+  - `CostLabel::name(string $supplier, string $reference, string $asset): string` (puro): `Fornecedor - Nº OS/NF - Ativo`, partes vazias omitidas
   - `ReturnService::registerReturn(int $lineId, array $data): ServiceResult` — `$data` com `outcome`, `destination`, `date_return` (`Y-m-d`), `service_description`, `cost` (aceita vírgula decimal), `supplier_ref`, `warranty_until` (`Y-m-d` ou vazio)
   - `ReturnService::markLost(int $lineId, string $reason): ServiceResult`
   - `ReturnService::recalc(RepairProtocol $p): void` — recalcula o status do PRE e, se virar `Encerrado`, grava `date_closed` e o evento `closed`
   - POSTs de `repairprotocolitem.form.php`: `return` (com `line_id` e os campos) e `lost` (com `line_id`, `reason`)
 
-- [ ] **Passo 1: Criar `src/Pre/ReturnService.php`**
+- [ ] **Passo 1: `CostLabel` (teste primeiro)** — `tests/Unit/CostLabelTest.php`
+
+```php
+<?php
+
+namespace GlpiPlugin\Gac\Tests\Unit;
+
+use GlpiPlugin\Gac\Pre\CostLabel;
+use PHPUnit\Framework\TestCase;
+
+final class CostLabelTest extends TestCase
+{
+    public function testFullName(): void
+    {
+        $this->assertSame(
+            'Assistência Teste Ltda - OS-1001 - NB-TESTE-001',
+            CostLabel::name('Assistência Teste Ltda', 'OS-1001', 'NB-TESTE-001')
+        );
+    }
+
+    public function testSkipsAnEmptyReferenceWithoutLeavingDoubleSeparators(): void
+    {
+        $this->assertSame('Assistência Teste Ltda - NB-TESTE-001', CostLabel::name('Assistência Teste Ltda', '', 'NB-TESTE-001'));
+        $this->assertSame('Assistência Teste Ltda - NB-TESTE-001', CostLabel::name('Assistência Teste Ltda', '   ', 'NB-TESTE-001'));
+    }
+
+    public function testTrimsEveryPart(): void
+    {
+        $this->assertSame('A - B - C', CostLabel::name('  A ', ' B ', ' C  '));
+    }
+
+    public function testSkipsEmptySupplierAndAsset(): void
+    {
+        $this->assertSame('OS-1 - NB-1', CostLabel::name('', 'OS-1', 'NB-1'));
+        $this->assertSame('A - OS-1', CostLabel::name('A', 'OS-1', ''));
+        $this->assertSame('', CostLabel::name('', '', ''));
+    }
+}
+```
+
+Rode `/c/xampp/php/php.exe var/tools/phpunit.phar -c phpunit.unit.xml --filter CostLabelTest` e veja falhar (`Class ... CostLabel not found`). Depois crie `src/Pre/CostLabel.php`:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace GlpiPlugin\Gac\Pre;
+
+/** Pure: the name of the ticket cost created for a returned line. */
+final class CostLabel
+{
+    /** "Supplier - Nº OS/NF - Asset"; empty parts are skipped. */
+    public static function name(string $supplier, string $reference, string $asset): string
+    {
+        return implode(' - ', array_filter(
+            [trim($supplier), trim($reference), trim($asset)],
+            static fn(string $part): bool => $part !== ''
+        ));
+    }
+}
+```
+
+Rode a suíte: esperado `OK`.
+
+- [ ] **Passo 2: Criar `src/Pre/ReturnService.php`**
 
 ```php
 <?php
@@ -4261,18 +4330,28 @@ final class ReturnService
                 }
             }
 
-            // Ticket action
-            match ($actions['ticket']['type']) {
-                'reopen'       => TicketOps::leavePending($ticket, $summary),
-                'solve'        => TicketOps::solve($ticket, $summary),
-                'keep_pending' => TicketOps::keepPendingWithReason($ticket, $actions['ticket']['pendingreasons_id'], $summary),
-            };
+            // Ticket action. While another line of the same ticket is still out (another asset
+            // of a multi-asset ticket), the ticket keeps its status and reason: only the
+            // summary follow-up is written. The last line to come back decides the status.
+            if (self::hasOtherActiveLines($line)) {
+                TicketOps::followup($ticket, $summary);
+            } else {
+                match ($actions['ticket']['type']) {
+                    'reopen'       => TicketOps::leavePending($ticket, $summary),
+                    'solve'        => TicketOps::solve($ticket, $summary),
+                    'keep_pending' => TicketOps::keepPendingWithReason($ticket, $actions['ticket']['pendingreasons_id'], $summary),
+                };
+            }
 
             $costId = 0;
             if ($cost !== null && $cost > 0) {
                 $costId = TicketOps::addCost(
                     $ticket,
-                    sprintf('PRE %s - %s', $protocol->fields['number'], $line->fields['item_name']),
+                    CostLabel::name(
+                        (string) $protocol->fields['supplier_name'],
+                        (string) ($data['supplier_ref'] ?? ''),
+                        (string) $line->fields['item_name']
+                    ),
                     $cost,
                     $dateReturn
                 );
@@ -4377,6 +4456,20 @@ final class ReturnService
         return ServiceResult::ok(__('Linha marcada como extraviada.', 'gac'));
     }
 
+    /** True when the same ticket still has another active line (in any PRE). */
+    private static function hasOtherActiveLines(RepairProtocolItem $line): bool
+    {
+        return countElementsInTable(RepairProtocolItem::getTable(), [
+            'tickets_id' => (int) $line->fields['tickets_id'],
+            'status'     => [
+                ItemStatus::PendingSend->value,
+                ItemStatus::Sending->value,
+                ItemStatus::AtSupplier->value,
+            ],
+            ['NOT' => ['id' => (int) $line->getID()]],
+        ]) > 0;
+    }
+
     /** Recomputes the PRE status from its lines; closing is automatic (spec D9). */
     public static function recalc(RepairProtocol $p): void
     {
@@ -4459,7 +4552,7 @@ final class ReturnService
 }
 ```
 
-- [ ] **Passo 2: Criar `templates/pre/items_return_forms.html.twig`**
+- [ ] **Passo 3: Criar `templates/pre/items_return_forms.html.twig`**
 
 ```twig
 {% if can_return %}
@@ -4538,7 +4631,7 @@ final class ReturnService
 {% endif %}
 ```
 
-- [ ] **Passo 3: Acrescentar ao final do IIFE de `public/js/pre.js`** (antes do `})();` final) o comportamento do destino
+- [ ] **Passo 4: Acrescentar ao final do IIFE de `public/js/pre.js`** (antes do `})();` final) o comportamento do destino
 
 ```js
     // Destination only applies to defective outcomes; pre-select the usual one (spec 6.3).
@@ -4561,7 +4654,7 @@ final class ReturnService
     });
 ```
 
-- [ ] **Passo 4: Acrescentar os ramos em `front/pre/repairprotocolitem.form.php`** (no lugar do comentário `// (next tasks add: ...)`)
+- [ ] **Passo 5: Acrescentar os ramos em `front/pre/repairprotocolitem.form.php`** (no lugar do comentário `// (next tasks add: ...)`)
 
 Acrescente os `use`:
 
@@ -4588,15 +4681,15 @@ elseif (isset($_POST['return']) || isset($_POST['lost'])) {
 
 Atenção: como o arquivo é uma cadeia `if / elseif`, coloque este ramo **antes** da linha `Html::back();` e **depois** do último `elseif` existente (`save_descriptions`), sem fechar a cadeia antes.
 
-- [ ] **Passo 5: Lint e teste manual**
+- [ ] **Passo 6: Lint e teste manual**
 
 ```bash
 for f in $(find src front ajax -name '*.php'); do /c/xampp/php/php.exe -l "$f"; done
 ```
 
-Com um PRE `Enviado` de 4 linhas (os quatro casos): (a) **Reparado** com custo `120,50`, OS e garantia: a linha vira `Devolvida`; o ticket sai de Pendente para o status anterior (Em atendimento) com o acompanhamento-resumo; o ativo volta ao status de antes do envio; o ticket ganhou um custo de R$ 120,50 (aba Custos); (b) **Sem defeito encontrado**: ticket reaberto, ativo restaurado, sem custo; (c) **Sem conserto** com destino **Baixa**: ticket continua Pendente com o motivo "Aguardando baixa patrimonial" e o ativo vai para "aguardando baixa"; (d) **Orçamento não aprovado** com destino **Manter com defeito**: ticket Pendente com "Aguardando decisão" e ativo "Com defeito"; (e) o destino só aparece para os resultados com defeito e vem pré-selecionado; (f) depois do 1º retorno o PRE fica `Retorno parcial`; quando as 4 linhas estão finais o PRE vira `Encerrado` sozinho, com `date_closed` e o evento "PRE encerrado"; (g) marcar uma linha como **extraviada** exige justificativa, grava acompanhamento e conta como final; (h) com a ação de "Reparado" configurada como **Solucionar** na Tarefa 7, o retorno soluciona o ticket; (i) no caso de baixa/manter, abra o ticket e confira o **motivo de pendência** e que, ao tirar o ticket de Pendente manualmente, ele volta ao status que tinha **antes do envio** (é o comportamento que a decisão 6 do plano restaura); (j) sem o direito **Registrar retorno**, os formulários não aparecem e o POST dá erro de direito.
+Com um PRE `Enviado` de 4 linhas (os quatro casos): (a) **Reparado** com custo `120,50`, OS e garantia: a linha vira `Devolvida`; o ticket sai de Pendente para o status anterior (Em atendimento) com o acompanhamento-resumo; o ativo volta ao status de antes do envio; o ticket ganhou um custo de R$ 120,50 (aba Custos); (b) **Sem defeito encontrado**: ticket reaberto, ativo restaurado, sem custo; (c) **Sem conserto** com destino **Baixa**: ticket continua Pendente com o motivo "Aguardando baixa patrimonial" e o ativo vai para "aguardando baixa"; (d) **Orçamento não aprovado** com destino **Manter com defeito**: ticket Pendente com "Aguardando decisão" e ativo "Com defeito"; (e) o destino só aparece para os resultados com defeito e vem pré-selecionado; (f) depois do 1º retorno o PRE fica `Retorno parcial`; quando as 4 linhas estão finais o PRE vira `Encerrado` sozinho, com `date_closed` e o evento "PRE encerrado"; (g) marcar uma linha como **extraviada** exige justificativa, grava acompanhamento e conta como final; (h) com a ação de "Reparado" configurada como **Solucionar** na Tarefa 7, o retorno soluciona o ticket; (i) no caso de baixa/manter, abra o ticket e confira o **motivo de pendência** e que, ao tirar o ticket de Pendente manualmente, ele volta ao status que tinha **antes do envio** (é o comportamento que a decisão 6 do plano restaura); (j) sem o direito **Registrar retorno**, os formulários não aparecem e o POST dá erro de direito. (k) **ticket com dois ativos** (dois PREs ou o mesmo): devolva uma linha com resultado de baixa enquanto a outra ainda está na assistência: o ticket **continua Pendente com o motivo "na assistência"** e só ganha o acompanhamento; o ativo daquela linha muda de status normalmente; ao devolver a última linha, a ação configurada é aplicada ao ticket; (l) o custo criado se chama `Fornecedor - Nº OS/NF - Ativo` (sem a OS, `Fornecedor - Ativo`).
 
-- [ ] **Passo 6: Commit** via `/commit`. Título sugerido: `feat(pre): register returns, lost items and automatic closing`.
+- [ ] **Passo 7: Commit** via `/commit`. Título sugerido: `feat(pre): register returns, lost items and automatic closing`.
 
 ---
 
@@ -5575,6 +5668,8 @@ elegível com um ativo associado; um usuário com todos os direitos do PRE e out
 | 22 | Direitos | Usuário sem "Enviar"/"Registrar retorno"/"Reabrir" | Botões ausentes e endpoints recusam |
 | 23 | Cancelar | Cancelar PRE em rascunho | Linhas apagadas; pares voltam a ser candidatos |
 | 24 | Configuração | Salvar; criar status pela caixa "criar novo" | Persiste; status criado só com a ação do administrador |
+| 26 | Ticket com dois ativos | Devolver uma linha enquanto a outra está fora | Ticket mantém status e motivo, só acompanhamento; a última linha aplica a ação |
+| 27 | Nome do custo | Retorno com custo e nº da OS | Custo do ticket chamado `Fornecedor - OS - Ativo` |
 | 25 | PDF | Prévia, definitivo, logo da entidade, 50 linhas | Ver Tarefa 12, passo 13 |
 ````
 

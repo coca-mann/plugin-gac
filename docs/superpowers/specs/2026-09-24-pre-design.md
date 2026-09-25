@@ -77,6 +77,8 @@ Fora da v1 (decidido):
 | D13 | O release é montado por um workflow próprio de CI, sem restaurar o CI do template | Decisão do dono; ver seção 13 |
 | D15 | O "Enviar" roda **uma linha por requisição**, dirigido pelo navegador com barra de progresso, com reserva atômica da linha e "Remover linha com falha" como saída para linha que sempre falha | Evita timeout do PHP e sessão presa em PREs grandes; não depende do cron do GLPI; reaproveita a linha como unidade transacional |
 | D16 | A tela de configuração do plugin é organizada em **seções por módulo**; o PRE tem a sua ("Protocolo de Reparo de Equipamentos"), com chaves `pre_*` e classe de configuração própria. Funcionalidades futuras entram como novas seções na mesma tela | Pedido do dono; mantém cada funcionalidade isolada (regra do CLAUDE.md) |
+| D17 | Ticket com mais de um ativo: a ação de ticket do resultado só é aplicada quando a linha que voltou é a **última linha ativa daquele ticket** (em qualquer PRE). Antes disso o ticket mantém status e motivo e recebe só o acompanhamento-resumo; a ação sobre o ativo vale sempre, por linha | Decisão do dono: um ticket com um equipamento ainda fora não pode ser reaberto nem solucionado por causa do outro |
+| D18 | O custo criado no ticket se chama `Fornecedor - Nº OS/NF - Ativo` (partes vazias omitidas) | Decisão do dono: identificação legível na aba Custos |
 | D14 | **Sem migração** dos PREs do app Django. O app antigo vira arquivo de consulta; o plugin começa do zero, com a sequência de numeração começando em 1, **sem campo de valor inicial** | Decisão do dono: não há itens pendentes no fornecedor, o custo da migração não compensa, e a repetição de números com o app antigo é aceita sem ressalvas. Ver R-4 |
 
 ## 5. Modelo de dados
@@ -246,7 +248,7 @@ desenvolvimento antes de fixar qualquer parâmetro.
 ### 7.4 Registrar retorno (linha a linha)
 
 Formulário com resultado, destino, data, serviço, custo, OS ou nota, garantia. Ao salvar:
-aplicar as ações de D8; gravar `TicketCost` e acompanhamento-resumo; linha `Devolvida`; recalcular
+aplicar as ações de D8 (a de ticket só se for a última linha ativa do ticket, D17); gravar `TicketCost` e acompanhamento-resumo; linha `Devolvida`; recalcular
 o PRE (podendo encerrar). "Marcar como extraviada" exige justificativa.
 
 ### 7.5 Reabrir
