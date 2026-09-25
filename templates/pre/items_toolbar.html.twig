@@ -15,14 +15,6 @@
         {% endif %}
     {% endif %}
 
-    {% if is_draft and can_edit %}
-        <form method="post" action="{{ protocol_form_url }}" class="d-inline">
-            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="id" value="{{ protocol.getID() }}">
-            <button type="submit" name="cancel_protocol" value="1" class="btn btn-outline-danger">{{ __('Cancelar PRE', 'gac') }}</button>
-        </form>
-    {% endif %}
-
     {% if can_reopen and protocol.fields['status'] == 'closed' %}
         <form method="post" action="{{ form_url }}" class="d-flex gap-2">
             <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">

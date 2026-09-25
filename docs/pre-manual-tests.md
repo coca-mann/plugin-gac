@@ -43,7 +43,7 @@ com o motivo.
 | 20 | Reabertura | Reabrir com motivo; corrigir custo e nº da OS; concluir | Motivo no histórico; custo do ticket atualizado e renomeado; `Encerrado` só após "Concluir correções" | OK |
 | 21 | Sem reabertura | Corrigir linha de PRE não reaberto (POST forjado) | Recusado | OK |
 | 22 | Direitos | Usuário sem "Enviar", "Registrar retorno" ou "Reabrir" | Botões ausentes e endpoints recusam | Não executado: falta um segundo usuário de teste |
-| 23 | Cancelar | Cancelar PRE em rascunho | Linhas apagadas; pares voltam a ser candidatos | OK |
+| 23 | Cancelar | Botão "Cancelar PRE" na aba principal, ao lado de "Salvar" (só em rascunho, com confirmação) | Linhas apagadas; pares voltam a ser candidatos | OK |
 | 24 | Configuração | Salvar; criar status e motivos pelo botão + | Persiste; nada é criado sem a ação do administrador | OK |
 | 25 | PDF | Prévia, definitivo, logo da entidade, herança, 50 linhas | Ver a nota abaixo | OK |
 | 26 | Ticket com dois ativos | Devolver uma linha enquanto a outra está fora | Ticket mantém status e motivo, só acompanhamento; a última linha aplica a ação | OK |

@@ -216,7 +216,10 @@ class RepairProtocol extends CommonDBTM
             'status_label'   => $this->isNewItem()
                 ? Labels::protocolStatus(ProtocolStatus::Draft)
                 : Labels::protocolStatus($this->getStatus()),
-            'header_editable' => $this->canUpdateItem() || $this->isNewItem(),
+            'can_cancel'     => !$this->isNewItem()
+                && $this->canUpdateItem()
+                && StateMachine::canCancel($this->getStatus()),
+            'header_editable' =>$this->canUpdateItem() || $this->isNewItem(),
         ]);
 
         return true;

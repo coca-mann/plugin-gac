@@ -23,4 +23,32 @@
     }) }}
 
     {{ fields.textareaField('comment', item.fields['comment'], __('Comentários')) }}
+
+    {% if can_cancel %}
+        {# The generic form renders its button row after this block; move the button next to "Salvar". #}
+        <div class="d-none" data-gac-cancel-holder>
+            <button type="submit" name="cancel_protocol" value="1" class="btn btn-outline-danger me-2"
+                    formnovalidate onclick="return confirm('{{ __('Cancelar este PRE? As linhas serão removidas.', 'gac')|e('js') }}');">
+                <i class="ti ti-ban"></i> {{ __('Cancelar PRE', 'gac') }}
+            </button>
+        </div>
+        <script>
+            (function () {
+                const place = function () {
+                    const holder = document.querySelector('[data-gac-cancel-holder]');
+                    const save = holder && holder.closest('form').querySelector('button[name="update"]');
+                    if (!holder || !save) {
+                        return;
+                    }
+                    save.after(holder.firstElementChild);
+                    holder.remove();
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', place);
+                } else {
+                    place();
+                }
+            })();
+        </script>
+    {% endif %}
 {% endblock %}
