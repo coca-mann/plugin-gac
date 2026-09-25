@@ -11,7 +11,18 @@
             <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
     {% endif %}
 
-    <div class="table-responsive">
+    {% set has_return_cards = (can_return and (lines|filter(l => l.is_at_supplier)|length) > 0) or (can_reopen and is_reopened) %}
+    {% if has_return_cards %}
+        <div class="mb-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-gac-toggle-list
+                    data-label-collapse="{{ __('Recolher lista de itens', 'gac') }}"
+                    data-label-expand="{{ __('Expandir lista de itens', 'gac') }}">
+                <i class="ti ti-chevron-up"></i> <span>{{ __('Recolher lista de itens', 'gac') }}</span>
+            </button>
+        </div>
+    {% endif %}
+
+    <div class="table-responsive" data-gac-items-list>
         <table class="table table-hover card-table">
             <thead>
                 <tr>
@@ -66,4 +77,8 @@
     {% endif %}
 
     {% include '@gac/pre/items_return_forms.html.twig' ignore missing %}
+
+    {% if has_return_cards %}
+        <script>window.gacApplyListState && window.gacApplyListState(document.querySelector('[data-gac-pre][data-protocol-id="{{ protocol.getID() }}"]'));</script>
+    {% endif %}
 </div>

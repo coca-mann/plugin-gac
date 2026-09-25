@@ -51,6 +51,7 @@ com o motivo.
 | 28 | Ativo customizado | Ticket ligado a um ativo de tipo definido (Nobreak) | Importa, envia, devolve (reparado e baixa) e fecha como qualquer ativo | OK |
 | 29 | Documentos no retorno e na correção | Registrar retorno anexando 2 arquivos permitidos e 1 recusado pelo GLPI (`.exe`); repetir na correção de um PRE reaberto | Os 2 viram Documentos ligados ao ticket e ao PRE; o recusado gera aviso e o retorno continua registrado; evento `Documento anexado ao retorno` no histórico | OK (via POST multipart; a mensagem de aviso do arquivo recusado não foi conferida na tela) |
 | 30 | Sem recarregar | Num PRE com 18 linhas na assistência, rolar até a 9ª, registrar o retorno (com arquivo), errar um retorno sem resultado | A página não recarrega, o scroll fica igual, o cartão da linha some, aviso flutuante de sucesso/erro; o botão volta a ficar ativo depois de um erro | OK |
+| 31 | Recolher a lista | Com cartões de retorno visíveis, recolher a lista de itens, registrar um retorno e recarregar a página | A lista continua recolhida nos dois casos; "Expandir" a mostra de novo; sem cartões de retorno o botão não aparece | OK (o botão ausente não foi conferido na tela) |
 
 **Nota do cenário 25 (PDF).** Prévia em rascunho com marca d'água "RASCUNHO"; cabeçalho com nome,
 CNPJ, endereço e telefone da entidade; logo do documento mais recente da categoria configurada,
