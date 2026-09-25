@@ -32,7 +32,7 @@
  */
 
 use GlpiPlugin\Gac\Pre\LineService;
-use GlpiPlugin\Gac\Pre\PreMenu;
+use GlpiPlugin\Gac\GacMenu;
 use GlpiPlugin\Gac\Pre\ProtocolStatus;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 use GlpiPlugin\Gac\Pre\RepairProtocolEvent;
@@ -69,8 +69,8 @@ if (isset($_POST['add'])) {
     Html::header(
         RepairProtocol::getTypeName(1),
         $_SERVER['PHP_SELF'],
-        'management',
-        strtolower(PreMenu::class)
+        GacMenu::SECTOR,
+        GacMenu::ITEM_PRE
     );
     $item->display(['id' => $_GET['id'] ?? -1]);
     Html::footer();

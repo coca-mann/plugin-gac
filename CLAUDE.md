@@ -56,7 +56,7 @@ Configs reference GLPI by relative path (`../../vendor`, `../../src`, `../../Plu
 
 ## Plugin structure conventions
 
-- `setup.php`: `PLUGIN_GAC_VERSION` and min (inclusive) / max (exclusive) GLPI version constants (11.0.0 to 11.0.99), `plugin_init_gac()` (menu under **Gerência**, config page, JS, profile-rights tab), `plugin_version_gac()`, `plugin_gac_check_prerequisites()` (refuses to activate without `vendor/`), `plugin_gac_check_config()`.
+- `setup.php`: `PLUGIN_GAC_VERSION` and min (inclusive) / max (exclusive) GLPI version constants (11.0.0 to 11.0.99), `plugin_init_gac()` (own top-level sidebar menu named after the plugin (`GacMenu`, sector `gac`; modules add their entries there and their pages pass `GacMenu::SECTOR` + the entry key to `Html::header()`), config page, JS, profile-rights tab), `plugin_version_gac()`, `plugin_gac_check_prerequisites()` (refuses to activate without `vendor/`), `plugin_gac_check_config()`.
 - `hook.php`: `plugin_gac_install()` / `plugin_gac_uninstall()`, idempotent (every step checks current state). GLPI does **not** re-run install if the version is unchanged: bump `PLUGIN_GAC_VERSION` (and `gac.xml`) when install logic changes, or reinstall in dev.
 - `gac.xml`: marketplace metadata; keep versions in sync with `PLUGIN_GAC_VERSION` (the release script fails if they differ).
 - `tools/HEADER`: license header template; every new PHP file starts with it (copy the docblock from `setup.php`).

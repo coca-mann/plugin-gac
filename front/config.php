@@ -32,7 +32,7 @@
  */
 
 use GlpiPlugin\Gac\Config;
-use GlpiPlugin\Gac\Pre\ConfigMenu;
+use GlpiPlugin\Gac\GacMenu;
 
 Session::checkRight('config', UPDATE);
 
@@ -42,10 +42,10 @@ if (!empty($_POST)) {
 }
 
 Html::header(
-    __('Plugin - DTI GAC', 'gac'),
+    GacMenu::pluginName(),
     $_SERVER['PHP_SELF'],
-    'config',
-    strtolower(ConfigMenu::class)
+    GacMenu::SECTOR,
+    GacMenu::ITEM_CONFIG
 );
 
 Config::renderPage();

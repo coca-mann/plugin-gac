@@ -31,7 +31,7 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\Pre\PreMenu;
+use GlpiPlugin\Gac\GacMenu;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 
 if (!RepairProtocol::canView()) {
@@ -41,8 +41,8 @@ if (!RepairProtocol::canView()) {
 Html::header(
     RepairProtocol::getTypeName(2),
     $_SERVER['PHP_SELF'],
-    'management',
-    strtolower(PreMenu::class)
+    GacMenu::SECTOR,
+    GacMenu::ITEM_PRE
 );
 
 Search::show(RepairProtocol::class);
