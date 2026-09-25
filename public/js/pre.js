@@ -106,4 +106,23 @@
             runRemoveFailed(remove);
         }
     });
+    // Destination only applies to defective outcomes; pre-select the usual one (spec 6.3).
+    const DEFAULT_DESTINATION = { unrepairable: 'writeoff', quote_rejected: 'keep_defective' };
+
+    document.addEventListener('change', function (event) {
+        const select = event.target.closest('[data-gac-outcome]');
+        if (!select) {
+            return;
+        }
+        const form = select.closest('[data-gac-return-form]');
+        const group = form.querySelector('[data-gac-destination-group]');
+        const destination = form.querySelector('[data-gac-destination]');
+        const defective = select.selectedOptions[0] && select.selectedOptions[0].dataset.defective === '1';
+        group.hidden = !defective;
+        destination.disabled = !defective;
+        if (defective && DEFAULT_DESTINATION[select.value]) {
+            destination.value = DEFAULT_DESTINATION[select.value];
+        }
+    });
+
 })();

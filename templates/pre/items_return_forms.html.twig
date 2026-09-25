@@ -1,0 +1,74 @@
+{% if can_return %}
+    {% for line in lines %}
+        {% if line.is_at_supplier %}
+            <div class="card mb-3" data-gac-return-card>
+                <div class="card-header">
+                    <h4 class="card-title">
+                        {{ __('Registrar retorno', 'gac') }}: #{{ line.tickets_id }} · {{ line.item_name }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ form_url }}" data-gac-return-form>
+                        <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+                        <input type="hidden" name="line_id" value="{{ line.id }}">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Resultado', 'gac') }}</label>
+                                <select class="form-select" name="outcome" data-gac-outcome required>
+                                    <option value="">-----</option>
+                                    {% for o in outcome_options %}
+                                        <option value="{{ o.value }}" data-defective="{{ o.defective ? '1' : '0' }}">{{ o.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4" data-gac-destination-group hidden>
+                                <label class="form-label">{{ __('Destino', 'gac') }}</label>
+                                <select class="form-select" name="destination" data-gac-destination>
+                                    {% for d in destination_options %}
+                                        <option value="{{ d.value }}">{{ d.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Data do retorno', 'gac') }}</label>
+                                <input type="date" class="form-control" name="date_return" value="{{ 'now'|date('Y-m-d') }}">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">{{ __('Serviço executado', 'gac') }}</label>
+                                <textarea class="form-control" name="service_description" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Custo (R$)', 'gac') }}</label>
+                                <input type="text" class="form-control" name="cost" inputmode="decimal" placeholder="0,00">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Nº da OS ou nota do fornecedor', 'gac') }}</label>
+                                <input type="text" class="form-control" name="supplier_ref">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Garantia até', 'gac') }}</label>
+                                <input type="date" class="form-control" name="warranty_until">
+                            </div>
+                        </div>
+                        <button type="submit" name="return" value="1" class="btn btn-primary mt-3">{{ __('Registrar retorno', 'gac') }}</button>
+                    </form>
+
+                    <hr>
+                    <form method="post" action="{{ form_url }}" class="row g-2 align-items-end">
+                        <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+                        <input type="hidden" name="line_id" value="{{ line.id }}">
+                        <div class="col-md-9">
+                            <label class="form-label">{{ __('Marcar como extraviada (justificativa obrigatória)', 'gac') }}</label>
+                            <input type="text" class="form-control" name="reason">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" name="lost" value="1" class="btn btn-outline-danger w-100">{{ __('Marcar como extraviada', 'gac') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
