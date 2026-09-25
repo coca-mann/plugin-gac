@@ -15,6 +15,8 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ### Added
 
 - [c36ac41](https://github.com/coca-mann/plugin-gac/commit/c36ac41), [2b1a944](https://github.com/coca-mann/plugin-gac/commit/2b1a944), [9d236f5](https://github.com/coca-mann/plugin-gac/commit/9d236f5), [b8f4467](https://github.com/coca-mann/plugin-gac/commit/b8f4467), [4bff878](https://github.com/coca-mann/plugin-gac/commit/4bff878) - Novo módulo PRE (Protocolo de Reparo de Equipamento), no menu Gerência: cadastro de protocolos com numeração automática por ano, permissões próprias (enviar, registrar retorno e reabrir) e lista com coluna de status.
+- [e0d1f6e](https://github.com/coca-mann/plugin-gac/commit/e0d1f6e), [0f9168f](https://github.com/coca-mann/plugin-gac/commit/0f9168f), [1dd6eee](https://github.com/coca-mann/plugin-gac/commit/1dd6eee) - Regras internas do PRE isoladas do GLPI: estados e transições do protocolo e das linhas, número do protocolo, leitura das informações adicionais do ticket, configurações tipadas e escolha das ações de cada retorno.
+- [14f1b61](https://github.com/coca-mann/plugin-gac/commit/14f1b61) - Testes unitários das regras internas, que rodam sem o GLPI.
 - [4aa2c7e](https://github.com/coca-mann/plugin-gac/commit/4aa2c7e), [27d4e22](https://github.com/coca-mann/plugin-gac/commit/27d4e22), [b90d687](https://github.com/coca-mann/plugin-gac/commit/b90d687) - Página de configuração do plugin com uma seção por módulo, recolhível, onde se definem as categorias de ticket elegíveis, os status do ativo, os motivos de pendência e as ações de cada retorno.
 - [96398f7](https://github.com/coca-mann/plugin-gac/commit/96398f7), [14f9bd4](https://github.com/coca-mann/plugin-gac/commit/14f9bd4) - Importação de tickets elegíveis (com ativo associado) para um protocolo em rascunho, com opção de marcar todos.
 - [0f15782](https://github.com/coca-mann/plugin-gac/commit/0f15782) - Envio dos equipamentos ao fornecedor linha a linha, com barra de progresso, sem risco de estourar o tempo limite do servidor.
@@ -32,6 +34,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ### Fixed
 
+- [8c60af1](https://github.com/coca-mann/plugin-gac/commit/8c60af1) - Removidas as entradas N/A que apareciam no histórico nativo do protocolo.
 - [ead4e77](https://github.com/coca-mann/plugin-gac/commit/ead4e77) - Removido o aviso de PHP gerado a cada requisição pelas páginas do plugin.
 
 <!--
