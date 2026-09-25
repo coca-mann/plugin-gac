@@ -40,7 +40,7 @@ use Ticket;
  * Tickets (and their assets) that can enter a PRE (spec D2): category in the configured list
  * (with subcategories), ticket not solved/closed and not deleted, at least one linked asset,
  * ticket in the PRE's entity or its sub-entities, and the ticket+asset pair without an active
- * line in any PRE.
+ * line in any PRE. Only linked items that are assets count (not, for instance, Forms answers).
  */
 final class EligibleTicketFinder
 {
@@ -55,8 +55,12 @@ final class EligibleTicketFinder
             return [];
         }
 
-        $entityIds = array_values(getSonsOf('glpi_entities', (int) $protocol->fields['entities_id']));
-        $active    = self::activeKeys();
+        $entityIds  = array_values(getSonsOf('glpi_entities', (int) $protocol->fields['entities_id']));
+        $active     = self::activeKeys();
+        $assetTypes = self::assetTypes();
+        if ($assetTypes === []) {
+            return [];
+        }
 
         $rows = [];
         foreach ($DB->request([
@@ -78,6 +82,8 @@ final class EligibleTicketFinder
                 'glpi_tickets.status'            => Ticket::getNotSolvedStatusArray(),
                 'glpi_tickets.itilcategories_id' => $categoryIds,
                 'glpi_tickets.entities_id'       => $entityIds,
+                // Only assets: tickets also link other items, such as the Forms answers.
+                'glpi_items_tickets.itemtype'    => $assetTypes,
             ],
             'ORDER' => ['glpi_tickets.id DESC'],
         ]) as $r) {
@@ -110,6 +116,18 @@ final class EligibleTicketFinder
             ];
         }
         return $rows;
+    }
+
+    /**
+     * GLPI's own list of asset classes: the native ones plus every custom asset definition.
+     *
+     * @return list<string>
+     */
+    private static function assetTypes(): array
+    {
+        global $CFG_GLPI;
+
+        return array_values(array_unique(array_map('strval', (array) ($CFG_GLPI['asset_types'] ?? []))));
     }
 
     /** @param array<string, string> $settings @return list<int> */
