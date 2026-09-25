@@ -10,6 +10,13 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Changed
+
+- [93e06d2](https://github.com/coca-mann/plugin-gac/commit/93e06d2) - PDF: o número do protocolo deixou de aparecer abaixo do título (já consta na tabela do cabeçalho) e o rodapé passou a mostrar a URL da aplicação do GLPI no lugar do número do PRE.
+- [1898892](https://github.com/coca-mann/plugin-gac/commit/1898892) - PDF preparado para impressão em preto e branco: cabeçalhos das tabelas em cinza claro com texto escuro, e bordas com o mesmo tom e a mesma espessura em todas as células.
+
 ## [0.1.1] - 2026-09-25
 
 ### Changed
