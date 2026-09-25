@@ -4785,23 +4785,25 @@ final class ReopenService
             $costId = (int) $line->fields['ticketcosts_id'];
             $ticket = new Ticket();
             $ticket->getFromDB((int) $line->fields['tickets_id']);
+            // The cost name carries the OS/NF number (D18), so a corrected number renames it.
+            $costName = CostLabel::name(
+                (string) $protocol->fields['supplier_name'],
+                $after['supplier_ref'],
+                (string) $line->fields['item_name']
+            );
             if ($costId > 0) {
                 $ok = (new TicketCost())->update([
                     'id'         => $costId,
+                    'name'       => $costName,
                     'cost_fixed' => $cost ?? 0,
                     'begin_date' => $date,
                     'end_date'   => $date,
                 ]);
                 if (!$ok) {
-                    throw new \RuntimeException('Could not update the ticket cost.');
+                    throw new \RuntimeException(__('Não foi possível atualizar o custo do ticket.', 'gac'));
                 }
             } elseif ($cost !== null && $cost > 0) {
-                $costId = TicketOps::addCost(
-                    $ticket,
-                    sprintf('PRE %s - %s', $protocol->fields['number'], $line->fields['item_name']),
-                    $cost,
-                    $date
-                );
+                $costId = TicketOps::addCost($ticket, $costName, $cost, $date);
             }
 
             $DB->update(
@@ -4985,7 +4987,7 @@ elseif (isset($_POST['reopen']) || isset($_POST['correct']) || isset($_POST['fin
 for f in $(find src front ajax -name '*.php'); do /c/xampp/php/php.exe -l "$f"; done
 ```
 
-Com um PRE `Encerrado`: (a) só um usuário com o direito **Reabrir** vê o campo de motivo e o botão; (b) sem motivo, o navegador impede o envio; reabra com um motivo: o PRE volta a `Retorno parcial`, o histórico registra "PRE reaberto" **com o motivo**; (c) aparecem os cartões "Corrigir retorno" nas linhas devolvidas; altere o custo de `120,50` para `99,90`: o **custo do ticket** também muda (aba Custos do ticket) e o histórico registra "Dados de retorno corrigidos" com o antes e o depois; (d) o resultado e o destino **não** podem ser alterados aqui; o ticket e o ativo **não** são tocados; (e) várias correções em sequência funcionam, e o PRE continua `Retorno parcial` até **Concluir correções**, que o leva a `Encerrado` (evento "PRE encerrado"); (f) tentar corrigir uma linha de um PRE que não foi reaberto (POST forjado) é recusado.
+Com um PRE `Encerrado`: (a) só um usuário com o direito **Reabrir** vê o campo de motivo e o botão; (b) sem motivo, o navegador impede o envio; reabra com um motivo: o PRE volta a `Retorno parcial`, o histórico registra "PRE reaberto" **com o motivo**; (c) aparecem os cartões "Corrigir retorno" nas linhas devolvidas; altere o custo de `120,50` para `99,90`: o **custo do ticket** também muda (aba Custos do ticket) e o histórico registra "Dados de retorno corrigidos" com o antes e o depois; (d) o resultado e o destino **não** podem ser alterados aqui; o ticket e o ativo **não** são tocados; (e) várias correções em sequência funcionam, e o PRE continua `Retorno parcial` até **Concluir correções**, que o leva a `Encerrado` (evento "PRE encerrado"); (f) tentar corrigir uma linha de um PRE que não foi reaberto (POST forjado) é recusado. (g) corrigir o **nº da OS/NF** também renomeia o custo do ticket (`Fornecedor - OS - Ativo`, D18), e corrigir uma linha que ainda não tinha custo cria o custo com o mesmo padrão; (h) depois de "Concluir correções", nova correção e novo "Concluir" são recusados sem gerar evento duplicado.
 
 - [ ] **Passo 6: Commit** via `/commit`. Título sugerido: `feat(pre): reopen protocols and correct return data`.
 
