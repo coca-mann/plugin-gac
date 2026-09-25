@@ -45,8 +45,8 @@ final class PdfRenderer
 {
     private const LOGO_MAX_BYTES = 2_000_000;
     /** Box the logo is fitted into on the report header, in millimetres. */
-    private const LOGO_BOX_WIDTH_MM = 50.0;
-    private const LOGO_BOX_HEIGHT_MM = 10.0;
+    private const LOGO_BOX_WIDTH_MM = 60.0;
+    private const LOGO_BOX_HEIGHT_MM = 14.0;
 
     /** @return array{bytes: string, filename: string} */
     public static function render(RepairProtocol $p, bool $draft): array
