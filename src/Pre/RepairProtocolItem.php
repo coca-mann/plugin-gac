@@ -143,13 +143,17 @@ class RepairProtocolItem extends CommonDBChild
             }
         }
 
-        $outcomeOptions = [];
+        $outcomeChoices = [];
+        $defectiveOutcomes = [];
         foreach (Outcome::cases() as $o) {
-            $outcomeOptions[] = ['value' => $o->value, 'label' => Labels::outcome($o), 'defective' => $o->isDefective()];
+            $outcomeChoices[$o->value] = Labels::outcome($o);
+            if ($o->isDefective()) {
+                $defectiveOutcomes[] = $o->value;
+            }
         }
-        $destinationOptions = [
-            ['value' => Destination::Writeoff->value, 'label' => Labels::destination(Destination::Writeoff)],
-            ['value' => Destination::KeepDefective->value, 'label' => Labels::destination(Destination::KeepDefective)],
+        $destinationChoices = [
+            Destination::Writeoff->value      => Labels::destination(Destination::Writeoff),
+            Destination::KeepDefective->value => Labels::destination(Destination::KeepDefective),
         ];
 
         TemplateRenderer::getInstance()->display('@gac/pre/items_tab.html.twig', [
@@ -174,8 +178,9 @@ class RepairProtocolItem extends CommonDBChild
             'ajax_send_url'      => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/pre_send.php',
             'pdf_url'            => str_replace('.form.php', '.pdf.php', RepairProtocol::getFormURL()) . '?id=' . (int) $protocol->getID(),
             'can_pdf'            => $viewable && ($isDraft ? $lines !== [] : (int) $protocol->fields['documents_id_sent'] > 0),
-            'outcome_options'    => $outcomeOptions,
-            'destination_options' => $destinationOptions,
+            'outcome_choices'     => $outcomeChoices,
+            'defective_outcomes'  => $defectiveOutcomes,
+            'destination_choices' => $destinationChoices,
         ]);
     }
 }

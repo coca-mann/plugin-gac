@@ -155,7 +155,9 @@
         if (result.success) {
             try {
                 const html = await (await fetch(tabUrl, { credentials: 'same-origin' })).text();
-                const fresh = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-gac-pre]');
+                // A contextual fragment keeps the inline scripts runnable (dropdown and date pickers).
+                const fragment = document.createRange().createContextualFragment(html);
+                const fresh = fragment.querySelector('[data-gac-pre]');
                 if (fresh) {
                     root.replaceWith(fresh);
                 }
@@ -173,19 +175,17 @@
     // Destination only applies to defective outcomes; pre-select the usual one (spec 6.3).
     const DEFAULT_DESTINATION = { unrepairable: 'writeoff', quote_rejected: 'keep_defective' };
 
-    document.addEventListener('change', function (event) {
-        const select = event.target.closest('[data-gac-outcome]');
-        if (!select) {
-            return;
-        }
+    // The outcome is a GLPI (select2) dropdown, which only notifies jQuery handlers.
+    window.jQuery(document).on('change', '[data-gac-return-form] select[name="outcome"]', function () {
+        const select = this;
         const form = select.closest('[data-gac-return-form]');
         const group = form.querySelector('[data-gac-destination-group]');
-        const destination = form.querySelector('[data-gac-destination]');
-        const defective = select.selectedOptions[0] && select.selectedOptions[0].dataset.defective === '1';
+        const destination = form.querySelector('select[name="destination"]');
+        const defective = JSON.parse(form.dataset.gacDefective || '[]').indexOf(select.value) !== -1;
         group.hidden = !defective;
-        destination.disabled = !defective;
+        window.jQuery(destination).prop('disabled', !defective);
         if (defective && DEFAULT_DESTINATION[select.value]) {
-            destination.value = DEFAULT_DESTINATION[select.value];
+            window.jQuery(destination).val(DEFAULT_DESTINATION[select.value]).trigger('change');
         }
     });
 

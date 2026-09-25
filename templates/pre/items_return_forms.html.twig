@@ -1,3 +1,6 @@
+{% import 'components/form/fields_macros.html.twig' as fields %}
+{% set gac_field = {is_horizontal: false, field_class: 'col-12', mb: 'mb-0'} %}
+
 {% if can_return %}
     {% for line in lines %}
         {% if line.is_at_supplier %}
@@ -8,50 +11,37 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{{ form_url }}" enctype="multipart/form-data" data-gac-return-form data-gac-ajax-form>
+                    <form method="post" action="{{ form_url }}" enctype="multipart/form-data" data-gac-return-form data-gac-ajax-form data-gac-defective='{{ defective_outcomes|json_encode|raw }}'>
                         <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
                         <input type="hidden" name="line_id" value="{{ line.id }}">
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Resultado', 'gac') }}</label>
-                                <select class="form-select" name="outcome" data-gac-outcome required>
-                                    <option value="">-----</option>
-                                    {% for o in outcome_options %}
-                                        <option value="{{ o.value }}" data-defective="{{ o.defective ? '1' : '0' }}">{{ o.label }}</option>
-                                    {% endfor %}
-                                </select>
+                                {{ fields.dropdownArrayField('outcome', '', outcome_choices, __('Resultado', 'gac'), gac_field|merge({required: true, display_emptychoice: true, class: 'gac-outcome'})) }}
                             </div>
                             <div class="col-md-4" data-gac-destination-group hidden>
-                                <label class="form-label">{{ __('Destino', 'gac') }}</label>
-                                <select class="form-select" name="destination" data-gac-destination>
-                                    {% for d in destination_options %}
-                                        <option value="{{ d.value }}">{{ d.label }}</option>
-                                    {% endfor %}
-                                </select>
+                                {{ fields.dropdownArrayField('destination', 'writeoff', destination_choices, __('Destino', 'gac'), gac_field|merge({class: 'gac-destination'})) }}
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Data do retorno', 'gac') }}</label>
-                                <input type="date" class="form-control" name="date_return" value="{{ 'now'|date('Y-m-d') }}">
+                                {{ fields.dateField('date_return', 'now'|date('Y-m-d'), __('Data do retorno', 'gac'), gac_field) }}
                             </div>
                             <div class="col-md-12">
-                                <label class="form-label">{{ __('Serviço executado', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Serviço executado', 'gac') }}</label>
                                 <textarea class="form-control" name="service_description" rows="2"></textarea>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Custo (R$)', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Custo (R$)', 'gac') }}</label>
                                 <input type="text" class="form-control" name="cost" inputmode="decimal" placeholder="0,00">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Nº da OS ou nota do fornecedor', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Nº da OS ou nota do fornecedor', 'gac') }}</label>
                                 <input type="text" class="form-control" name="supplier_ref">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Garantia até', 'gac') }}</label>
-                                <input type="date" class="form-control" name="warranty_until">
+                                {{ fields.dateField('warranty_until', '', __('Garantia até', 'gac'), gac_field|merge({clearable: true})) }}
                             </div>
                             <div class="col-md-12">
-                                <label class="form-label">{{ __('Documentos (opcional)', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Documentos (opcional)', 'gac') }}</label>
                                 <input type="file" class="form-control" name="attachments[]" multiple>
                                 <div class="form-text">{{ __('Ficam nos documentos do ticket e do PRE.', 'gac') }}</div>
                             </div>
@@ -65,7 +55,7 @@
                         <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
                         <input type="hidden" name="line_id" value="{{ line.id }}">
                         <div class="col-md-9">
-                            <label class="form-label">{{ __('Marcar como extraviada (justificativa obrigatória)', 'gac') }}</label>
+                            <label class="col-form-label">{{ __('Marcar como extraviada (justificativa obrigatória)', 'gac') }}</label>
                             <input type="text" class="form-control" name="reason">
                         </div>
                         <div class="col-md-3">
@@ -92,27 +82,25 @@
                         <input type="hidden" name="line_id" value="{{ line.id }}">
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Data do retorno', 'gac') }}</label>
-                                <input type="date" class="form-control" name="date_return" value="{{ line.date_return }}">
+                                {{ fields.dateField('date_return', line.date_return, __('Data do retorno', 'gac'), gac_field) }}
                             </div>
                             <div class="col-md-8">
-                                <label class="form-label">{{ __('Serviço executado', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Serviço executado', 'gac') }}</label>
                                 <textarea class="form-control" name="service_description" rows="2">{{ line.service_description }}</textarea>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Custo (R$)', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Custo (R$)', 'gac') }}</label>
                                 <input type="text" class="form-control" name="cost" inputmode="decimal" value="{{ line.cost is not null ? line.cost|number_format(2, ',', '') : '' }}">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Nº da OS ou nota do fornecedor', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Nº da OS ou nota do fornecedor', 'gac') }}</label>
                                 <input type="text" class="form-control" name="supplier_ref" value="{{ line.supplier_ref }}">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">{{ __('Garantia até', 'gac') }}</label>
-                                <input type="date" class="form-control" name="warranty_until" value="{{ line.warranty_until }}">
+                                {{ fields.dateField('warranty_until', line.warranty_until, __('Garantia até', 'gac'), gac_field|merge({clearable: true})) }}
                             </div>
                             <div class="col-md-12">
-                                <label class="form-label">{{ __('Documentos (opcional)', 'gac') }}</label>
+                                <label class="col-form-label">{{ __('Documentos (opcional)', 'gac') }}</label>
                                 <input type="file" class="form-control" name="attachments[]" multiple>
                                 <div class="form-text">{{ __('Ficam nos documentos do ticket e do PRE.', 'gac') }}</div>
                             </div>
