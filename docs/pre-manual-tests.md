@@ -12,7 +12,7 @@ com o motivo.
 
 - GLPI local com o plugin instalado e ativo, e a configuração do Plugin - DTI GAC completa (categorias, status
   do ativo, motivos de pendência; ver a seção do PRE em Configurar > Plugin - DTI GAC).
-- Um fornecedor, tickets na categoria elegível com um ativo associado, e um usuário com todos os
+- Um fornecedor **ativo** (o dropdown de fornecedores do GLPI só lista os ativos; um fornecedor criado sem marcar "ativo" não aparece na lista do PRE nem em nenhum outro formulário), tickets na categoria elegível com um ativo associado, e um usuário com todos os
   direitos do PRE. Um segundo usuário sem nenhum direito é necessário para o cenário 22.
 - Depois de editar um template Twig, `php bin/console cache:clear`. Depois de editar `pre.js`,
   forçar a atualização do arquivo em cache no navegador.

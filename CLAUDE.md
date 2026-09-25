@@ -41,6 +41,7 @@ The second feature idea, the **laudo de baixa patrimonial** (write-off/disposal 
   - `public/js/pre.js` is served as `pre.js?v=<hash>` cached for 30 days; the hash changes only with the plugin version, so force-refresh the file in the browser after JS edits.
   - A user's profile rights are loaded at login: a session opened before the plugin was installed gets 403 until `POST /Session/ChangeProfile` (or a new login).
   - Plugin pages live under `/plugins/gac/front/...`; AJAX under `/plugins/gac/ajax/...`.
+- Test data created by a bare `POST` to a GLPI form skips the form's default values: a supplier created that way has `is_active = 0` (the column default) and **never appears in any supplier dropdown**, because GLPI lists only active suppliers. Send `is_active=1` (or create it through the UI) when seeding suppliers; check other flags the same way if a seeded record does not show up.
 - Test data in that GLPI is throwaway (many `NB-LOAD-*` computers/tickets, "Marca A/B" entities, sample logo and CNPJ on the root entity).
 
 ## Tooling configured (most needs a GLPI dev checkout to run)
