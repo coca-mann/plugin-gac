@@ -45,6 +45,13 @@ if ($protocolId === 0 || !$protocol->getFromDB($protocolId)) {
 }
 
 $notify = static function (ServiceResult $r): void {
+    // Forms marked data-gac-ajax-form (pre.js) post via XHR and expect the outcome as JSON, so
+    // the page is not reloaded and the scroll position is kept.
+    if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => $r->ok, 'message' => $r->message]);
+        exit;
+    }
     Session::addMessageAfterRedirect(htmlescape($r->message), false, $r->ok ? INFO : ERROR);
 };
 
@@ -78,7 +85,7 @@ if (isset($_POST['import'])) {
     if (isset($_POST['reopen'])) {
         $notify(ReopenService::reopen($protocol, (string) ($_POST['reason'] ?? '')));
     } elseif (isset($_POST['correct'])) {
-        $notify(ReopenService::correctLine((int) ($_POST['line_id'] ?? 0), $_POST));
+        $notify(ReopenService::correctLine((int) ($_POST['line_id'] ?? 0), $_POST, ReturnAttachments::collect($_FILES)));
     } else {
         $notify(ReopenService::finishCorrections($protocol));
     }

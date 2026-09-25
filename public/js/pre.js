@@ -106,6 +106,70 @@
             runRemoveFailed(remove);
         }
     });
+
+    // Return, lost and correction forms post via XHR and refresh only the items tab, so the page
+    // keeps its scroll position (a PRE can have dozens of lines).
+    // Floating, because the user is usually scrolled far from the top of the tab.
+    function notice(text, ok) {
+        const box = document.createElement('div');
+        box.className = 'alert ' + (ok ? 'alert-success' : 'alert-danger') + ' position-fixed bottom-0 end-0 m-3 shadow';
+        box.style.zIndex = '2000';
+        box.style.maxWidth = '28rem';
+        box.setAttribute('role', 'alert');
+        box.textContent = text;
+        document.body.append(box);
+        window.setTimeout(function () { box.remove(); }, ok ? 8000 : 15000);
+    }
+
+    document.addEventListener('submit', async function (event) {
+        const form = event.target.closest('[data-gac-ajax-form]');
+        if (!form) {
+            return;
+        }
+        event.preventDefault();
+
+        const root = form.closest('[data-gac-pre]');
+        const tabUrl = root.dataset.tabUrl;
+        // Built before the buttons are disabled: a disabled submitter is left out of the data.
+        const body = new FormData(form, event.submitter);
+        const buttons = form.querySelectorAll('button[type="submit"]');
+        buttons.forEach(function (b) { b.disabled = true; });
+        const scrollY = window.scrollY;
+
+        let result;
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Glpi-Csrf-Token': csrfToken(),
+                },
+                body: body,
+            });
+            result = await response.json();
+        } catch (e) {
+            result = { success: false, message: 'Não foi possível concluir a operação. Recarregue a página e confira o estado.' };
+        }
+
+        if (result.success) {
+            try {
+                const html = await (await fetch(tabUrl, { credentials: 'same-origin' })).text();
+                const fresh = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-gac-pre]');
+                if (fresh) {
+                    root.replaceWith(fresh);
+                }
+            } catch (e) {
+                window.location.reload();
+                return;
+            }
+        } else {
+            buttons.forEach(function (b) { b.disabled = false; });
+        }
+        notice(result.message, result.success);
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
+    });
+
     // Destination only applies to defective outcomes; pre-select the usual one (spec 6.3).
     const DEFAULT_DESTINATION = { unrepairable: 'writeoff', quote_rejected: 'keep_defective' };
 

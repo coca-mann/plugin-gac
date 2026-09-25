@@ -1,6 +1,6 @@
 {% import 'components/form/fields_macros.html.twig' as fields %}
 
-<div class="p-3" data-gac-pre data-protocol-id="{{ protocol.getID() }}" data-ajax-send="{{ ajax_send_url }}">
+<div class="p-3" data-gac-pre data-protocol-id="{{ protocol.getID() }}" data-ajax-send="{{ ajax_send_url }}" data-tab-url="{{ tab_url }}">
     {% include '@gac/pre/items_toolbar.html.twig' ignore missing %}
     {% include '@gac/pre/items_import.html.twig' ignore missing %}
 

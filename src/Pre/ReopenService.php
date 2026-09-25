@@ -61,7 +61,11 @@ final class ReopenService
     }
 
     /** @param array<string, mixed> $data */
-    public static function correctLine(int $lineId, array $data): ServiceResult
+    /**
+     * @param array<string, mixed> $data
+     * @param list<array{name: string, tmp_name: string, error: int}> $files uploads from ReturnAttachments::collect()
+     */
+    public static function correctLine(int $lineId, array $data, array $files = []): ServiceResult
     {
         global $DB;
 
@@ -148,6 +152,14 @@ final class ReopenService
             }
             Toolbox::logInFile('gac', sprintf("correctLine %d failed: %s\n", $lineId, $e->getMessage()));
             return ServiceResult::fail($e->getMessage());
+        }
+
+        // After the commit, like the return: a rejected file only raises a warning.
+        $problems = $files === [] ? [] : ReturnAttachments::attach($files, $protocol, $line, $ticket);
+        if ($problems !== []) {
+            return ServiceResult::ok(
+                __('Dados corrigidos, mas nem todos os documentos foram anexados:', 'gac') . ' ' . implode(' ', $problems)
+            );
         }
 
         return ServiceResult::ok(__('Dados corrigidos.', 'gac'));

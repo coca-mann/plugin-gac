@@ -165,6 +165,12 @@ class RepairProtocolItem extends CommonDBChild
             'is_reopened'        => $status === ProtocolStatus::Partial && RepairProtocolEvent::isReopened((int) $protocol->getID()),
             'candidates'         => ($isDraft && $canEdit) ? EligibleTicketFinder::find($protocol) : [],
             'form_url'           => RepairProtocolItem::getFormURL(),
+            'tab_url'            => $CFG_GLPI['root_doc'] . '/ajax/common.tabs.php?' . http_build_query([
+                '_target'   => RepairProtocol::getFormURL(false),
+                '_itemtype' => RepairProtocol::class,
+                '_glpi_tab' => self::class . '$1',
+                'id'        => (int) $protocol->getID(),
+            ]),
             'ajax_send_url'      => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/pre_send.php',
             'pdf_url'            => str_replace('.form.php', '.pdf.php', RepairProtocol::getFormURL()) . '?id=' . (int) $protocol->getID(),
             'can_pdf'            => $viewable && ($isDraft ? $lines !== [] : (int) $protocol->fields['documents_id_sent'] > 0),

@@ -8,7 +8,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{{ form_url }}" enctype="multipart/form-data" data-gac-return-form>
+                    <form method="post" action="{{ form_url }}" enctype="multipart/form-data" data-gac-return-form data-gac-ajax-form>
                         <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
                         <input type="hidden" name="line_id" value="{{ line.id }}">
@@ -60,7 +60,7 @@
                     </form>
 
                     <hr>
-                    <form method="post" action="{{ form_url }}" class="row g-2 align-items-end">
+                    <form method="post" action="{{ form_url }}" class="row g-2 align-items-end" data-gac-ajax-form>
                         <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
                         <input type="hidden" name="line_id" value="{{ line.id }}">
@@ -86,7 +86,7 @@
                     <h4 class="card-title">{{ __('Corrigir retorno', 'gac') }}: #{{ line.tickets_id }} · {{ line.item_name }}</h4>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{{ form_url }}">
+                    <form method="post" action="{{ form_url }}" enctype="multipart/form-data" data-gac-ajax-form>
                         <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
                         <input type="hidden" name="line_id" value="{{ line.id }}">
@@ -110,6 +110,11 @@
                             <div class="col-md-4">
                                 <label class="form-label">{{ __('Garantia até', 'gac') }}</label>
                                 <input type="date" class="form-control" name="warranty_until" value="{{ line.warranty_until }}">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">{{ __('Documentos (opcional)', 'gac') }}</label>
+                                <input type="file" class="form-control" name="attachments[]" multiple>
+                                <div class="form-text">{{ __('Ficam nos documentos do ticket e do PRE.', 'gac') }}</div>
                             </div>
                         </div>
                         <p class="text-muted small mt-2 mb-0">
