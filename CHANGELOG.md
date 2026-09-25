@@ -10,6 +10,16 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Changed
+
+- [f25c8ed](https://github.com/coca-mann/plugin-gac/commit/f25c8ed), [fa605b6](https://github.com/coca-mann/plugin-gac/commit/fa605b6) - Cabeçalho do PDF mais compacto: a logomarca é ajustada a uma caixa de 60 × 14 mm mantendo a proporção (logos quadradas e retangulares), os dados da empresa usam fonte menor e há menos espaço abaixo do cabeçalho.
+
+### Fixed
+
+- [0b90747](https://github.com/coca-mann/plugin-gac/commit/0b90747) - Corrigido o travamento na geração do PDF quando a entidade raiz não tem entidade pai registrada (comum em bancos migrados de versões antigas do GLPI) e nenhuma logomarca é encontrada: a busca ficava em laço e prendia um processo do PHP a cada tentativa.
+
 ## [0.1.0] - 2026-09-24
 
 ### Added
