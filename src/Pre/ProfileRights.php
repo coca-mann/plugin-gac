@@ -42,7 +42,7 @@ class ProfileRights extends CommonGLPI
 {
     public static function getTypeName($nb = 0)
     {
-        return __('Gac - Protocolo de Reparo', 'gac');
+        return __('Plugin - DTI GAC - Protocolo de Reparo', 'gac');
     }
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)

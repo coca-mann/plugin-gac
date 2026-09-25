@@ -10,8 +10,8 @@ com o motivo.
 
 ## Pré-requisitos
 
-- GLPI local com o plugin instalado e ativo, e a configuração do Gac completa (categorias, status
-  do ativo, motivos de pendência; ver a seção do PRE em Configurar > Gac).
+- GLPI local com o plugin instalado e ativo, e a configuração do Plugin - DTI GAC completa (categorias, status
+  do ativo, motivos de pendência; ver a seção do PRE em Configurar > Plugin - DTI GAC).
 - Um fornecedor, tickets na categoria elegível com um ativo associado, e um usuário com todos os
   direitos do PRE. Um segundo usuário sem nenhum direito é necessário para o cenário 22.
 - Depois de editar um template Twig, `php bin/console cache:clear`. Depois de editar `pre.js`,

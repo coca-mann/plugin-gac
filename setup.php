@@ -97,7 +97,7 @@ function plugin_init_gac(): void
 function plugin_version_gac(): array
 {
     return [
-        'name'           => 'Gac',
+        'name'           => 'Plugin - DTI GAC',
         'version'        => PLUGIN_GAC_VERSION,
         'author'         => 'Juliano Ostroski',
         'license'        => 'MIT',

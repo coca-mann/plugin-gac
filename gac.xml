@@ -1,5 +1,5 @@
 <root>
-   <name>Gac</name>
+   <name>Plugin - DTI GAC</name>
    <key>gac</key>
    <!-- stable, beta, development, alpha, ... -->
    <state>stable</state>

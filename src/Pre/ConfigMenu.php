@@ -39,7 +39,7 @@ class ConfigMenu
 {
     public static function getMenuName($nb = 0): string
     {
-        return __('Gac', 'gac');
+        return __('Plugin - DTI GAC', 'gac');
     }
 
     public static function getMenuContent(): array
@@ -48,7 +48,7 @@ class ConfigMenu
             return [];
         }
         return [
-            'title' => __('Gac', 'gac'),
+            'title' => __('Plugin - DTI GAC', 'gac'),
             'page'  => '/plugins/gac/front/config.php',
             'icon'  => 'ti ti-settings',
         ];

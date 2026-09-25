@@ -1443,7 +1443,7 @@ class ProfileRights extends CommonGLPI
 {
     public static function getTypeName($nb = 0)
     {
-        return __('Gac - Protocolo de Reparo', 'gac');
+        return __('Plugin - DTI GAC - Protocolo de Reparo', 'gac');
     }
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
@@ -1551,7 +1551,7 @@ class ConfigMenu
 {
     public static function getMenuName($nb = 0): string
     {
-        return __('Gac', 'gac');
+        return __('Plugin - DTI GAC', 'gac');
     }
 
     public static function getMenuContent(): array
@@ -1560,7 +1560,7 @@ class ConfigMenu
             return [];
         }
         return [
-            'title' => __('Gac', 'gac'),
+            'title' => __('Plugin - DTI GAC', 'gac'),
             'page'  => '/plugins/gac/front/config.php',
             'icon'  => 'ti ti-settings',
         ];
@@ -1695,7 +1695,7 @@ function plugin_gac_install(): bool
     // Profile right. addProfileRights() inserts one row per existing profile, so existence
     // must be checked by counting. Full access only for profiles that already hold the native
     // 'config' right; every other profile starts without access and an administrator grants
-    // it in Administração > Perfis (aba do Gac).
+    // it in Administração > Perfis (aba do Plugin - DTI GAC).
     $right = RepairProtocol::$rightname;
     if (countElementsInTable(ProfileRight::getTable(), ['name' => $right]) === 0) {
         ProfileRight::addProfileRights([$right]);
@@ -1837,7 +1837,7 @@ Esperado: as 4 tabelas e uma linha `plugin_gac_pre` com `max_rights = 1823` (31 
 
 Atenção: os direitos do perfil são carregados **no login**. Numa sessão que já estava aberta antes da instalação, o menu e as páginas do plugin dão 403 até você trocar de perfil ou entrar de novo (o `POST /Session/ChangeProfile` com o `id` do perfil recarrega os direitos sem novo login). As páginas do plugin ficam em `/plugins/gac/front/...`.
 
-Abra o GLPI local, entre como super-admin e confira: (a) Configurar > Plug-ins mostra "Gac" ativo com o ícone de engrenagem; (b) Administração > Perfis > (um perfil) > aba "Gac - Protocolo de Reparo" mostra a matriz com as caixas Criar, Ler, Atualizar, Purgar, **Enviar, Registrar retorno, Reabrir**; (c) o menu **Gerência** ganhou "Protocolos de Reparo de Equipamento" (a página em si ainda dá 404 até a Tarefa 6).
+Abra o GLPI local, entre como super-admin e confira: (a) Configurar > Plug-ins mostra "Plugin - DTI GAC" ativo com o ícone de engrenagem; (b) Administração > Perfis > (um perfil) > aba "Gac - Protocolo de Reparo" mostra a matriz com as caixas Criar, Ler, Atualizar, Purgar, **Enviar, Registrar retorno, Reabrir**; (c) o menu **Gerência** ganhou "Protocolos de Reparo de Equipamento" (a página em si ainda dá 404 até a Tarefa 6).
 
 - [ ] **Passo 10: Commit** via `/commit`. Título sugerido: `feat(pre): add database schema, rights and plugin registration`.
 
@@ -2843,7 +2843,7 @@ if (!empty($_POST)) {
 }
 
 Html::header(
-    __('Gac', 'gac'),
+    __('Plugin - DTI GAC', 'gac'),
     $_SERVER['PHP_SELF'],
     'config',
     strtolower(ConfigMenu::class)
@@ -5698,8 +5698,8 @@ com o motivo.
 
 ## Pré-requisitos
 
-- GLPI local com o plugin instalado e ativo, e a configuração do Gac completa (categorias, status
-  do ativo, motivos de pendência; ver a seção do PRE em Configurar > Gac).
+- GLPI local com o plugin instalado e ativo, e a configuração do Plugin - DTI GAC completa (categorias, status
+  do ativo, motivos de pendência; ver a seção do PRE em Configurar > Plugin - DTI GAC).
 - Um fornecedor, tickets na categoria elegível com um ativo associado, e um usuário com todos os
   direitos do PRE. Um segundo usuário sem nenhum direito é necessário para o cenário 22.
 - Depois de editar um template Twig, `php bin/console cache:clear`. Depois de editar `pre.js`,

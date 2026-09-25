@@ -44,7 +44,7 @@ if (!empty($_POST)) {
 }
 
 Html::header(
-    __('Gac', 'gac'),
+    __('Plugin - DTI GAC', 'gac'),
     $_SERVER['PHP_SELF'],
     'config',
     strtolower(ConfigMenu::class)
