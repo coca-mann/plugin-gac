@@ -35,6 +35,7 @@ include('../../../../inc/includes.php');
 
 use GlpiPlugin\Gac\Pre\LineService;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
+use GlpiPlugin\Gac\Pre\ReopenService;
 use GlpiPlugin\Gac\Pre\ReturnService;
 use GlpiPlugin\Gac\Pre\ServiceResult;
 
@@ -68,7 +69,21 @@ if (isset($_POST['import'])) {
     $notify(isset($_POST['return'])
         ? ReturnService::registerReturn($lineId, $_POST)
         : ReturnService::markLost($lineId, (string) ($_POST['reason'] ?? '')));
+} elseif (isset($_POST['reopen']) || isset($_POST['correct']) || isset($_POST['finish_corrections'])) {
+    if (
+        !$protocol->canViewItem()
+        || !Session::haveRight(RepairProtocol::$rightname, RepairProtocol::RIGHT_REOPEN)
+    ) {
+        Html::displayRightError();
+    }
+    if (isset($_POST['reopen'])) {
+        $notify(ReopenService::reopen($protocol, (string) ($_POST['reason'] ?? '')));
+    } elseif (isset($_POST['correct'])) {
+        $notify(ReopenService::correctLine((int) ($_POST['line_id'] ?? 0), $_POST));
+    } else {
+        $notify(ReopenService::finishCorrections($protocol));
+    }
 }
-// (next tasks add: reopen, correct, finish_corrections — before this line)
+
 
 Html::back();

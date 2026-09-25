@@ -23,5 +23,22 @@
         </form>
     {% endif %}
 
+    {% if can_reopen and protocol.fields['status'] == 'closed' %}
+        <form method="post" action="{{ form_url }}" class="d-flex gap-2">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+            <input type="text" class="form-control" name="reason" placeholder="{{ __('Motivo da reabertura', 'gac') }}" required>
+            <button type="submit" name="reopen" value="1" class="btn btn-outline-warning">{{ __('Reabrir', 'gac') }}</button>
+        </form>
+    {% endif %}
+
+    {% if can_reopen and is_reopened %}
+        <form method="post" action="{{ form_url }}" class="d-inline">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+            <button type="submit" name="finish_corrections" value="1" class="btn btn-success">{{ __('Concluir correções', 'gac') }}</button>
+        </form>
+    {% endif %}
+
     <div class="flex-grow-1" data-gac-progress></div>
 </div>

@@ -72,3 +72,48 @@
         {% endif %}
     {% endfor %}
 {% endif %}
+
+{% if can_reopen and is_reopened %}
+    {% for line in lines %}
+        {% if line.is_returned %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h4 class="card-title">{{ __('Corrigir retorno', 'gac') }}: #{{ line.tickets_id }} · {{ line.item_name }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ form_url }}">
+                        <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+                        <input type="hidden" name="line_id" value="{{ line.id }}">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Data do retorno', 'gac') }}</label>
+                                <input type="date" class="form-control" name="date_return" value="{{ line.date_return }}">
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">{{ __('Serviço executado', 'gac') }}</label>
+                                <textarea class="form-control" name="service_description" rows="2">{{ line.service_description }}</textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Custo (R$)', 'gac') }}</label>
+                                <input type="text" class="form-control" name="cost" inputmode="decimal" value="{{ line.cost is not null ? line.cost|number_format(2, ',', '') : '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Nº da OS ou nota do fornecedor', 'gac') }}</label>
+                                <input type="text" class="form-control" name="supplier_ref" value="{{ line.supplier_ref }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">{{ __('Garantia até', 'gac') }}</label>
+                                <input type="date" class="form-control" name="warranty_until" value="{{ line.warranty_until }}">
+                            </div>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">
+                            {{ __('O resultado e o destino não mudam aqui. Corrigir o resultado é uma correção manual no ticket e no ativo.', 'gac') }}
+                        </p>
+                        <button type="submit" name="correct" value="1" class="btn btn-primary mt-3">{{ __('Salvar correção', 'gac') }}</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
