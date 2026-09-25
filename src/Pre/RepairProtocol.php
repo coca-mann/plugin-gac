@@ -206,6 +206,10 @@ class RepairProtocol extends CommonDBTM
     {
         $this->initForm($ID, $options);
 
+        if ($this->isNewItem() && empty($this->fields['users_id_tech'])) {
+            $this->fields['users_id_tech'] = (int) Session::getLoginUserID();
+        }
+
         TemplateRenderer::getInstance()->display('@gac/pre/repairprotocol.form.html.twig', [
             'item'           => $this,
             'params'         => $options,
