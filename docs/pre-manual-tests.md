@@ -57,6 +57,7 @@ com o motivo.
 | 34 | PDF sem logomarca na cadeia | Categoria de logomarca configurada, mas nenhuma logomarca na entidade nem nas ancestrais; entidade raiz com `entities_id` NULL (como em bancos migrados de versões antigas) | O PDF sai sem logo em menos de 1 s, sem ficar em laço | OK (reproduzido no banco de produção pelo slowlog do PHP-FPM; verificado depois da correção) |
 | 35 | Tamanho da logomarca no PDF | Logomarca grande (imagem quadrada) na entidade raiz; abrir a prévia do PDF | A logo cabe em 60 x 14 mm, sem abrir espaço no cabeçalho, ao lado dos dados da empresa | OK |
 | 36 | Título e rodapé do PDF | Abrir a prévia do PDF de um rascunho | Sem o número do protocolo abaixo do título (só na tabela); espaço entre título e tabela; rodapé com a URL da aplicação do GLPI à esquerda e "Página x / y" à direita | OK |
+| 37 | PDF em preto e branco | Abrir a prévia do PDF de um rascunho com 4 linhas e imprimir em preto e branco (ou em escala de cinza) | Cabeçalhos das tabelas com um só tom de cinza claro e texto legível; bordas uniformes; linhas alternadas distinguíveis | Parcial: conferido na tela, com as cores reais; a impressão em preto e branco não foi feita |
 
 **Nota do cenário 25 (PDF).** Prévia em rascunho com marca d'água "RASCUNHO"; cabeçalho com nome,
 CNPJ, endereço e telefone da entidade; logo do documento mais recente da categoria configurada,
