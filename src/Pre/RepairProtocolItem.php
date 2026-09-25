@@ -80,7 +80,7 @@ class RepairProtocolItem extends CommonDBChild
     {
         if ($item instanceof RepairProtocol) {
             $count = countElementsInTable(self::getTable(), ['plugin_gac_repairprotocols_id' => $item->getID()]);
-            return self::createTabEntry(__('Itens', 'gac'), $count);
+            return self::createTabEntry(__('Itens', 'gac'), $count, null, 'ti ti-list-details');
         }
         return '';
     }
