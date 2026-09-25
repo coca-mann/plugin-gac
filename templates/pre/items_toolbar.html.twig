@@ -1,0 +1,43 @@
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    {% if can_send %}
+        {% if send_mode == 'start' %}
+            <button type="button" class="btn btn-primary" data-gac-send="start">
+                <i class="ti ti-send"></i> {{ __('Enviar', 'gac') }}
+            </button>
+        {% elseif send_mode == 'continue' %}
+            <button type="button" class="btn btn-warning" data-gac-send="continue" data-line-ids="{{ pending_line_ids|json_encode }}">
+                {{ __('Continuar envio', 'gac') }}
+            </button>
+        {% elseif send_mode == 'finalize' %}
+            <button type="button" class="btn btn-warning" data-gac-send="finalize">
+                {{ __('Concluir envio (gerar documento)', 'gac') }}
+            </button>
+        {% endif %}
+    {% endif %}
+
+    {% if can_reopen and protocol.fields['status'] == 'closed' %}
+        <form method="post" action="{{ form_url }}" class="d-flex gap-2">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+            <input type="text" class="form-control" name="reason" placeholder="{{ __('Motivo da reabertura', 'gac') }}" required>
+            <button type="submit" name="reopen" value="1" class="btn btn-outline-warning">{{ __('Reabrir', 'gac') }}</button>
+        </form>
+    {% endif %}
+
+    {% if can_reopen and is_reopened %}
+        <form method="post" action="{{ form_url }}" class="d-inline">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="protocol_id" value="{{ protocol.getID() }}">
+            <button type="submit" name="finish_corrections" value="1" class="btn btn-success">{{ __('Concluir correções', 'gac') }}</button>
+        </form>
+    {% endif %}
+
+    {% if can_pdf %}
+        <a class="btn btn-outline-secondary" href="{{ pdf_url }}" target="_blank" rel="noopener">
+            <i class="ti ti-file-type-pdf"></i>
+            {{ is_draft ? __('Pré-visualizar PDF', 'gac') : __('Baixar PDF de envio', 'gac') }}
+        </a>
+    {% endif %}
+
+    <div class="flex-grow-1" data-gac-progress></div>
+</div>

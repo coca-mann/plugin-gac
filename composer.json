@@ -1,6 +1,7 @@
 {
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.2",
+        "mpdf/mpdf": "^8.2"
     },
     "config": {
         "optimize-autoloader": true,
@@ -8,6 +9,11 @@
             "php": "8.2.99"
         },
         "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "GlpiPlugin\\Gac\\": "src/"
+        }
     },
     "autoload-dev": {
         "psr-4": {

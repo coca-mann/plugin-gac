@@ -31,8 +31,13 @@
  * -------------------------------------------------------------------------
  */
 
+use Glpi\Plugin\Hooks;
+use GlpiPlugin\Gac\Pre\ConfigMenu;
+use GlpiPlugin\Gac\Pre\PreMenu;
+use GlpiPlugin\Gac\Pre\ProfileRights;
+
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.0.1');
+define('PLUGIN_GAC_VERSION', '0.1.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
@@ -46,7 +51,30 @@ define("PLUGIN_GAC_MAX_GLPI_VERSION", "11.0.99");
  * Init hooks of the plugin.
  * REQUIRED
  */
-function plugin_init_gac(): void {}
+function plugin_init_gac(): void
+{
+    global $PLUGIN_HOOKS;
+
+    $PLUGIN_HOOKS['csrf_compliant']['gac'] = true;
+
+    $plugin = new Plugin();
+    if ($plugin->isInstalled('gac') && $plugin->isActivated('gac')) {
+        // Array keys must be real $menu sectors: 'management' and 'config'.
+        $PLUGIN_HOOKS[Hooks::MENU_TOADD]['gac'] = [
+            'management' => PreMenu::class,
+            'config' => ConfigMenu::class,
+        ];
+
+        // Gear icon on the plugin's row in Configurar > Plugins.
+        $PLUGIN_HOOKS['config_page']['gac'] = 'front/config.php';
+
+        // Value has no "public/" prefix: GLPI's router adds it for plugin assets.
+        $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['gac'] = 'js/pre.js';
+
+        // Plugin rights are invisible in Perfis unless the plugin adds its own tab.
+        Plugin::registerClass(ProfileRights::class, ['addtabon' => Profile::class]);
+    }
+}
 
 /**
  * Get the name and the version of the plugin
@@ -69,10 +97,10 @@ function plugin_init_gac(): void {}
 function plugin_version_gac(): array
 {
     return [
-        'name'           => 'Gac',
+        'name'           => 'Plugin - DTI GAC',
         'version'        => PLUGIN_GAC_VERSION,
         'author'         => 'Juliano Ostroski',
-        'license'        => '',
+        'license'        => 'MIT',
         'homepage'       => 'https://github.com/coca-mann/plugin-gac',
         'requirements'   => [
             'glpi' => [
@@ -89,6 +117,10 @@ function plugin_version_gac(): array
  */
 function plugin_gac_check_prerequisites(): bool
 {
+    if (!is_file(__DIR__ . '/vendor/autoload.php')) {
+        echo __('Dependências ausentes (mPDF): use o pacote de release do plugin ou rode "composer install --no-dev" na pasta do plugin.', 'gac');
+        return false;
+    }
     return true;
 }
 
