@@ -10,6 +10,16 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Added
+
+- [e6068dc](https://github.com/coca-mann/plugin-gac/commit/e6068dc) - Botão "Recolher itens para importar" no cartão de importação do rascunho, que esconde a lista de candidatos para deixar só os itens já importados e suas descrições; a escolha fica guardada no navegador.
+
+### Fixed
+
+- [75738db](https://github.com/coca-mann/plugin-gac/commit/75738db) - A lista de importação passou a trazer só itens do tipo ativo (incluindo os ativos personalizados): itens de outros tipos ligados ao ticket, como as respostas do Forms, deixam de aparecer, e o servidor também recusa a importação dessas chaves.
+
 ## [0.1.2] - 2026-09-25
 
 ### Changed
