@@ -58,6 +58,8 @@ com o motivo.
 | 35 | Tamanho da logomarca no PDF | Logomarca grande (imagem quadrada) na entidade raiz; abrir a prévia do PDF | A logo cabe em 60 x 14 mm, sem abrir espaço no cabeçalho, ao lado dos dados da empresa | OK |
 | 36 | Título e rodapé do PDF | Abrir a prévia do PDF de um rascunho | Sem o número do protocolo abaixo do título (só na tabela); espaço entre título e tabela; rodapé com a URL da aplicação do GLPI à esquerda e "Página x / y" à direita | OK |
 | 37 | PDF em preto e branco | Abrir a prévia do PDF de um rascunho com 4 linhas e imprimir em preto e branco (ou em escala de cinza) | Cabeçalhos das tabelas com um só tom de cinza claro e texto legível; bordas uniformes; linhas alternadas distinguíveis | Parcial: conferido na tela, com as cores reais; a impressão em preto e branco não foi feita |
+| 38 | Recolher os itens para importar | Num rascunho com candidatos e com linhas já importadas, usar "Recolher itens para importar" e recarregar a página | Some só a lista de candidatos; a tabela dos itens já importados e "Salvar descrições" continuam visíveis; a escolha é lembrada; "Expandir" volta; sem candidatos o botão não aparece | OK (o botão ausente sem candidatos não foi conferido na tela) |
+| 39 | Só ativos na importação | Ligar a um ticket elegível um item que não é ativo (testado com um Fornecedor) e abrir a aba Itens de um rascunho | O item não aparece na lista de importação, e uma importação forjada da chave é recusada ("Nenhum item válido foi selecionado") | OK (no código antigo o item aparecia) |
 
 **Nota do cenário 25 (PDF).** Prévia em rascunho com marca d'água "RASCUNHO"; cabeçalho com nome,
 CNPJ, endereço e telefone da entidade; logo do documento mais recente da categoria configurada,

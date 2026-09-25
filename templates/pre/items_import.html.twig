@@ -1,7 +1,17 @@
 {% if is_draft and can_edit %}
     <div class="card mb-3">
-        <div class="card-header"><h4 class="card-title">{{ __('Importar tickets', 'gac') }}</h4></div>
-        <div class="card-body">
+        <div class="card-header">
+            <h4 class="card-title flex-grow-1">{{ __('Importar tickets', 'gac') }}</h4>
+            {% if candidates is not empty %}
+                {# Hides the candidates so the lines already imported can be worked on. #}
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-gac-toggle-import
+                        data-label-collapse="{{ __('Recolher itens para importar', 'gac') }}"
+                        data-label-expand="{{ __('Expandir itens para importar', 'gac') }}">
+                    <i class="ti ti-chevron-up"></i> <span>{{ __('Recolher itens para importar', 'gac') }}</span>
+                </button>
+            {% endif %}
+        </div>
+        <div class="card-body" data-gac-import-body>
             {% if candidates is empty %}
                 <p class="text-muted mb-0">{{ __('Nenhum ticket elegível. Confira as categorias elegíveis na configuração do Gac e se o ticket tem um ativo associado.', 'gac') }}</p>
             {% else %}
@@ -37,4 +47,7 @@
             {% endif %}
         </div>
     </div>
+    {% if candidates is not empty %}
+        <script>window.gacApplyImportState && window.gacApplyImportState(document.querySelector('[data-gac-pre][data-protocol-id="{{ protocol.getID() }}"]'));</script>
+    {% endif %}
 {% endif %}

@@ -170,6 +170,50 @@
         }
     });
 
+    // The import candidates can be hidden to work on the lines already imported; remembered per PRE.
+    function importKey(root) {
+        return 'gac_pre_import_collapsed_' + root.dataset.protocolId;
+    }
+
+    function setImportCollapsed(root, collapsed) {
+        const body = root.querySelector('[data-gac-import-body]');
+        const button = root.querySelector('[data-gac-toggle-import]');
+        if (!body || !button) {
+            return;
+        }
+        body.hidden = collapsed;
+        button.querySelector('span').textContent = collapsed ? button.dataset.labelExpand : button.dataset.labelCollapse;
+        button.querySelector('i').className = 'ti ' + (collapsed ? 'ti-chevron-down' : 'ti-chevron-up');
+    }
+
+    window.gacApplyImportState = function (root) {
+        if (!root) {
+            return;
+        }
+        let collapsed = false;
+        try {
+            collapsed = window.localStorage.getItem(importKey(root)) === '1';
+        } catch (e) {
+            // storage unavailable: keep the list open
+        }
+        setImportCollapsed(root, collapsed);
+    };
+
+    document.addEventListener('click', function (event) {
+        const toggle = event.target.closest('[data-gac-toggle-import]');
+        if (!toggle) {
+            return;
+        }
+        const root = toggle.closest('[data-gac-pre]');
+        const collapsed = !root.querySelector('[data-gac-import-body]').hidden;
+        setImportCollapsed(root, collapsed);
+        try {
+            window.localStorage.setItem(importKey(root), collapsed ? '1' : '0');
+        } catch (e) {
+            // storage unavailable: the choice just is not remembered
+        }
+    });
+
     // Return, lost and correction forms post via XHR and refresh only the items tab, so the page
     // keeps its scroll position (a PRE can have dozens of lines).
     // Floating, because the user is usually scrolled far from the top of the tab.
