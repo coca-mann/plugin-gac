@@ -66,7 +66,7 @@ final class PdfRenderer
         ]);
         $mpdf->SetHTMLFooter(sprintf(
             '<table width="100%%" style="font-size:7.5pt;color:#6b7280;"><tr><td>%s</td><td align="right">%s {PAGENO} / {nb}</td></tr></table>',
-            htmlescape($p->fields['number']),
+            htmlescape(self::applicationUrl()),
             htmlescape(__('Página', 'gac'))
         ));
         if ($draft) {
@@ -208,6 +208,14 @@ final class PdfRenderer
             ],
             'rows' => $rows,
         ];
+    }
+
+    /** The GLPI "URL da aplicação" (Configurar > Geral), shown in the report footer; empty if unset. */
+    private static function applicationUrl(): string
+    {
+        global $CFG_GLPI;
+
+        return trim((string) ($CFG_GLPI['url_base'] ?? ''));
     }
 
     private static function loadMpdf(): void
