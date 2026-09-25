@@ -34,12 +34,11 @@
 namespace GlpiPlugin\Gac\Pre;
 
 use CommonDBChild;
-use CommonGLPI;
-use Glpi\Application\View\TemplateRenderer;
 use Session;
 
 /**
- * Event log of a PRE (spec 5.2.1). Also the tab "Histórico".
+ * Event log of a PRE (spec 5.2.1). It is the source of truth for the reopening state; every event
+ * is also written as a text line to GLPI's native history, which is the only history tab (D24).
  */
 class RepairProtocolEvent extends CommonDBChild
 {
@@ -47,7 +46,7 @@ class RepairProtocolEvent extends CommonDBChild
     public static $items_id = 'plugin_gac_repairprotocols_id';
     public $dohistory       = false;
 
-    /** The events tab is the PRE's own history: do not mirror each event into GLPI's native log. */
+    /** Events are mirrored into the PRE's native history explicitly (see log()), not by GLPI. */
     public static $logs_for_parent = false;
 
     public static function getTable($classname = null)
@@ -78,6 +77,90 @@ class RepairProtocolEvent extends CommonDBChild
             'reason'                            => $reason,
             'details'                           => $details === [] ? null : json_encode($details, JSON_UNESCAPED_UNICODE),
         ]);
+
+        // "created" already has GLPI's own "item created" line in the native history.
+        if ($event !== 'created') {
+            // A normal (update) entry on a named field, so the history tab fills its "Campo" column.
+            \Log::history(
+                $protocolId,
+                RepairProtocol::class,
+                [RepairProtocol::HISTORY_OPTION_EVENT, '', self::message($event, $reason, $details, $lineId)]
+            );
+        }
+    }
+
+    /** The text of an event in the native history. */
+    public static function message(string $event, string $reason, array $details, int $lineId): string
+    {
+        $detail = match ($event) {
+            'line_returned'   => self::returnDetail($details),
+            'line_corrected'  => self::correctionDetail($details),
+            'line_lost'       => $reason === '' ? '' : sprintf(__('Justificativa: %s', 'gac'), $reason),
+            'line_removed'    => $reason === '' ? '' : sprintf(__('Motivo: %s', 'gac'), $reason),
+            default           => $reason,
+        };
+
+        return EventMessage::compose(Labels::event($event), self::lineLabel($lineId), $detail);
+    }
+
+    /** "#ticket · asset" of a line, empty when there is no line (or it no longer exists). */
+    private static function lineLabel(int $lineId): string
+    {
+        global $DB;
+
+        if ($lineId <= 0) {
+            return '';
+        }
+        $row = $DB->request([
+            'SELECT' => ['tickets_id', 'item_name'],
+            'FROM'   => RepairProtocolItem::getTable(),
+            'WHERE'  => ['id' => $lineId],
+        ])->current();
+
+        return $row === null ? '' : sprintf('#%d · %s', (int) $row['tickets_id'], (string) $row['item_name']);
+    }
+
+    private static function returnDetail(array $details): string
+    {
+        $parts = [];
+        $outcome = Outcome::tryFrom((string) ($details['outcome'] ?? ''));
+        if ($outcome !== null) {
+            $parts[] = Labels::outcome($outcome);
+        }
+        $destination = Destination::tryFrom((string) ($details['destination'] ?? ''));
+        if ($destination !== null && $destination !== Destination::None) {
+            $parts[] = Labels::destination($destination);
+        }
+        return implode(' · ', $parts);
+    }
+
+    private static function correctionDetail(array $details): string
+    {
+        $format = static function (array $values): array {
+            $out = [];
+            foreach ($values as $key => $value) {
+                $value = $value === null ? '' : (string) $value;
+                if ($key === 'cost' && $value !== '') {
+                    $value = number_format((float) $value, 2, ',', '');
+                } elseif (in_array($key, ['date_return', 'warranty_until'], true) && preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $value, $m)) {
+                    $value = $m[3] . '/' . $m[2] . '/' . $m[1];
+                }
+                $out[$key] = $value;
+            }
+            return $out;
+        };
+
+        return EventMessage::diff(
+            $format((array) ($details['before'] ?? [])),
+            $format((array) ($details['after'] ?? [])),
+            [
+                'date_return'         => __('Data do retorno', 'gac'),
+                'service_description' => __('Serviço executado', 'gac'),
+                'cost'                => __('Custo', 'gac'),
+                'supplier_ref'        => __('Nº da OS ou nota do fornecedor', 'gac'),
+                'warranty_until'      => __('Garantia até', 'gac'),
+            ]
+        );
     }
 
     /**
@@ -100,39 +183,5 @@ class RepairProtocolEvent extends CommonDBChild
         ])->current();
 
         return $row !== null && $row['event'] === 'reopened';
-    }
-
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
-    {
-        if ($item instanceof RepairProtocol) {
-            return self::createTabEntry(__('Histórico', 'gac'));
-        }
-        return '';
-    }
-
-    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
-    {
-        if (!$item instanceof RepairProtocol) {
-            return false;
-        }
-
-        global $DB;
-        $rows = [];
-        foreach ($DB->request([
-            'FROM'  => self::getTable(),
-            'WHERE' => ['plugin_gac_repairprotocols_id' => $item->getID()],
-            'ORDER' => ['id DESC'],
-        ]) as $row) {
-            $rows[] = [
-                'date'   => $row['date_creation'],
-                'user'   => getUserName((int) $row['users_id']),
-                'event'  => Labels::event($row['event']),
-                'line'   => (int) $row['plugin_gac_repairprotocolitems_id'],
-                'reason' => (string) $row['reason'],
-            ];
-        }
-
-        TemplateRenderer::getInstance()->display('@gac/pre/events_tab.html.twig', ['events' => $rows]);
-        return true;
     }
 }

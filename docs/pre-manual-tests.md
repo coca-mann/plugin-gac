@@ -53,6 +53,7 @@ com o motivo.
 | 30 | Sem recarregar | Num PRE com 18 linhas na assistência, rolar até a 9ª, registrar o retorno (com arquivo), errar um retorno sem resultado | A página não recarrega, o scroll fica igual, o cartão da linha some, aviso flutuante de sucesso/erro; o botão volta a ficar ativo depois de um erro | OK |
 | 31 | Recolher a lista | Com cartões de retorno visíveis, recolher a lista de itens, registrar um retorno e recarregar a página | A lista continua recolhida nos dois casos; "Expandir" a mostra de novo; sem cartões de retorno o botão não aparece | OK (o botão ausente não foi conferido na tela) |
 | 32 | Marcar todos na importação | Num rascunho com tickets elegíveis, usar a caixa do cabeçalho da lista "Importar tickets" | Marca e desmarca todos; marcar só alguns deixa a caixa do cabeçalho em estado parcial; marcar todos um a um marca a caixa do cabeçalho | OK (13 candidatos; a importação em si não foi refeita) |
+| 33 | Histórico único | Abrir um PRE com eventos; reabrir com motivo e concluir as correções | Só existe uma aba "Histórico"; cada evento aparece com Campo "Evento" e o texto (ex. "PRE reaberto: motivo", "Retorno registrado (#71 · NB-1): Reparado"); eventos antigos também aparecem | OK |
 
 **Nota do cenário 25 (PDF).** Prévia em rascunho com marca d'água "RASCUNHO"; cabeçalho com nome,
 CNPJ, endereço e telefone da entidade; logo do documento mais recente da categoria configurada,

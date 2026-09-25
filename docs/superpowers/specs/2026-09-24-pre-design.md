@@ -84,6 +84,7 @@ Fora da v1 (decidido):
 | D21 | Nos formulários de retorno e de correção, resultado e destino usam o dropdown do GLPI (`dropdownArrayField`, select2) e as datas usam o seletor de datas do GLPI (`dateField`, flatpickr). O que depende do resultado (mostrar o destino) escuta o evento pelo jQuery, e a aba Itens recarregada por XHR é inserida por fragmento, para os scripts dos componentes rodarem de novo | Decisão do dono: usar os componentes nativos, iguais aos do resto do GLPI |
 | D22 | Quando há cartões de retorno ou de correção visíveis, a aba Itens mostra o botão "Recolher lista de itens", que esconde a tabela de itens; a escolha fica guardada no navegador (`localStorage`, por PRE) e sobrevive a recarregar a página e ao envio por XHR | Decisão do dono: com dezenas de itens, a tabela empurra os cartões de retorno para baixo |
 | D23 | Cada seção de módulo da página de configuração do plugin pode ser recolhida pelo botão do cabeçalho (collapse do Bootstrap); a escolha fica guardada no navegador por seção. O botão Salvar fica dentro da área recolhível | Decisão do dono: a seção do PRE é longa |
+| D24 | Os eventos do PRE aparecem só na aba nativa "Histórico" do GLPI: cada evento, além de gravado em `glpi_plugin_gac_repairprotocolevents`, gera uma entrada de texto no histórico nativo (`Log::history`), sobre a opção de busca oculta 90 "Evento", para a coluna "Campo" mostrar "Evento". A aba própria "Histórico" do plugin foi removida. O evento `created` não é espelhado (o GLPI já registra a criação). Os eventos anteriores foram copiados uma vez para o histórico nativo | Decisão do dono: uma aba só. O tipo de entrada "mensagem simples" do GLPI deixa o "Campo" vazio, por isso se usa a entrada de alteração de campo; o texto aparece como "Mudança de (vazio) para <evento>", formato fixo do GLPI |
 | D14 | **Sem migração** dos PREs do app Django. O app antigo vira arquivo de consulta; o plugin começa do zero, com a sequência de numeração começando em 1, **sem campo de valor inicial** | Decisão do dono: não há itens pendentes no fornecedor, o custo da migração não compensa, e a repetição de números com o app antigo é aceita sem ressalvas. Ver R-4 |
 
 ## 5. Modelo de dados
@@ -113,7 +114,7 @@ Prefixo `glpi_plugin_gac_`. Tipos exatos ficam para o plano de implementação.
 
 ### 5.2.1 `repairprotocolevents` (histórico do PRE)
 
-Registro de eventos do PRE, mostrado numa aba "Histórico". Uma linha por evento: `protocols_id`,
+Registro de eventos do PRE (fonte de verdade do estado de reabertura). Cada evento é espelhado como uma linha de texto no histórico nativo do GLPI, que é a única aba "Histórico" (D24). Uma linha por evento: `protocols_id`,
 `items_id_line` (opcional, quando o evento é de uma linha), `event` (`created`, `sent`,
 `line_returned`, `line_lost`, `line_removed`, `closed`, `reopened`, `line_corrected`, `canceled`), `users_id`,
 `date_creation`, `reason` (texto) e `details` (JSON com o antes e o depois, nas correções).

@@ -43,6 +43,9 @@ use Supplier;
 class RepairProtocol extends CommonDBTM
 {
     public static $rightname = 'plugin_gac_pre';
+    /** Search option id that labels the events mirrored into the native history. */
+    public const HISTORY_OPTION_EVENT = 90;
+
     public $dohistory        = true;
 
     public const RIGHT_SEND   = 256;
@@ -196,7 +199,6 @@ class RepairProtocol extends CommonDBTM
         $tabs = [];
         $this->addDefaultFormTab($tabs);
         $this->addStandardTab(RepairProtocolItem::class, $tabs, $options);
-        $this->addStandardTab(RepairProtocolEvent::class, $tabs, $options);
         $this->addStandardTab(\Document_Item::class, $tabs, $options);
         $this->addStandardTab('Log', $tabs, $options);
         return $tabs;
@@ -252,6 +254,12 @@ class RepairProtocol extends CommonDBTM
             ['id' => 6, 'table' => $t, 'field' => 'date_issued', 'name' => __('Data de emissão', 'gac'), 'datatype' => 'date', 'massiveaction' => false],
             ['id' => 7, 'table' => $t, 'field' => 'date_sent', 'name' => __('Data de envio', 'gac'), 'datatype' => 'datetime', 'massiveaction' => false],
             ['id' => 8, 'table' => $t, 'field' => 'date_closed', 'name' => __('Data de encerramento', 'gac'), 'datatype' => 'datetime', 'massiveaction' => false],
+            // Not a real column of the list: it only names the "Campo" of the events written to the
+            // native history (see RepairProtocolEvent::log()).
+            [
+                'id' => self::HISTORY_OPTION_EVENT, 'table' => $t, 'field' => 'comment', 'name' => __('Evento', 'gac'),
+                'datatype' => 'string', 'nosearch' => true, 'nodisplay' => true, 'massiveaction' => false,
+            ],
             [
                 'id' => 80, 'table' => 'glpi_entities', 'field' => 'completename',
                 'name' => Entity::getTypeName(1), 'datatype' => 'dropdown', 'massiveaction' => false,
