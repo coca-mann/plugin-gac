@@ -25,6 +25,7 @@ Toda tarefa herda estas restrições, copiadas da spec e do `CLAUDE.md`:
 - Todo arquivo PHP novo começa com o cabeçalho de licença de `tools/HEADER` (copie as linhas 1 a 30 de `setup.php`). Os blocos de código deste plano omitem o cabeçalho para ficar curtos.
 - `php` não está no PATH. Use `/c/xampp/php/php.exe` (PHP 8.2.12). Para lint: `/c/xampp/php/php.exe -l <arquivo>`.
 - A cópia local do GLPI 11.0.8 é uma **release, não um checkout de desenvolvimento**: PHPUnit/PHPStan do GLPI não rodam lá. Os testes automatizados deste plano cobrem só as classes puras (`tests/Unit/`), com PHPUnit em `.phar`. O resto tem **roteiro de teste manual** (Tarefa 13).
+- **JS em cache no navegador.** O GLPI serve `public/js/pre.js` como `pre.js?v=<hash>` com `max-age` de 30 dias, e o hash só muda quando a versão do plugin muda. Depois de editar o JS no GLPI de desenvolvimento, force a atualização (`fetch(<url com ?v>, {cache: 'reload'})` e recarregue, ou Ctrl+F5); num release a versão sobe e o problema não existe.
 - **Cache do GLPI.** O GLPI local roda em modo `production`: ele **não recompila** templates Twig editados. Depois de mudar qualquer `.twig`, rode `cd /c/Users/juliano/VSCode/glpi-xampp-dev-plugin && /c/xampp/php/php.exe bin/console cache:clear`, senão a tela continua mostrando o template antigo (foi assim que a Tarefa 8 pareceu não funcionar na primeira verificação).
 - O plugin já está ligado ao GLPI local por junção: `C:\Users\juliano\VSCode\glpi-xampp-dev-plugin\plugins\gac` → este diretório.
 - As chaves de configuração do PRE usam o prefixo `pre_`, guardadas em `glpi_configs` no contexto `plugin:gac` (D16).
@@ -4210,7 +4211,9 @@ final class ReturnService
                 Destination::tryFrom((string) ($data['destination'] ?? ''))
             );
         } catch (\InvalidArgumentException) {
-            return ServiceResult::fail(__('Informe o destino do equipamento com defeito.', 'gac'));
+            return ServiceResult::fail($outcome->isDefective()
+                ? __('Informe o destino do equipamento com defeito.', 'gac')
+                : __('Este resultado não admite destino.', 'gac'));
         }
 
         $dateReturn = self::date((string) ($data['date_return'] ?? '')) ?? date('Y-m-d');
@@ -4241,11 +4244,11 @@ final class ReturnService
 
             $ticket = new Ticket();
             if (!$ticket->getFromDB((int) $line->fields['tickets_id'])) {
-                throw new \RuntimeException('Ticket not found.');
+                throw new \RuntimeException(__('Ticket não encontrado.', 'gac'));
             }
             $asset = getItemForItemtype($line->fields['itemtype']);
             if (!$asset || !$asset->getFromDB((int) $line->fields['items_id'])) {
-                throw new \RuntimeException('Asset not found.');
+                throw new \RuntimeException(__('Ativo não encontrado.', 'gac'));
             }
 
             // Asset status
@@ -4254,7 +4257,7 @@ final class ReturnService
                 : $actions['asset']['states_id'];
             if ((int) $asset->fields['states_id'] !== $newState) {
                 if (!$asset->update(['id' => $asset->getID(), 'states_id' => $newState])) {
-                    throw new \RuntimeException('Could not change the asset status.');
+                    throw new \RuntimeException(__('Não foi possível alterar o status do ativo.', 'gac'));
                 }
             }
 
@@ -4338,7 +4341,7 @@ final class ReturnService
 
             $ticket = new Ticket();
             if (!$ticket->getFromDB((int) $line->fields['tickets_id'])) {
-                throw new \RuntimeException('Ticket not found.');
+                throw new \RuntimeException(__('Ticket não encontrado.', 'gac'));
             }
             // Plain follow-up: the ticket stays as it is (pending).
             TicketOps::followup($ticket, sprintf(
