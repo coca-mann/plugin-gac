@@ -173,13 +173,35 @@ function plugin_gac_install(): bool
                 ['rights' => ALLSTANDARDRIGHT
                     | RepairProtocol::RIGHT_SEND
                     | RepairProtocol::RIGHT_RETURN
-                    | RepairProtocol::RIGHT_REOPEN],
+                    | RepairProtocol::RIGHT_REOPEN
+                    | RepairProtocol::RIGHT_CONFIG],
                 ['name' => $right, 'profiles_id' => $admin_profiles]
             );
         }
     }
 
     // The definitive PDF is stored through Document, which only accepts registered types.
+    // Settings used to be gated by GLPI's own "config" right; now they have the feature's
+    // "Configurar" bit. Once, give it to the profiles that could configure before.
+    if (!isset(Config::getConfigurationValues('plugin:gac')['pre_config_right_migrated'])) {
+        $config_profiles = array_column(
+            iterator_to_array($DB->request([
+                'SELECT' => 'profiles_id',
+                'FROM'   => ProfileRight::getTable(),
+                'WHERE'  => ['name' => 'config', 'rights' => ['&', UPDATE]],
+            ])),
+            'profiles_id'
+        );
+        if ($config_profiles !== []) {
+            $DB->update(
+                ProfileRight::getTable(),
+                ['rights' => new QueryExpression($DB::quoteName('rights') . ' | ' . RepairProtocol::RIGHT_CONFIG)],
+                ['name' => RepairProtocol::$rightname, 'profiles_id' => $config_profiles]
+            );
+        }
+        Config::setConfigurationValues('plugin:gac', ['pre_config_right_migrated' => '1']);
+    }
+
     if (countElementsInTable('glpi_documenttypes', ['ext' => 'pdf']) === 0) {
         $DB->insert('glpi_documenttypes', [
             'name'          => 'PDF',
@@ -225,7 +247,7 @@ function plugin_gac_uninstall(): bool
 
     $DB->delete(ProfileRight::getTable(), ['name' => RepairProtocol::$rightname]);
     $DB->delete('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]);
-    Config::deleteConfigurationValues('plugin:gac', array_keys(PreSettings::defaults()));
+    Config::deleteConfigurationValues('plugin:gac', array_merge(array_keys(PreSettings::defaults()), ['pre_config_right_migrated']));
 
     return true;
 }

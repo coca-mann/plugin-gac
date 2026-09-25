@@ -36,6 +36,7 @@ namespace GlpiPlugin\Gac\Pre;
 use Dropdown;
 use DocumentCategory;
 use GlpiPlugin\Gac\ConfigSection;
+use GlpiPlugin\Gac\Features;
 use ITILCategory;
 use PendingReason;
 use Session;
@@ -46,6 +47,11 @@ final class PreConfigSection implements ConfigSection
     public function key(): string
     {
         return 'pre';
+    }
+
+    public function canConfigure(): bool
+    {
+        return Features::canConfigure(RepairProtocol::$rightname);
     }
 
     public function title(): string
@@ -213,7 +219,7 @@ final class PreConfigSection implements ConfigSection
 
     public function handlePost(array $post): void
     {
-        if (!Session::haveRight('config', UPDATE)) {
+        if (!$this->canConfigure()) {
             return;
         }
 

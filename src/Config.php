@@ -53,7 +53,7 @@ final class Config
     public static function handlePost(array $post): void
     {
         foreach (self::sections() as $section) {
-            if (($post['section'] ?? '') === $section->key()) {
+            if (($post['section'] ?? '') === $section->key() && $section->canConfigure()) {
                 $section->handlePost($post);
                 return;
             }
@@ -64,6 +64,9 @@ final class Config
     {
         echo "<div class='container-fluid'>";
         foreach (self::sections() as $section) {
+            if (!$section->canConfigure()) {
+                continue;
+            }
             $key  = htmlescape($section->key());
             $body = 'gac-config-' . $key;
             echo "<form method='post' action='" . htmlescape(self::pageUrl()) . "' class='card mb-4'>";

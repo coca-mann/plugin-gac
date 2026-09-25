@@ -36,6 +36,7 @@ namespace GlpiPlugin\Gac\Pre;
 use CommonDBTM;
 use CommonGLPI;
 use Entity;
+use GlpiPlugin\Gac\Features;
 use Glpi\Application\View\TemplateRenderer;
 use Session;
 use Supplier;
@@ -51,6 +52,7 @@ class RepairProtocol extends CommonDBTM
     public const RIGHT_SEND   = 256;
     public const RIGHT_RETURN = 512;
     public const RIGHT_REOPEN = 1024;
+    public const RIGHT_CONFIG = Features::RIGHT_CONFIG;
 
     /** Explicit: the class sits in a sub-namespace, GLPI's derived name would be wrong. */
     public static function getTable($classname = null)
@@ -83,6 +85,7 @@ class RepairProtocol extends CommonDBTM
         $values[self::RIGHT_SEND]   = __('Enviar', 'gac');
         $values[self::RIGHT_RETURN] = __('Registrar retorno', 'gac');
         $values[self::RIGHT_REOPEN] = __('Reabrir', 'gac');
+        $values[self::RIGHT_CONFIG] = __('Configurar', 'gac');
         return $values;
     }
 

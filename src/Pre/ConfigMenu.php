@@ -33,7 +33,7 @@
 
 namespace GlpiPlugin\Gac\Pre;
 
-use Session;
+use GlpiPlugin\Gac\Features;
 
 class ConfigMenu
 {
@@ -44,7 +44,7 @@ class ConfigMenu
 
     public static function getMenuContent(): array
     {
-        if (!Session::haveRight('config', UPDATE)) {
+        if (!Features::canConfigureAny()) {
             return [];
         }
         return [

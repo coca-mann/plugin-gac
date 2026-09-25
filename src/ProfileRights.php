@@ -31,7 +31,7 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac;
 
 use CommonGLPI;
 use Html;
@@ -42,7 +42,7 @@ class ProfileRights extends CommonGLPI
 {
     public static function getTypeName($nb = 0)
     {
-        return __('Plugin - DTI GAC - Protocolo de Reparo', 'gac');
+        return GacMenu::pluginName();
     }
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
@@ -70,13 +70,7 @@ class ProfileRights extends CommonGLPI
             echo "<form method='post' action='" . htmlescape($profile->getFormURL()) . "' data-track-changes='true'>";
         }
 
-        $profile->displayRightsChoiceMatrix([
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-        ], [
+        $profile->displayRightsChoiceMatrix(Features::all(), [
             'canedit'       => $canedit,
             'default_class' => 'tab_bg_2',
             'title'         => self::getTypeName(),

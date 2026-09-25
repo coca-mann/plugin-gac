@@ -44,6 +44,9 @@ interface ConfigSection
 
     public function title(): string;
 
+    /** Whether the current user may see and save this module's settings. */
+    public function canConfigure(): bool;
+
     /** HTML of the section body (form fields only; the page provides <form> and Save). */
     public function render(): string;
 

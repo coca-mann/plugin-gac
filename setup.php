@@ -33,7 +33,7 @@
 
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Gac\GacMenu;
-use GlpiPlugin\Gac\Pre\ProfileRights;
+use GlpiPlugin\Gac\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
 define('PLUGIN_GAC_VERSION', '0.2.0');
