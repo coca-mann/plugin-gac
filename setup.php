@@ -37,7 +37,7 @@ use GlpiPlugin\Gac\Pre\PreMenu;
 use GlpiPlugin\Gac\Pre\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.1.1');
+define('PLUGIN_GAC_VERSION', '0.1.2');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
