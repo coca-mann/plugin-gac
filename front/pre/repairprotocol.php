@@ -31,8 +31,6 @@
  * -------------------------------------------------------------------------
  */
 
-include('../../../../inc/includes.php');
-
 use GlpiPlugin\Gac\Pre\PreMenu;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 

@@ -31,8 +31,6 @@
  * -------------------------------------------------------------------------
  */
 
-include('../../../../inc/includes.php');
-
 use GlpiPlugin\Gac\Pre\PdfRenderer;
 use GlpiPlugin\Gac\Pre\ProtocolStatus;
 use GlpiPlugin\Gac\Pre\RepairProtocol;

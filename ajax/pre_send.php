@@ -33,8 +33,6 @@
 
 // CSRF is validated by the GLPI 11 kernel from the X-Glpi-Csrf-Token header; do not add
 // Session::checkCSRF() here.
-include('../../../inc/includes.php');
-
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 use GlpiPlugin\Gac\Pre\RepairProtocolItem;
 use GlpiPlugin\Gac\Pre\SendService;

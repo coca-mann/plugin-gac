@@ -31,8 +31,6 @@
  * -------------------------------------------------------------------------
  */
 
-include('../../../inc/includes.php');
-
 use GlpiPlugin\Gac\Config;
 use GlpiPlugin\Gac\Pre\ConfigMenu;
 

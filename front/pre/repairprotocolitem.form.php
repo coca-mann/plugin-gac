@@ -31,8 +31,6 @@
  * -------------------------------------------------------------------------
  */
 
-include('../../../../inc/includes.php');
-
 use GlpiPlugin\Gac\Pre\LineService;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 use GlpiPlugin\Gac\Pre\ReopenService;
