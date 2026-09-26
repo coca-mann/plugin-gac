@@ -56,9 +56,6 @@ final class LockPolicy
             if ($key === '' || $key[0] === '_' || in_array($key, self::ALLOWED, true) || !array_key_exists($key, $fields)) {
                 continue;
             }
-            if (is_array($value)) {
-                continue;
-            }
             if (!self::same($value, $fields[$key])) {
                 $blocked[] = $key;
             }
@@ -74,9 +71,38 @@ final class LockPolicy
      */
     private static function same(mixed $a, mixed $b): bool
     {
+        // Multi-valued fields (groups_id, groups_id_tech...) come as '' in the form and as [] (or a list of
+        // ids) in $item->fields: compare them as sorted sets of non-empty ids.
+        if (is_array($a) || is_array($b)) {
+            return self::idSet($a) === self::idSet($b);
+        }
         $a = $a === null ? '' : trim((string) $a);
         $b = $b === null ? '' : trim((string) $b);
         $c = static fn(string $v): string => preg_match('/^-?\d+\.\d+$/', $v) === 1 ? rtrim(rtrim($v, '0'), '.') : $v;
         return $c($a) === $c($b);
+    }
+
+    /**
+     * @return list<string> the distinct non-empty values ('', '0', 0, null and [] are empty), sorted
+     */
+    private static function idSet(mixed $v): array
+    {
+        $out = [];
+        $walk = static function (mixed $x) use (&$walk, &$out): void {
+            if (is_array($x)) {
+                foreach ($x as $y) {
+                    $walk($y);
+                }
+                return;
+            }
+            $x = $x === null ? '' : trim((string) $x);
+            if ($x !== '' && $x !== '0') {
+                $out[$x] = true;
+            }
+        };
+        $walk($v);
+        $ids = array_map('strval', array_keys($out));
+        sort($ids, SORT_STRING);
+        return $ids;
     }
 }

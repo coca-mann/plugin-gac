@@ -106,8 +106,28 @@ final class LockPolicyTest extends TestCase
         $this->assertSame(['ticket_tco'], LockPolicy::blockedFields(['ticket_tco' => '10.5'], ['ticket_tco' => '10.0000']));
     }
 
-    public function testArrayInputsAreIgnored(): void
+    public function testRealFormShapeOfGroupsIsNotAChange(): void
     {
-        $this->assertSame([], LockPolicy::blockedFields(['name' => ['a', 'b']], self::fields()));
+        // Logged in the browser: input '' (string) vs $item->fields [] (empty array).
+        $fields = self::fields() + ['groups_id' => [], 'groups_id_tech' => []];
+        $this->assertSame([], LockPolicy::blockedFields(['groups_id' => '', 'groups_id_tech' => ''], $fields));
+        $this->assertSame([], LockPolicy::blockedFields(['groups_id' => '0', 'groups_id_tech' => 0], $fields));
+        $this->assertSame([], LockPolicy::blockedFields(['groups_id' => [], 'groups_id_tech' => ['0', '']], $fields));
+    }
+
+    public function testGroupChangesAreBlocked(): void
+    {
+        $fields = self::fields() + ['groups_id' => [], 'groups_id_tech' => ['3', '5']];
+        $this->assertSame(['groups_id'], LockPolicy::blockedFields(['groups_id' => '4', 'groups_id_tech' => ['5', '3']], $fields));
+        $this->assertSame(['groups_id_tech'], LockPolicy::blockedFields(['groups_id' => [], 'groups_id_tech' => ['3']], $fields));
+        $this->assertSame(['groups_id_tech'], LockPolicy::blockedFields(['groups_id_tech' => ''], $fields));
+    }
+
+    public function testArrayInputsAreComparedAsSortedSets(): void
+    {
+        $this->assertSame(['name'], LockPolicy::blockedFields(['name' => ['a', 'b']], self::fields()));
+        $fields = ['groups_id' => ['2', '9']];
+        $this->assertSame([], LockPolicy::blockedFields(['groups_id' => ['9', '2', '0']], $fields));
+        $this->assertSame([], LockPolicy::blockedFields(['groups_id' => [9, 2]], $fields));
     }
 }
