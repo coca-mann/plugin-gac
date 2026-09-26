@@ -112,6 +112,9 @@ Prefixo `glpi_plugin_gac_`. Tipos exatos ficam para o plano de implementação.
 
 Os anexos da baixa e da conclusão (vários) são `Document` ligados ao laudo (`Document_Item`).
 
+Os nomes das colunas de chave estrangeira seguem a convenção do GLPI: `plugin_gac_ltbps_id`,
+`plugin_gac_ltbpitems_id`, `plugin_gac_ltbpreasons_id`.
+
 ### 5.2 `ltbpitems` (a linha)
 
 - Chave: `ltbps_id`, `itemtype`, `items_id`
@@ -121,6 +124,9 @@ Os anexos da baixa e da conclusão (vários) são `Document` ligados ao laudo (`
 - Origem no PRE (opcionais, vazios para ativos vindos da busca livre): `pre_items_id` (a linha do
   PRE), `pre_number` (número do PRE copiado) e `tickets_id` (ticket de origem). Ver seção 14.
 - `last_error`
+
+Os nomes das colunas de chave estrangeira seguem a convenção do GLPI: `plugin_gac_ltbps_id`,
+`plugin_gac_ltbpitems_id`, `plugin_gac_ltbpreasons_id`.
 
 ### 5.3 `ltbpreasons` (cadastro de motivos)
 
@@ -132,7 +138,8 @@ Os anexos da baixa e da conclusão (vários) são `Document` ligados ao laudo (`
 Mesmo padrão do PRE (D24): uma linha por evento (`ltbps_id`, `items_id_line` opcional, `event`,
 `users_id`, `date_creation`, `reason`, `details` JSON), espelhada no histórico nativo do GLPI.
 Eventos: `created`, `line_added`, `line_removed`, `issued`, `signed_uploaded`, `sent_to_patrimony`,
-`written_off`, `completed`, `canceled`, `line_document_attached`.
+`written_off`, `completed`, `canceled`, `line_document_attached`, `document_attached` (anexo do
+laudo na baixa ou na conclusão).
 
 ### 5.5 Configuração
 
@@ -147,6 +154,8 @@ Seção própria na tela de configuração do plugin, chaves prefixadas `ltbp_` 
 - `ltbp_default_reason_unrepairable` e `ltbp_default_reason_quote_rejected`: motivo padrão por
   resultado do PRE (L24), opcionais.
 - `ltbp_solve_ticket_on_completion` (padrão desligado, L25).
+- `ltbp_logo_documentcategories_id`: categoria de documento da logomarca do PDF (própria do LTBP;
+  costuma ser a mesma do PRE). O cabeçalho do PDF vem da entidade do laudo, como no PRE.
 - Acesso ao cadastro de motivos (5.3).
 
 ### 5.6 Integridade
@@ -225,9 +234,25 @@ ativos nos dropdowns; ver o aviso de `is_active` no CLAUDE.md).
   bloquear.
 - **Desempenho**: a verificação só roda quando o `input` tem campos alterados, com uma consulta
   indexada e cache por requisição.
-- **Tipos de ativo**: usa a lista de classes de ativo do GLPI (`$CFG_GLPI['asset_types']`), que
-  inclui os ativos personalizados (mesma base da D29 do PRE). Como registrar o hook para
-  ativos personalizados gerados em tempo de execução precisa ser verificado (R-1).
+- **Tipos de ativo**: os 10 tipos nativos de `$CFG_GLPI['asset_types']` mais os ativos
+  personalizados ativos. Na inicialização do plugin a lista do GLPI só traz os nativos (os
+  personalizados carregam depois, no `CustomObjectsBoot`, e `AssetDefinitionManager::getDefinitions()`
+  ainda está vazio), então `AssetUpdateGuard::itemtypes()` lê a tabela de definições
+  (`glpi_assets_assetdefinitions`, linhas ativas) direto e monta os nomes das classes com os
+  métodos estáticos de `AssetDefinition`; em qualquer erro cai para a lista nativa (R-1, resolvido).
+- **Direito de liberação**: a checagem de "Editar ativo baixado" lê
+  `$_SESSION['glpiactiveprofile']` direto, e não `Session::haveRight()`, porque este devolve
+  `true` no inventário, no cron, em `callAsSystem()` e com a checagem de direitos desligada
+  (`src/Session.php:1473-1478`), o que contornaria o bloqueio. Verificado simulando esses
+  caminhos no nível do código; uma requisição real de inventário e uma execução real de `cron.php`
+  **não** foram feitas (R-4 continua aberto).
+- **Limites do bloqueio**: o hook cobre o `->update()`. Não cobre exclusão/purga, `updateInDB()`,
+  `$DB->update` cru nas cascatas do núcleo (transferência, substituição em dropdown, tabelas de
+  vínculo de Infocom e `Item_*`) nem SQL direto. O `LockPolicy` ignora campos com valor em array.
+  Podem ocorrer falsos positivos ao salvar só o comentário, se o formulário reenviar campos
+  formatados de outro jeito (data vs data e hora, CRLF vs LF em textareas, booleanos,
+  `entities_id`/`is_recursive` em formulário de transferência): a verificar no navegador
+  (cenário 22 do roteiro).
 
 ## 9. PDF
 
@@ -286,15 +311,22 @@ compartilhado se o LTBP realmente precisar delas, e sem alterar o comportamento 
 
 ## 13. Pendências e riscos
 
-- **R-1**: registrar o hook de bloqueio para ativos personalizados (classes geradas em tempo de
-  execução). A lista `$CFG_GLPI['asset_types']` deve resolver, mas precisa ser confirmada.
+- **R-1 (resolvido por evidência)**: na inicialização do plugin, `$CFG_GLPI['asset_types']` tem só
+  os 10 tipos nativos; os ativos personalizados (no GLPI de dev, `Glpi\CustomAsset\nobreakAsset`)
+  carregam depois, e `AssetDefinitionManager::getDefinitions()` também está vazio nesse ponto.
+  Correção em `AssetUpdateGuard::itemtypes()` (seção 8): leitura direta da tabela de definições.
+  Verificado: hooks registrados para 11 classes e a atualização do nome de um ativo personalizado
+  bloqueado é recusada.
 - **R-2**: medir a emissão e a confirmação com muitos ativos (por exemplo 200). Se passar do
   aceitável, mudar para uma linha por requisição (D15 do PRE).
 - **R-3**: um equipamento baixado que ainda tenha agente de inventário pode gerar um **ativo
   novo** (se as regras de identificação não o reconhecerem). O hook só protege o ativo
   existente. Mitigação operacional: desinstalar ou desativar o agente antes do descarte.
-- **R-4**: o comportamento do bloqueio com uma importação real de inventário não foi
-  exercitado; só a leitura do código. Testar antes de dar como pronto.
+- **R-4 (aberto)**: o bloqueio com uma importação real de inventário **não foi executado**
+  (cenário 26 do roteiro: Não executado). Foram simulados só no nível do código a sessão de
+  inventário, o cron e `Session::callAsSystem()`: sem o direito o update é recusado, com o direito
+  passa. Isso levou a checagem do direito a ler `$_SESSION['glpiactiveprofile']` (seção 8).
+  Testar com um agente real e um `cron.php` real antes de dar como pronto.
 - **R-5**: nada impede que um ativo já `Baixado` seja escolhido para um novo PRE. Avaliar como
   ajuste do PRE em um passo posterior.
 - **R-6**: a validade do papel escaneado e da futura assinatura eletrônica depende do setor de
@@ -319,7 +351,7 @@ O PRE **não sabe a destinação** (descarte ou doação): quem a define é o la
 | L19 | O gatilho fica na **aba Itens do PRE**: linha `Devolvida` com destino `Baixa` e sem laudo mostra o selo "Aguardando laudo" e uma caixa de seleção; o botão em lote **"Adicionar a laudo"** leva as marcadas para um laudo em `Rascunho` existente ou cria um novo (escolhendo a destinação). O botão só aparece se o usuário tiver direito de criar ou editar rascunho de LTBP | Decisão do dono. Atende também os retornos antigos e o lote, e não altera a transação do retorno |
 | L20 | O retorno do PRE **não é alterado**: nada é adicionado ao laudo dentro da transação do retorno | Se a adição falhasse, desfaria um retorno que já mexeu no ticket e no ativo; a D19 do PRE já segue o mesmo princípio para os anexos. E o retorno não conhece a destinação |
 | L21 | "Pendente de laudo" = linha do PRE `Devolvida` com destino `Baixa`, cujo ativo **não está em nenhum laudo não cancelado**. Laudo cancelado devolve o ativo à lista; ativo em laudo `Concluído` sai dela, mesmo com o PRE ainda mostrando `Baixa` | Evita oferecer de novo um ativo já tratado |
-| L22 | **Fronteira entre os módulos.** A regra fica toda no LTBP, em um serviço (`LtbpLinker`); o PRE só mostra o selo e chama esse serviço. Leituras cruzadas ficam restritas: o LTBP lê as linhas do PRE (candidatos, origem e a regra L8), e o PRE lê `Ltbp::activeLaudoFor(itemtype, items_id)` para o selo. O LTBP **nunca escreve no PRE** | Mantém os módulos isolados (CLAUDE.md) com o mínimo de dependência |
+| L22 | **Fronteira entre os módulos.** A regra fica toda no LTBP, em um serviço (`LtbpLinker`); o PRE só mostra o selo e chama esse serviço. Leituras cruzadas ficam restritas: o LTBP lê as linhas do PRE (candidatos, origem e a regra L8), e o PRE lê `Ltbp::activeLaudoFor(itemtype, items_id)` para o selo e `LtbpLinker::openDrafts()` (os rascunhos que o seletor do botão em lote lista). O LTBP **nunca escreve no PRE** | Mantém os módulos isolados (CLAUDE.md) com o mínimo de dependência |
 | L23 | A linha do LTBP guarda a origem (`pre_items_id`, `pre_number`, `tickets_id`), e a lista de candidatos mostra de onde cada ativo veio (número do PRE, ticket, resultado, descrição do serviço) | Rastreio nos dois sentidos, e o técnico vê por que o ativo está na lista |
 
 ### 14.2 Decidido: motivo padrão e ticket de origem
@@ -328,6 +360,14 @@ O PRE **não sabe a destinação** (descarte ou doação): quem a define é o la
 |---|---|---|
 | L24 | **Motivo padrão por resultado.** A configuração mapeia "Sem conserto" e "Orçamento não aprovado" para um motivo do cadastro (`ltbp_default_reason_unrepairable`, `ltbp_default_reason_quote_rejected`). Ao adicionar uma linha vinda do PRE, o motivo já vem selecionado e editável. Sem mapeamento, a linha entra sem motivo | Decisão do dono: economizar a digitação do motivo, que quase sempre se repete por resultado |
 | L25 | **Acompanhamentos no ticket de origem.** Nos marcos emissão, baixa confirmada e conclusão, o LTBP registra um acompanhamento no ticket de origem da linha (só linhas vindas do PRE). Ao concluir, o ticket só é solucionado se `ltbp_solve_ticket_on_completion` estiver ligado (padrão **desligado**, no mesmo espírito conservador da D8), e vale a regra da D17: com outras linhas ainda ativas do mesmo ticket (em qualquer PRE, ou em outro laudo não concluído), o ticket não é solucionado. Ticket já fechado à mão é ignorado sem erro. A falha no ticket vira aviso e não desfaz o avanço do laudo (princípio da D19) | Decisão do dono. Sem isso o ticket ficaria Pendente para sempre (R-7) |
+
+Ajuste feito na implementação: no ramo do rascunho existente, `LtbpLinker::addFromPre` também
+exige `Ltbp::canUpdate()` (o direito do perfil), porque `$laudo->canUpdateItem()` só confere
+entidade e estado; sem isso um usuário só com leitura conseguia acrescentar linhas a um rascunho.
+
+Suposição confirmada: um acompanhamento simples num ticket **Pendente** mantém o status, o motivo
+de pendência e o `previous_status` (teste da Tarefa 12), então `TicketOps::keepPendingWithReason`
+não foi necessário.
 
 ### 14.3 Limites
 

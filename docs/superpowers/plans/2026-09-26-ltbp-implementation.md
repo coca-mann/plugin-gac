@@ -5966,7 +5966,7 @@ final class LtbpLinker
         $laudo   = new Ltbp();
         $created = false;
         if ($ltbpId > 0) {
-            if (!$laudo->getFromDB($ltbpId) || !StateMachine::canEditDraft($laudo->getStatus()) || !$laudo->canUpdateItem()) {
+            if (!Ltbp::canUpdate() || !$laudo->getFromDB($ltbpId) || !StateMachine::canEditDraft($laudo->getStatus()) || !$laudo->canUpdateItem()) {
                 return ServiceResult::fail(__('Escolha um laudo em rascunho que você possa editar.', 'gac'));
             }
         } else {
