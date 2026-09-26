@@ -5688,19 +5688,36 @@ Create `src/Ltbp/AssetUpdateGuard.php`:
 namespace GlpiPlugin\Gac\Ltbp;
 
 use CommonDBTM;
+use Glpi\Asset\AssetDefinition;
 use Session;
 
 /**
  * Refuses updates to an asset that was written off (spec L14 and section 8). It is a
  * "pre_item_update" hook: it runs on every ->update() of an asset class, which is the path of the
  * asset form, the REST API, the inventory and GLPI's own "stale agent" action.
+ *
+ * Custom asset definitions are loaded after the plugins are initialised, so they are not yet in
+ * $CFG_GLPI['asset_types'] when the hook is registered: itemtypes() reads them from the definitions
+ * table and builds the class name the way AssetDefinition::getCustomObjectClassName() does.
  */
 final class AssetUpdateGuard
 {
     /** @return list<string> the asset classes the hook is registered for */
     public static function itemtypes(): array
     {
-        return AssetTypes::all();
+        $types = AssetTypes::all();
+        try {
+            global $DB;
+            $table = AssetDefinition::getTable();
+            if ($DB->tableExists($table)) {
+                foreach ($DB->request(['SELECT' => ['system_name'], 'FROM' => $table, 'WHERE' => ['is_active' => 1]]) as $row) {
+                    $types[] = AssetDefinition::getCustomObjectNamespace() . '\\' . $row['system_name'] . AssetDefinition::getCustomObjectClassSuffix();
+                }
+            }
+        } catch (\Throwable) {
+            // Never break the site at init: fall back to the native list.
+        }
+        return array_values(array_unique($types));
     }
 
     public static function onPreUpdate(CommonDBTM $item): void
@@ -5711,9 +5728,10 @@ final class AssetUpdateGuard
         if (!WrittenOffLock::isLocked($item::class, (int) $item->getID())) {
             return;
         }
-        // Only profiles that were granted "Editar ativo baixado" pass; without a user session
-        // (inventory, cron) this right is denied and the lock holds.
-        if (Session::haveRight(Ltbp::$rightname, Ltbp::RIGHT_EDIT_WRITTEN_OFF)) {
+        // Only profiles that were granted "Editar ativo baixado" pass. Read the active profile
+        // directly: Session::haveRight() must NOT be used, it returns true for inventory, cron,
+        // callAsSystem() and disabled rights checks, which are exactly the paths the lock must stop.
+        if (((int) ($_SESSION['glpiactiveprofile'][Ltbp::$rightname] ?? 0)) & Ltbp::RIGHT_EDIT_WRITTEN_OFF) {
             return;
         }
 
