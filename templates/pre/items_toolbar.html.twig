@@ -1,4 +1,6 @@
-<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+{% set has_actions = can_send or can_pdf or (can_reopen and (protocol.fields['status'] == 'closed' or is_reopened)) %}
+<div class="{{ has_actions ? 'card border mb-4' : 'mb-3' }}" data-gac-toolbar>
+<div class="{{ has_actions ? 'card-body py-2' : '' }} d-flex flex-wrap gap-2 align-items-center">
     {% if can_send %}
         {% if send_mode == 'start' %}
             <button type="button" class="btn btn-primary" data-gac-send="start">
@@ -40,4 +42,5 @@
     {% endif %}
 
     <div class="flex-grow-1" data-gac-progress></div>
+</div>
 </div>
