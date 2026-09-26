@@ -171,7 +171,12 @@ final class IssueService
             return ServiceResult::fail($e->getMessage());
         }
 
-        return ServiceResult::ok(__('Laudo emitido para assinatura.', 'gac'));
+        $message = __('Laudo emitido para assinatura.', 'gac');
+        $notes   = TicketNotes::milestone($laudo, 'issued');
+        if ($notes !== []) {
+            $message .= ' ' . __('Avisos nos tickets:', 'gac') . ' ' . implode(' ', $notes);
+        }
+        return ServiceResult::ok($message);
     }
 
     public static function cancel(Ltbp $laudo, string $reason): ServiceResult

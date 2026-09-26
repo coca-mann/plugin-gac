@@ -173,6 +173,10 @@ final class StepService
         if ($attached['problems'] !== []) {
             $message .= ' ' . __('Nem todos os documentos foram anexados:', 'gac') . ' ' . implode(' ', $attached['problems']);
         }
+        $notes = TicketNotes::milestone($laudo, 'written_off');
+        if ($notes !== []) {
+            $message .= ' ' . __('Avisos nos tickets:', 'gac') . ' ' . implode(' ', $notes);
+        }
         return ServiceResult::ok($message);
     }
 
@@ -225,6 +229,10 @@ final class StepService
         $message = __('Destinação concluída. O laudo está encerrado.', 'gac');
         if ($attached['problems'] !== []) {
             $message .= ' ' . __('Nem todos os documentos foram anexados:', 'gac') . ' ' . implode(' ', $attached['problems']);
+        }
+        $notes = TicketNotes::milestone($laudo, 'completed');
+        if ($notes !== []) {
+            $message .= ' ' . __('Avisos nos tickets:', 'gac') . ' ' . implode(' ', $notes);
         }
         return ServiceResult::ok($message);
     }
