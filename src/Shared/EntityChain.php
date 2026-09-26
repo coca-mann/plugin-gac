@@ -33,7 +33,7 @@
 
 declare(strict_types=1);
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac\Shared;
 
 /** Pure: how to walk from an entity up to the root without looping. */
 final class EntityChain

@@ -36,7 +36,7 @@ use GlpiPlugin\Gac\Pre\RepairProtocol;
 use GlpiPlugin\Gac\Pre\ReopenService;
 use GlpiPlugin\Gac\Pre\ReturnAttachments;
 use GlpiPlugin\Gac\Pre\ReturnService;
-use GlpiPlugin\Gac\Pre\ServiceResult;
+use GlpiPlugin\Gac\Shared\ServiceResult;
 
 $protocol = new RepairProtocol();
 $protocolId = (int) ($_POST['protocol_id'] ?? 0);

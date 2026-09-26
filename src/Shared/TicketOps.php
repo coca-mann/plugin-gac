@@ -31,7 +31,7 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac\Shared;
 
 use ITILFollowup;
 use ITILSolution;

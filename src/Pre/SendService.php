@@ -35,6 +35,9 @@ namespace GlpiPlugin\Gac\Pre;
 
 use Ticket;
 use Toolbox;
+use GlpiPlugin\Gac\Shared\ServiceResult;
+use GlpiPlugin\Gac\Shared\StateGuard;
+use GlpiPlugin\Gac\Shared\TicketOps;
 
 /**
  * "Enviar" (spec 7.3, D15): pre-checks first, then one line per call, then the final step.

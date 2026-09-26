@@ -35,6 +35,7 @@ namespace GlpiPlugin\Gac\Pre;
 
 use CommonDBChild;
 use Session;
+use GlpiPlugin\Gac\Shared\EventMessage;
 
 /**
  * Event log of a PRE (spec 5.2.1). It is the source of truth for the reopening state; every event

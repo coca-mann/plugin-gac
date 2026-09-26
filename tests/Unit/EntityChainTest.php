@@ -35,7 +35,7 @@ declare(strict_types=1);
 
 namespace GlpiPlugin\Gac\Tests\Unit;
 
-use GlpiPlugin\Gac\Pre\EntityChain;
+use GlpiPlugin\Gac\Shared\EntityChain;
 use PHPUnit\Framework\TestCase;
 
 final class EntityChainTest extends TestCase

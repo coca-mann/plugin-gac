@@ -35,7 +35,7 @@ declare(strict_types=1);
 
 namespace GlpiPlugin\Gac\Tests\Unit;
 
-use GlpiPlugin\Gac\Pre\LogoFit;
+use GlpiPlugin\Gac\Shared\LogoFit;
 use PHPUnit\Framework\TestCase;
 
 final class LogoFitTest extends TestCase

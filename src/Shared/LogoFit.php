@@ -33,7 +33,7 @@
 
 declare(strict_types=1);
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac\Shared;
 
 /** Pure: the size, in millimetres, of a logo scaled to fit a box while keeping its proportions. */
 final class LogoFit

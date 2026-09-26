@@ -33,27 +33,33 @@
 
 declare(strict_types=1);
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac\Shared;
 
-/** Pure text formatting for the report header. */
-final class ReportFormatter
+/** Outcome of a service call; serialized as-is by the AJAX endpoints. */
+final class ServiceResult
 {
-    /** "2026-09-25" -> "25/09/2026"; anything that is not a valid Y-m-d date is returned as is. */
-    public static function date(string $ymd): string
+    /** @param array<string, mixed> $data */
+    private function __construct(
+        public readonly bool $ok,
+        public readonly string $message,
+        public readonly array $data = []
+    ) {}
+
+    /** @param array<string, mixed> $data */
+    public static function ok(string $message = '', array $data = []): self
     {
-        $d = \DateTimeImmutable::createFromFormat('Y-m-d', $ymd);
-        return ($d !== false && $d->format('Y-m-d') === $ymd) ? $d->format('d/m/Y') : $ymd;
+        return new self(true, $message, $data);
     }
 
-    public static function addressLine(string $address, string $postcode, string $town, string $state): string
+    /** @param array<string, mixed> $data */
+    public static function fail(string $message, array $data = []): self
     {
-        $address  = trim($address);
-        $postcode = trim($postcode);
-        $town     = trim($town);
-        $state    = trim($state);
+        return new self(false, $message, $data);
+    }
 
-        $place = $town !== '' && $state !== '' ? $town . '/' . $state : $town . $state;
-
-        return implode(' — ', array_filter([$address, $postcode, $place], static fn(string $p): bool => $p !== ''));
+    /** @return array{success: bool, message: string, data: array<string, mixed>} */
+    public function toArray(): array
+    {
+        return ['success' => $this->ok, 'message' => $this->message, 'data' => $this->data];
     }
 }

@@ -31,24 +31,29 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Tests\Unit;
+declare(strict_types=1);
 
-use GlpiPlugin\Gac\Shared\ServiceResult;
-use PHPUnit\Framework\TestCase;
+namespace GlpiPlugin\Gac\Shared;
 
-final class ServiceResultTest extends TestCase
+/** Pure text formatting for the report header. */
+final class ReportFormatter
 {
-    public function testOk(): void
+    /** "2026-09-25" -> "25/09/2026"; anything that is not a valid Y-m-d date is returned as is. */
+    public static function date(string $ymd): string
     {
-        $r = ServiceResult::ok('feito', ['n' => 2]);
-        $this->assertTrue($r->ok);
-        $this->assertSame(['success' => true, 'message' => 'feito', 'data' => ['n' => 2]], $r->toArray());
+        $d = \DateTimeImmutable::createFromFormat('Y-m-d', $ymd);
+        return ($d !== false && $d->format('Y-m-d') === $ymd) ? $d->format('d/m/Y') : $ymd;
     }
 
-    public function testFail(): void
+    public static function addressLine(string $address, string $postcode, string $town, string $state): string
     {
-        $r = ServiceResult::fail('erro');
-        $this->assertFalse($r->ok);
-        $this->assertSame(['success' => false, 'message' => 'erro', 'data' => []], $r->toArray());
+        $address  = trim($address);
+        $postcode = trim($postcode);
+        $town     = trim($town);
+        $state    = trim($state);
+
+        $place = $town !== '' && $state !== '' ? $town . '/' . $state : $town . $state;
+
+        return implode(' — ', array_filter([$address, $postcode, $place], static fn(string $p): bool => $p !== ''));
     }
 }

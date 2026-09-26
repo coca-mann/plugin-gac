@@ -31,35 +31,22 @@
  * -------------------------------------------------------------------------
  */
 
-declare(strict_types=1);
+namespace GlpiPlugin\Gac\Shared;
 
-namespace GlpiPlugin\Gac\Pre;
-
-/** Outcome of a service call; serialized as-is by the AJAX endpoints. */
-final class ServiceResult
+/** Loads the plugin's own vendor/autoload.php (mPDF) once. */
+final class MpdfLoader
 {
-    /** @param array<string, mixed> $data */
-    private function __construct(
-        public readonly bool $ok,
-        public readonly string $message,
-        public readonly array $data = []
-    ) {}
-
-    /** @param array<string, mixed> $data */
-    public static function ok(string $message = '', array $data = []): self
+    public static function load(): void
     {
-        return new self(true, $message, $data);
-    }
-
-    /** @param array<string, mixed> $data */
-    public static function fail(string $message, array $data = []): self
-    {
-        return new self(false, $message, $data);
-    }
-
-    /** @return array{success: bool, message: string, data: array<string, mixed>} */
-    public function toArray(): array
-    {
-        return ['success' => $this->ok, 'message' => $this->message, 'data' => $this->data];
+        if (class_exists(\Mpdf\Mpdf::class)) {
+            return;
+        }
+        $autoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+        if (!is_file($autoload)) {
+            throw new \RuntimeException(
+                'mPDF is missing: use the release package or run "composer install --no-dev" in the plugin folder.'
+            );
+        }
+        require_once $autoload;
     }
 }
