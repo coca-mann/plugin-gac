@@ -215,6 +215,7 @@ class Ltbp extends CommonDBTM
     {
         $tabs = [];
         $this->addDefaultFormTab($tabs);
+        $this->addStandardTab(LtbpItem::class, $tabs, $options);
         $this->addStandardTab(\Document_Item::class, $tabs, $options);
         $this->addStandardTab('Log', $tabs, $options);
         return $tabs;
