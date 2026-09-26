@@ -34,7 +34,10 @@
 namespace GlpiPlugin\Gac\Ltbp;
 
 use CommonDBTM;
+use Entity;
+use Glpi\Application\View\TemplateRenderer;
 use GlpiPlugin\Gac\Features;
+use GlpiPlugin\Gac\Shared\ReportFormatter;
 use Session;
 
 /**
@@ -206,6 +209,129 @@ class Ltbp extends CommonDBTM
             LtbpItem::class,
             LtbpEvent::class,
         ]);
+    }
+
+    public function defineTabs($options = [])
+    {
+        $tabs = [];
+        $this->addDefaultFormTab($tabs);
+        $this->addStandardTab(\Document_Item::class, $tabs, $options);
+        $this->addStandardTab('Log', $tabs, $options);
+        return $tabs;
+    }
+
+    public function showForm($ID, array $options = [])
+    {
+        $this->initForm($ID, $options);
+
+        if ($this->isNewItem() && empty($this->fields['users_id_tech'])) {
+            $this->fields['users_id_tech'] = (int) Session::getLoginUserID();
+        }
+
+        $destinationChoices = [];
+        foreach (Destination::cases() as $d) {
+            $destinationChoices[$d->value] = Labels::destination($d);
+        }
+
+        TemplateRenderer::getInstance()->display('@gac/ltbp/ltbp.form.html.twig', [
+            'item'                => $this,
+            'params'              => $options,
+            'status_label'        => Labels::status($this->isNewItem() ? Status::Draft : $this->getStatus()),
+            'destination_choices' => $destinationChoices,
+            'date_issued_display' => ReportFormatter::date((string) ($this->fields['date_issued'] ?? '')),
+            'header_editable'     => $this->canUpdateItem() || $this->isNewItem(),
+        ]);
+
+        return true;
+    }
+
+    public function rawSearchOptions()
+    {
+        $t = self::getTable();
+        $options = [
+            ['id' => 'common', 'name' => self::getTypeName(2)],
+            [
+                'id' => 1, 'table' => $t, 'field' => 'number', 'name' => __('Número', 'gac'),
+                // Without 'itemtype' GLPI maps the table back to a class, which fails for a class
+                // in a sub-namespace (same reason getTable() is overridden).
+                'datatype' => 'itemlink', 'itemtype' => self::class, 'massiveaction' => false, 'autocomplete' => true,
+            ],
+            ['id' => 2, 'table' => $t, 'field' => 'id', 'name' => __('ID'), 'datatype' => 'number', 'massiveaction' => false],
+            [
+                'id' => 3, 'table' => $t, 'field' => 'status', 'name' => __('Status'),
+                'datatype' => 'specific', 'searchtype' => ['equals', 'notequals'], 'massiveaction' => false,
+            ],
+            [
+                'id' => 4, 'table' => $t, 'field' => 'destination', 'name' => __('Destinação', 'gac'),
+                'datatype' => 'specific', 'searchtype' => ['equals', 'notequals'], 'massiveaction' => false,
+            ],
+            [
+                'id' => 5, 'table' => 'glpi_users', 'field' => 'name', 'linkfield' => 'users_id_tech',
+                'name' => __('Técnico responsável', 'gac'), 'datatype' => 'dropdown', 'massiveaction' => false,
+            ],
+            ['id' => 6, 'table' => $t, 'field' => 'date_issued', 'name' => __('Data de emissão', 'gac'), 'datatype' => 'date', 'massiveaction' => false],
+            ['id' => 7, 'table' => $t, 'field' => 'date_written_off', 'name' => __('Data da baixa', 'gac'), 'datatype' => 'date', 'massiveaction' => false],
+            ['id' => 8, 'table' => $t, 'field' => 'date_completed', 'name' => __('Data da conclusão', 'gac'), 'datatype' => 'date', 'massiveaction' => false],
+            // Not a real column of the list: it only names the "Campo" of the events written to the
+            // native history (see LtbpEvent::log()).
+            [
+                'id' => self::HISTORY_OPTION_EVENT, 'table' => $t, 'field' => 'comment', 'name' => __('Evento', 'gac'),
+                'datatype' => 'string', 'nosearch' => true, 'nodisplay' => true, 'massiveaction' => false,
+            ],
+            [
+                'id' => 80, 'table' => 'glpi_entities', 'field' => 'completename',
+                'name' => Entity::getTypeName(1), 'datatype' => 'dropdown', 'massiveaction' => false,
+            ],
+        ];
+
+        // Declare the itemtype on every column that belongs to this class's table, not only on the number.
+        foreach ($options as &$option) {
+            if (($option['table'] ?? null) === $t && !isset($option['itemtype'])) {
+                $option['itemtype'] = self::class;
+            }
+        }
+        unset($option);
+
+        return $options;
+    }
+
+    public static function getSpecificValueToDisplay($field, $values, array $options = [])
+    {
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        if ($field === 'status') {
+            $status = Status::tryFrom((string) $values[$field]);
+            return $status === null ? '' : Labels::status($status);
+        }
+        if ($field === 'destination') {
+            $destination = Destination::tryFrom((string) $values[$field]);
+            return $destination === null ? '' : Labels::destination($destination);
+        }
+        return parent::getSpecificValueToDisplay($field, $values, $options);
+    }
+
+    public static function getSpecificValueToSelect($field, $name = '', $values = '', array $options = [])
+    {
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        if ($field === 'status' || $field === 'destination') {
+            $options['display'] = false;
+            $options['value']   = $values[$field];
+            $choices = [];
+            if ($field === 'status') {
+                foreach (Status::cases() as $status) {
+                    $choices[$status->value] = Labels::status($status);
+                }
+            } else {
+                foreach (Destination::cases() as $destination) {
+                    $choices[$destination->value] = Labels::destination($destination);
+                }
+            }
+            return \Dropdown::showFromArray($name, $choices, $options);
+        }
+        return parent::getSpecificValueToSelect($field, $name, $values, $options);
     }
 
     /**
