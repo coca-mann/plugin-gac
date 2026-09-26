@@ -33,6 +33,8 @@
 
 use GlpiPlugin\Gac\Ltbp\IssueService;
 use GlpiPlugin\Gac\Ltbp\Ltbp;
+use GlpiPlugin\Gac\Ltbp\StepService;
+use GlpiPlugin\Gac\Shared\DocumentStore;
 use GlpiPlugin\Gac\Shared\ServiceResult;
 
 $laudo   = new Ltbp();
@@ -60,6 +62,18 @@ if (isset($_POST['issue'])) {
 } elseif (isset($_POST['cancel'])) {
     $need(Ltbp::RIGHT_CANCEL);
     $notify(IssueService::cancel($laudo, (string) ($_POST['reason'] ?? '')));
+} elseif (isset($_POST['upload_signed'])) {
+    $need(Ltbp::RIGHT_ISSUE);
+    $notify(StepService::attachSigned($laudo, DocumentStore::collect($_FILES, 'signed_file')[0] ?? null));
+} elseif (isset($_POST['send_patrimony'])) {
+    $need(Ltbp::RIGHT_ISSUE);
+    $notify(StepService::sendToPatrimony($laudo, $_POST));
+} elseif (isset($_POST['confirm_writeoff'])) {
+    $need(Ltbp::RIGHT_ISSUE);
+    $notify(StepService::confirmWriteoff($laudo, $_POST, DocumentStore::collect($_FILES, 'attachments')));
+} elseif (isset($_POST['complete'])) {
+    $need(Ltbp::RIGHT_ISSUE);
+    $notify(StepService::complete($laudo, $_POST, DocumentStore::collect($_FILES, 'attachments')));
 }
 
 Html::back();

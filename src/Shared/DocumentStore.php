@@ -69,6 +69,34 @@ final class DocumentStore
     }
 
     /**
+     * Reads the multi-file input $_FILES[$field] (name="field[]") into a flat list, skipping empty slots.
+     *
+     * @param array<string, mixed> $files usually $_FILES
+     * @return list<array{name: string, tmp_name: string, error: int}>
+     */
+    public static function collect(array $files, string $field): array
+    {
+        $raw = $files[$field] ?? null;
+        if (!is_array($raw) || !is_array($raw['name'] ?? null)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($raw['name'] as $i => $name) {
+            $error = (int) ($raw['error'][$i] ?? UPLOAD_ERR_NO_FILE);
+            if ($error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $out[] = [
+                'name'     => (string) $name,
+                'tmp_name' => (string) ($raw['tmp_name'][$i] ?? ''),
+                'error'    => $error,
+            ];
+        }
+        return $out;
+    }
+
+    /**
      * @param array{name: string, tmp_name: string, error: int} $file one entry of ReturnAttachments-style input
      * @return int Document id
      */

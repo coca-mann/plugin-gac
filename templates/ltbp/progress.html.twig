@@ -77,7 +77,151 @@
         </div>
     {% endif %}
 
-    {# gac:steps — the forms of the later steps (signed PDF, send, write-off, completion) go here #}
+    {% if can_upload_signed %}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-signature me-2"></i>{{ __('PDF assinado', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Depois que os diretores assinarem o papel, anexe o arquivo escaneado. Até o envio ao patrimônio é possível substituí-lo.', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ step_url }}" enctype="multipart/form-data" class="d-flex flex-wrap gap-2">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                    <input type="file" class="form-control w-auto flex-grow-1" name="signed_file[]" accept=".pdf,.jpg,.jpeg,.png" required>
+                    <button type="submit" name="upload_signed" value="1" class="btn btn-primary">
+                        <i class="ti ti-upload"></i> {{ has_signed ? __('Substituir PDF assinado', 'gac') : __('Anexar PDF assinado', 'gac') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if can_send %}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-building-warehouse me-2"></i>{{ __('Enviar ao patrimônio', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Registre quando o documento assinado foi entregue ao setor de patrimônio.', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ step_url }}" class="row g-2">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                    <div class="col-md-3">
+                        <label class="form-label">{{ __('Data do envio', 'gac') }}</label>
+                        <input type="date" class="form-control" name="date_sent" value="{{ today }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ __('Recebido por (opcional)', 'gac') }}</label>
+                        <input type="text" class="form-control" name="received_by" maxlength="255">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" name="send_patrimony" value="1" class="btn btn-primary">{{ __('Registrar envio', 'gac') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if can_confirm %}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-circle-check me-2"></i>{{ __('Confirmar a baixa', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Quando o patrimônio baixar os bens no sistema dele. Os ativos passam para "baixado" e ficam bloqueados para edição. Não há como desfazer.', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ step_url }}" enctype="multipart/form-data" class="row g-2">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                    <div class="col-md-3">
+                        <label class="form-label">{{ __('Data da baixa', 'gac') }}</label>
+                        <input type="date" class="form-control" name="date_written_off" value="{{ today }}" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">{{ __('Nº do processo de baixa (opcional)', 'gac') }}</label>
+                        <input type="text" class="form-control" name="writeoff_process_number" maxlength="255">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ __('Comprovante (opcional)', 'gac') }}</label>
+                        <input type="file" class="form-control" name="attachments[]" multiple>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">{{ __('Observação (opcional)', 'gac') }}</label>
+                        <textarea class="form-control" name="writeoff_notes" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" name="confirm_writeoff" value="1" class="btn btn-primary"
+                                onclick="return confirm('{{ __('Confirmar a baixa? Os ativos ficam bloqueados para edição e isto não pode ser desfeito.', 'gac')|e('js') }}');">
+                            <i class="ti ti-circle-check"></i> {{ __('Confirmar baixa', 'gac') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if can_complete %}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-recycle me-2"></i>{{ __('Concluir a destinação', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Registre a execução do descarte ou da doação. O beneficiário é a empresa recicladora ou o donatário, cadastrado como fornecedor.', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ step_url }}" enctype="multipart/form-data" class="row g-2">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                    <div class="col-md-3">
+                        <label class="form-label">{{ __('Data da execução', 'gac') }}</label>
+                        <input type="date" class="form-control" name="date_completed" value="{{ today }}" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">{{ __('Beneficiário (fornecedor)', 'gac') }}</label>
+                        {{ supplier_dropdown|raw }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">{{ require_document ? __('Comprovante (obrigatório)', 'gac') : __('Comprovante (opcional)', 'gac') }}</label>
+                        <input type="file" class="form-control" name="attachments[]" multiple{% if require_document %} required{% endif %}>
+                        <div class="form-text">{{ __('Certificado de destinação ou termo de doação.', 'gac') }}</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">{{ __('Observação (opcional)', 'gac') }}</label>
+                        <textarea class="form-control" name="completion_notes" rows="2"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" name="complete" value="1" class="btn btn-success">
+                            <i class="ti ti-recycle"></i> {{ __('Concluir laudo', 'gac') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if status_value in ['written_off', 'completed'] %}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <h4 class="card-title mb-0"><i class="ti ti-info-circle me-2"></i>{{ __('Registro', 'gac') }}</h4>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    {% if laudo.fields['received_by'] %}<dt class="col-sm-3">{{ __('Recebido no patrimônio por', 'gac') }}</dt><dd class="col-sm-9">{{ laudo.fields['received_by'] }}</dd>{% endif %}
+                    <dt class="col-sm-3">{{ __('Nº do processo de baixa', 'gac') }}</dt><dd class="col-sm-9">{{ laudo.fields['writeoff_process_number'] ?: '—' }}</dd>
+                    {% if laudo.fields['writeoff_notes'] %}<dt class="col-sm-3">{{ __('Observação da baixa', 'gac') }}</dt><dd class="col-sm-9">{{ laudo.fields['writeoff_notes'] }}</dd>{% endif %}
+                    {% if status_value == 'completed' %}
+                        <dt class="col-sm-3">{{ __('Beneficiário', 'gac') }}</dt><dd class="col-sm-9">{{ laudo.fields['supplier_name'] }}</dd>
+                        {% if laudo.fields['completion_notes'] %}<dt class="col-sm-3">{{ __('Observação da conclusão', 'gac') }}</dt><dd class="col-sm-9">{{ laudo.fields['completion_notes'] }}</dd>{% endif %}
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    {% endif %}
 
     {% if can_cancel %}
         <div class="card border border-danger-subtle mb-4">
