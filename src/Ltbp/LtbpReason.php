@@ -34,6 +34,7 @@
 namespace GlpiPlugin\Gac\Ltbp;
 
 use CommonDBTM;
+use Glpi\Application\View\TemplateRenderer;
 use GlpiPlugin\Gac\Features;
 use Session;
 
@@ -136,6 +137,46 @@ class LtbpReason extends CommonDBTM
             return false;
         }
         return $input;
+    }
+
+    public function showForm($ID, array $options = [])
+    {
+        $this->initForm($ID, $options);
+
+        TemplateRenderer::getInstance()->display('@gac/ltbp/reason.form.html.twig', [
+            'item'   => $this,
+            'params' => $options,
+        ]);
+
+        return true;
+    }
+
+    public function rawSearchOptions()
+    {
+        $t = self::getTable();
+        $options = [
+            ['id' => 'common', 'name' => self::getTypeName(2)],
+            [
+                'id' => 1, 'table' => $t, 'field' => 'code', 'name' => __('Código', 'gac'),
+                // Without 'itemtype' GLPI maps the table back to a class, which fails for a class
+                // in a sub-namespace (same reason getTable() is overridden).
+                'datatype' => 'itemlink', 'itemtype' => self::class, 'massiveaction' => false, 'autocomplete' => true,
+            ],
+            ['id' => 2, 'table' => $t, 'field' => 'id', 'name' => __('ID'), 'datatype' => 'number', 'massiveaction' => false],
+            ['id' => 3, 'table' => $t, 'field' => 'name', 'name' => __('Título', 'gac'), 'datatype' => 'string', 'massiveaction' => false],
+            ['id' => 4, 'table' => $t, 'field' => 'comment', 'name' => __('Descrição', 'gac'), 'datatype' => 'text', 'massiveaction' => false],
+            ['id' => 5, 'table' => $t, 'field' => 'is_active', 'name' => __('Ativo', 'gac'), 'datatype' => 'bool', 'massiveaction' => false],
+        ];
+
+        // Declare the itemtype on every column of this class's table, not only on the link.
+        foreach ($options as &$option) {
+            if (($option['table'] ?? null) === $t && !isset($option['itemtype'])) {
+                $option['itemtype'] = self::class;
+            }
+        }
+        unset($option);
+
+        return $options;
     }
 
     /** @return array<string, mixed>|null */
