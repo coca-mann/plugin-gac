@@ -34,7 +34,24 @@
 use GlpiPlugin\Gac\Ltbp\CandidateFinder;
 use GlpiPlugin\Gac\Ltbp\LineService;
 use GlpiPlugin\Gac\Ltbp\Ltbp;
+use GlpiPlugin\Gac\Ltbp\LtbpLinker;
 use GlpiPlugin\Gac\Shared\ServiceResult;
+
+if (isset($_POST['link_pre'])) {
+    if (!Ltbp::canView()) {
+        Html::displayRightError();
+    }
+    $linked = LtbpLinker::addFromPre(
+        array_map('intval', (array) ($_POST['pre_items'] ?? [])),
+        (int) ($_POST['ltbp_id'] ?? 0),
+        (string) ($_POST['destination'] ?? '')
+    );
+    Session::addMessageAfterRedirect(htmlescape($linked->message), false, $linked->ok ? INFO : ERROR);
+    if ($linked->ok && !empty($linked->data['created'])) {
+        Html::redirect(Ltbp::getFormURLWithID((int) $linked->data['ltbp_id']));
+    }
+    Html::back();
+}
 
 $laudo   = new Ltbp();
 $laudoId = (int) ($_POST['ltbp_id'] ?? 0);

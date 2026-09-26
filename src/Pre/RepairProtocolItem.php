@@ -36,6 +36,11 @@ namespace GlpiPlugin\Gac\Pre;
 use CommonDBChild;
 use CommonGLPI;
 use Glpi\Application\View\TemplateRenderer;
+use GlpiPlugin\Gac\Ltbp\Destination as LtbpDestination;
+use GlpiPlugin\Gac\Ltbp\Labels as LtbpLabels;
+use GlpiPlugin\Gac\Ltbp\Ltbp;
+use GlpiPlugin\Gac\Ltbp\LtbpItem;
+use GlpiPlugin\Gac\Ltbp\LtbpLinker;
 use Session;
 use Ticket;
 
@@ -101,6 +106,9 @@ class RepairProtocolItem extends CommonDBChild
         $status = $protocol->getStatus();
         $rn     = RepairProtocol::$rightname;
 
+        // LTBP integration (LTBP spec L19 to L22): only when the user can see laudos.
+        $ltbpEnabled = Ltbp::canView();
+
         $lines = [];
         $pendingIds = [];
         $atSupplier = 0;
@@ -124,7 +132,26 @@ class RepairProtocolItem extends CommonDBChild
                     && !StateMachine::removeRequiresReason($status),
                 'can_remove_failed' => StateMachine::canRemoveLine($status, $itemStatus)
                     && StateMachine::removeRequiresReason($status),
+                'awaiting_ltbp'     => false,
+                'ltbp_number'       => '',
+                'ltbp_url'          => '',
+                'ltbp_status_label' => '',
             ];
+            if (
+                $ltbpEnabled
+                && $itemStatus === ItemStatus::Returned
+                && ($row['destination'] ?? '') === Destination::Writeoff->value
+            ) {
+                $laudo = Ltbp::activeLaudoFor((string) $row['itemtype'], (int) $row['items_id']);
+                $last  = array_key_last($lines);
+                if ($laudo === null) {
+                    $lines[$last]['awaiting_ltbp'] = true;
+                } else {
+                    $lines[$last]['ltbp_number']       = $laudo['number'];
+                    $lines[$last]['ltbp_url']          = Ltbp::getFormURLWithID($laudo['id']);
+                    $lines[$last]['ltbp_status_label'] = LtbpLabels::status($laudo['status']);
+                }
+            }
         }
 
         $viewable = $protocol->canViewItem();
@@ -156,6 +183,12 @@ class RepairProtocolItem extends CommonDBChild
             Destination::KeepDefective->value => Labels::destination(Destination::KeepDefective),
         ];
 
+        $canLinkLtbp = $ltbpEnabled && (Ltbp::canCreate() || Ltbp::canUpdate());
+        $ltbpDestinations = [];
+        foreach (LtbpDestination::cases() as $d) {
+            $ltbpDestinations[$d->value] = LtbpLabels::destination($d);
+        }
+
         TemplateRenderer::getInstance()->display('@gac/pre/items_tab.html.twig', [
             'protocol'           => $protocol,
             'lines'              => $lines,
@@ -181,6 +214,10 @@ class RepairProtocolItem extends CommonDBChild
             'outcome_choices'     => $outcomeChoices,
             'defective_outcomes'  => $defectiveOutcomes,
             'destination_choices' => $destinationChoices,
+            'can_link_ltbp'       => $canLinkLtbp,
+            'ltbp_drafts'         => $canLinkLtbp ? LtbpLinker::openDrafts() : [],
+            'ltbp_destinations'   => $ltbpDestinations,
+            'ltbp_link_url'       => LtbpItem::getFormURL(),
         ]);
     }
 }
