@@ -10,6 +10,21 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Added
+
+- [8cf05ea](https://github.com/coca-mann/plugin-gac/commit/8cf05ea) - Menu lateral próprio do plugin, com as entradas do PRE e das Configurações, que saíram de Gerência e de Configurar.
+- [1ecb6a2](https://github.com/coca-mann/plugin-gac/commit/1ecb6a2), [3579a47](https://github.com/coca-mann/plugin-gac/commit/3579a47) - Aba única "Plugin - DTI GAC" nos perfis, com uma linha de permissões por funcionalidade e o novo direito "Configurar", que libera as configurações de cada módulo. O menu lateral só mostra as entradas a que o usuário tem direito, e os perfis que já podiam alterar a configuração do GLPI recebem "Configurar" automaticamente na instalação ou atualização.
+- [c262d24](https://github.com/coca-mann/plugin-gac/commit/c262d24) - A data de emissão de um novo PRE já vem preenchida com a data de hoje, e continua editável.
+
+### Changed
+
+- [3579a47](https://github.com/coca-mann/plugin-gac/commit/3579a47) - A página de configurações do plugin passou a exigir o direito "Configurar" do módulo, no lugar do direito de configuração do GLPI.
+- [1be88fc](https://github.com/coca-mann/plugin-gac/commit/1be88fc) - Configurações do PRE organizadas em blocos com ícone, título e descrição, explicando para que serve cada grupo de opções e de onde o PDF tira o cabeçalho e a logomarca.
+- [e96ef46](https://github.com/coca-mann/plugin-gac/commit/e96ef46) - Aba Itens do PRE reorganizada em cartões (itens, importação e ações), com a situação de cada linha destacada por cores.
+- [10cab73](https://github.com/coca-mann/plugin-gac/commit/10cab73) - Formulários de registrar retorno e de corrigir retorno divididos em blocos (resultado, serviço e custo, documentos), com o botão de envio no rodapé e a opção de marcar como extraviada destacada em vermelho.
+
 ## [0.2.0] - 2026-09-25
 
 ### Added
