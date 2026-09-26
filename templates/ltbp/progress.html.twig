@@ -1,0 +1,103 @@
+<div class="p-3" data-gac-ltbp-progress>
+
+    {% if status_value == 'canceled' %}
+        <div class="alert alert-danger">
+            <strong>{{ __('Laudo cancelado', 'gac') }}</strong>{% if canceled_on %} {{ __('em', 'gac') }} {{ canceled_on }}{% endif %}.
+            {{ __('Motivo:', 'gac') }} {{ laudo.fields['cancel_reason'] }}
+        </div>
+    {% endif %}
+
+    <div class="card border mb-4">
+        <div class="card-header bg-body-tertiary">
+            <div>
+                <h4 class="card-title mb-1"><i class="ti ti-route me-2"></i>{{ __('Andamento do laudo', 'gac') }}</h4>
+                <div class="text-muted small">{{ __('Situação atual:', 'gac') }} <strong>{{ status_label }}</strong></div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-3">
+                {% for step in steps %}
+                    <div class="text-center flex-fill">
+                        <span class="badge {{ step.state == 'done' ? 'bg-success-lt' : (step.state == 'current' ? 'bg-primary-lt' : 'bg-secondary-lt') }}">{{ step.label }}</span>
+                        <div class="small text-muted mt-1">{{ step.date ?: '—' }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {% if has_frozen %}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-file-type-pdf me-2"></i>{{ __('Documentos do laudo', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('O PDF emitido é o documento que vai para assinatura e nunca é gerado de novo.', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+                <a class="btn btn-outline-secondary" href="{{ frozen_url }}" target="_blank" rel="noopener">
+                    <i class="ti ti-file-type-pdf"></i> {{ __('Baixar PDF emitido', 'gac') }}
+                </a>
+                {% if has_signed %}
+                    <a class="btn btn-outline-success" href="{{ signed_url }}" target="_blank" rel="noopener">
+                        <i class="ti ti-signature"></i> {{ __('Baixar PDF assinado', 'gac') }}
+                    </a>
+                {% endif %}
+                <span class="text-muted small ms-2">
+                    {{ __('Assinam:', 'gac') }} {{ laudo.fields['director_ti_name'] }} ({{ laudo.fields['director_ti_role'] }}) {{ __('e', 'gac') }} {{ laudo.fields['director_adm_name'] }} ({{ laudo.fields['director_adm_role'] }})
+                </span>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if status_value == 'draft' and can_issue %}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-send me-2"></i>{{ __('Emitir para assinatura', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Gera o PDF definitivo, guarda os signatários e move os ativos para "em processo de baixa".', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if problems is not empty %}
+                    <div class="alert alert-warning">
+                        <div class="mb-1"><strong>{{ __('Antes de emitir:', 'gac') }}</strong></div>
+                        <ul class="mb-0">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+                    </div>
+                {% endif %}
+                <form method="post" action="{{ step_url }}">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                    <button type="submit" name="issue" value="1" class="btn btn-primary"{% if problems is not empty %} disabled{% endif %}
+                            onclick="return confirm('{{ __('Emitir o laudo? Os ativos passam para "em processo de baixa" e o PDF fica congelado.', 'gac')|e('js') }}');">
+                        <i class="ti ti-send"></i> {{ __('Emitir laudo', 'gac') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    {# gac:steps — the forms of the later steps (signed PDF, send, write-off, completion) go here #}
+
+    {% if can_cancel %}
+        <div class="card border border-danger-subtle mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-ban me-2"></i>{{ __('Cancelar o laudo', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Só é possível antes da confirmação da baixa. Os ativos voltam ao status que tinham antes da emissão.', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ step_url }}" class="d-flex flex-wrap gap-2">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                    <input type="text" class="form-control w-auto flex-grow-1" name="reason" placeholder="{{ __('Motivo do cancelamento', 'gac') }}" required>
+                    <button type="submit" name="cancel" value="1" class="btn btn-outline-danger"
+                            onclick="return confirm('{{ __('Cancelar este laudo?', 'gac')|e('js') }}');">
+                        <i class="ti ti-ban"></i> {{ __('Cancelar laudo', 'gac') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+</div>
