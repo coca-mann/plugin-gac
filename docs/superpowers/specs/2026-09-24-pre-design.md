@@ -272,8 +272,13 @@ refaz** as ações no ticket nem no ativo: trocar o resultado registrado é uma 
 
 ## 8. Permissões
 
-Um direito do plugin: leitura, criação, edição, exclusão de rascunho e três especiais:
-**Enviar**, **Registrar retorno**, **Reabrir**.
+Cada funcionalidade do plugin tem um direito próprio, numa linha da aba única do perfil ("Plugin - DTI GAC"). O do PRE
+(`plugin_gac_pre`): leitura, criação, edição, exclusão de rascunho e quatro especiais:
+**Enviar**, **Registrar retorno**, **Reabrir** e **Configurar**.
+
+**Configurar** libera a seção do PRE na página de configuração (substitui o direito `config` do GLPI). O menu do
+plugin no sidebar só aparece para quem tem algum direito em alguma funcionalidade; a entrada "Configurações" só
+para quem tem Configurar em alguma. Na atualização, quem já tinha `config` de escrita recebe Configurar uma vez.
 
 ## 9. Relatório (PDF)
 

@@ -31,26 +31,58 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\Config;
-use GlpiPlugin\Gac\Features;
-use GlpiPlugin\Gac\GacMenu;
+namespace GlpiPlugin\Gac;
 
-if (!Features::canConfigureAny()) {
-    Html::displayRightError();
+use GlpiPlugin\Gac\Pre\ConfigMenu;
+use GlpiPlugin\Gac\Pre\PreMenu;
+use Plugin;
+
+/**
+ * The plugin's own top-level entry in the sidebar. Each module contributes its entries here,
+ * keyed by the lowercase item name its pages pass to Html::header().
+ */
+class GacMenu
+{
+    /** Sector key in GLPI's menu array (see Hooks::MENU_TOADD). */
+    public const SECTOR = 'gac';
+
+    /** Item keys, used by the pages as the third argument of Html::header(). */
+    public const ITEM_PRE = 'pre';
+    public const ITEM_CONFIG = 'config';
+
+    /** Single source of the plugin name: the "name" field of plugin_version_gac(). */
+    public static function pluginName(): string
+    {
+        return (string) Plugin::getInfo('gac', 'name');
+    }
+
+    public static function getMenuName($nb = 0): string
+    {
+        return self::pluginName();
+    }
+
+    public static function getIcon(): string
+    {
+        return 'ti ti-tools';
+    }
+
+    public static function getMenuContent(): array
+    {
+        $entries = [];
+        $pre = PreMenu::getMenuContent();
+        if ($pre !== []) {
+            $entries[self::ITEM_PRE] = $pre;
+        }
+        $config = ConfigMenu::getMenuContent();
+        if ($config !== []) {
+            $entries[self::ITEM_CONFIG] = $config;
+        }
+        if ($entries === []) {
+            return [];
+        }
+
+        // "title" names the sidebar entry; "is_multi_entries" makes GLPI merge the entries
+        // below as the sub-items of that entry.
+        return ['title' => self::pluginName(), 'is_multi_entries' => true] + $entries;
+    }
 }
-
-if (!empty($_POST)) {
-    Config::handlePost($_POST);
-    Html::back();
-}
-
-Html::header(
-    GacMenu::pluginName(),
-    $_SERVER['PHP_SELF'],
-    GacMenu::SECTOR,
-    GacMenu::ITEM_CONFIG
-);
-
-Config::renderPage();
-
-Html::footer();

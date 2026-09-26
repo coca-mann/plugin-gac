@@ -33,22 +33,22 @@
 
 namespace GlpiPlugin\Gac\Pre;
 
-use Session;
+use GlpiPlugin\Gac\Features;
 
 class ConfigMenu
 {
     public static function getMenuName($nb = 0): string
     {
-        return __('Plugin - DTI GAC', 'gac');
+        return __('Configurações', 'gac');
     }
 
     public static function getMenuContent(): array
     {
-        if (!Session::haveRight('config', UPDATE)) {
+        if (!Features::canConfigureAny()) {
             return [];
         }
         return [
-            'title' => __('Plugin - DTI GAC', 'gac'),
+            'title' => __('Configurações', 'gac'),
             'page'  => '/plugins/gac/front/config.php',
             'icon'  => 'ti ti-settings',
         ];

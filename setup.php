@@ -32,12 +32,11 @@
  */
 
 use Glpi\Plugin\Hooks;
-use GlpiPlugin\Gac\Pre\ConfigMenu;
-use GlpiPlugin\Gac\Pre\PreMenu;
-use GlpiPlugin\Gac\Pre\ProfileRights;
+use GlpiPlugin\Gac\GacMenu;
+use GlpiPlugin\Gac\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.2.0');
+define('PLUGIN_GAC_VERSION', '0.3.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
@@ -59,10 +58,9 @@ function plugin_init_gac(): void
 
     $plugin = new Plugin();
     if ($plugin->isInstalled('gac') && $plugin->isActivated('gac')) {
-        // Array keys must be real $menu sectors: 'management' and 'config'.
+        // A new sector key needs an array of classes to be created as a top-level sidebar entry.
         $PLUGIN_HOOKS[Hooks::MENU_TOADD]['gac'] = [
-            'management' => PreMenu::class,
-            'config' => ConfigMenu::class,
+            GacMenu::SECTOR => [GacMenu::class],
         ];
 
         // Gear icon on the plugin's row in Configurar > Plugins.

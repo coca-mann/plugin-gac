@@ -1,7 +1,10 @@
 {% if is_draft and can_edit %}
-    <div class="card mb-3">
-        <div class="card-header">
-            <h4 class="card-title flex-grow-1">{{ __('Importar tickets', 'gac') }}</h4>
+    <div class="card border mb-4">
+        <div class="card-header bg-body-tertiary">
+            <div class="flex-grow-1">
+                <h4 class="card-title mb-1"><i class="ti ti-download me-2"></i>{{ __('Importar tickets', 'gac') }}</h4>
+                <div class="text-muted small">{{ __('Tickets elegíveis com ativo associado, que ainda não estão em outro PRE ativo.', 'gac') }}</div>
+            </div>
             {% if candidates is not empty %}
                 {# Hides the candidates so the lines already imported can be worked on. #}
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-gac-toggle-import
