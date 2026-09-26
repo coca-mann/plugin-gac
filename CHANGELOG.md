@@ -10,7 +10,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
-## [Unreleased]
+## [0.3.0] - 2026-09-26
 
 ### Added
 
