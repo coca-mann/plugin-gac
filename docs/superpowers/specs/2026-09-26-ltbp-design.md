@@ -249,11 +249,16 @@ ativos nos dropdowns; ver o aviso de `is_active` no CLAUDE.md).
   **não** foram feitas (R-4 continua aberto).
 - **Limites do bloqueio**: o hook cobre o `->update()`. Não cobre exclusão/purga, `updateInDB()`,
   `$DB->update` cru nas cascatas do núcleo (transferência, substituição em dropdown, tabelas de
-  vínculo de Infocom e `Item_*`) nem SQL direto. O `LockPolicy` ignora campos com valor em array.
-  Podem ocorrer falsos positivos ao salvar só o comentário, se o formulário reenviar campos
-  formatados de outro jeito (data vs data e hora, CRLF vs LF em textareas, booleanos,
-  `entities_id`/`is_recursive` em formulário de transferência): a verificar no navegador
-  (cenário 22 do roteiro).
+  vínculo de Infocom e `Item_*`) nem SQL direto.
+- **Falso positivo achado no navegador**: no primeiro teste pela tela real (cenário 22), salvar só
+  o comentário de um computador baixado foi recusado com "Campos recusados: groups_id_tech,
+  groups_id". O formulário posta essas chaves como `''` (string) e `$item->fields` guarda arrays
+  (`[]`), então o valor parecia alterado. Correção: o `LockPolicy` passou a comparar valores em
+  formato de array/lista (de qualquer dos lados) como conjuntos de ids não vazios (`''`, `'0'`,
+  `0`, `null` e `[]` são vazios) e já não ignora o input em array. No navegador, salvar só o
+  comentário é aceito e trocar o nome é recusado. Outros formatos postados que podem diferir
+  (data vs data e hora, CRLF vs LF em textareas, decimais com sinal ou separador de milhar) ainda
+  não foram testados (R-4).
 
 ## 9. PDF
 
@@ -327,7 +332,12 @@ compartilhado se o LTBP realmente precisar delas, e sem alterar o comportamento 
   (cenário 26 do roteiro: Não executado). Foram simulados só no nível do código a sessão de
   inventário, o cron e `Session::callAsSystem()`: sem o direito o update é recusado, com o direito
   passa. Isso levou a checagem do direito a ler `$_SESSION['glpiactiveprofile']` (seção 8).
-  Testar com um agente real e um `cron.php` real antes de dar como pronto.
+  Testar com um agente real e um `cron.php` real antes de dar como pronto. Além disso, o risco de
+  formato dos campos postados pelo formulário do ativo continua **parcialmente sem teste**: o
+  falso positivo de `groups_id_tech`/`groups_id` (array vs `''`) foi achado e corrigido no
+  navegador, mas data vs data e hora, CRLF vs LF em textareas, decimais com sinal ou separador de
+  milhar, chaves com prefixo `_` (ignoradas por desenho) e campos de Infocom/contrato/custo
+  (tratados por outras classes) não foram exercitados.
 - **R-5**: nada impede que um ativo já `Baixado` seja escolhido para um novo PRE. Avaliar como
   ajuste do PRE em um passo posterior.
 - **R-6**: a validade do papel escaneado e da futura assinatura eletrônica depende do setor de
