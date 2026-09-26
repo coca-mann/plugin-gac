@@ -134,6 +134,9 @@ class LtbpItem extends CommonDBChild
             'reason_choices'  => [0 => Dropdown::EMPTY_VALUE] + LtbpReason::choices(),
             'asset_picker'    => $picker,
             'form_url'        => self::getFormURL(),
+            'pdf_url'         => str_replace('.form.php', '.pdf.php', Ltbp::getFormURL()) . '?id=' . (int) $laudo->getID(),
+            'can_pdf'         => $laudo->canViewItem()
+                && ($isDraft ? $lines !== [] : (int) $laudo->fields['documents_id_frozen'] > 0),
         ]);
     }
 }

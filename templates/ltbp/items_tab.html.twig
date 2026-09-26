@@ -20,6 +20,12 @@
                     {% endif %}
                 </div>
             </div>
+            {% if can_pdf %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ pdf_url }}" target="_blank" rel="noopener">
+                    <i class="ti ti-file-type-pdf"></i>
+                    {{ is_draft ? __('Pré-visualizar PDF', 'gac') : __('Baixar PDF emitido', 'gac') }}
+                </a>
+            {% endif %}
         </div>
 
         <div class="table-responsive">
