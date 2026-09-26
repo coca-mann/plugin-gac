@@ -169,7 +169,8 @@ Seção própria na tela de configuração do plugin, chaves prefixadas `ltbp_` 
 ## 6. Máquina de estados
 
 `Rascunho` → `Aguardando assinaturas` → `Assinado` → `No patrimônio` → `Baixado` → `Concluído`;
-`Cancelado` a partir de qualquer estado anterior a `Baixado`.
+`Cancelado` a partir de `Aguardando assinaturas`, `Assinado` ou `No patrimônio`. Um `Rascunho` não se cancela: é
+excluído (ainda não mexeu em nenhum ativo).
 
 | Estado | Ação do técnico | Efeito nos ativos |
 |---|---|---|
@@ -179,7 +180,7 @@ Seção própria na tela de configuração do plugin, chaves prefixadas `ltbp_` 
 | `No patrimônio` | Registra data do envio e quem recebeu | nenhum |
 | `Baixado` | Patrimônio confirmou: data, nº do processo (opcional), anexo opcional | status → "Baixado"; o **bloqueio de edição começa** (L14) |
 | `Concluído` | Data, beneficiário (Fornecedor) e comprovante (L12). Estado final | nenhum |
-| `Cancelado` | Só antes de `Baixado`; motivo obrigatório | restaura `states_id_before` (ver 6.2) |
+| `Cancelado` | Só de `Aguardando assinaturas` até `No patrimônio` (o rascunho é excluído); motivo obrigatório | restaura `states_id_before` (ver 6.2) |
 
 `Assinado` e `No patrimônio` são estados separados de propósito: são esperas diferentes
 (diretoria e setor de patrimônio), cada uma com o seu prazo.
@@ -376,3 +377,10 @@ não foi necessário.
 - Ativos vindos da busca livre não têm ticket de origem, então não recebem acompanhamentos (L25)
   nem motivo padrão (L24).
 - Adicionar a laudo não altera o status do ativo: ele só muda na emissão (L2).
+- "Técnico responsável" vem preenchido com o usuário logado, mas é editável (como no PRE).
+- Uma emissão desfeita (rollback) pode deixar no disco o arquivo do PDF congelado, órfão, sem Document.
+- O rótulo `line_document_attached` existe, mas não é emitido; só `document_attached` é.
+- A desinstalação mantém os Documents dos laudos e as linhas de vínculo deles.
+- O beneficiário (Fornecedor) é conferido pelo acesso à entidade do fornecedor, não pela visibilidade da entidade do laudo.
+- `confirmWriteoff` não reconfere as linhas ativas de PRE (variante do R-5).
+- Envio duplo: emitir, cancelar e confirmar a baixa relêem o status com trava de linha (`FOR UPDATE`) dentro da transação; anexar o assinado, enviar ao patrimônio e concluir só mudam o status se ele ainda for o esperado. O assinado só aceita PDF, JPG ou PNG (extensão e conteúdo), e o download só exibe PDF/PNG/JPEG direto; o resto baixa como anexo.
