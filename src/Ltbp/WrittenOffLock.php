@@ -42,6 +42,31 @@ final class WrittenOffLock
     /** @var array<string, bool> */
     private static array $cache = [];
 
+    public static function isLocked(string $itemtype, int $itemsId): bool
+    {
+        global $DB;
+
+        $key = $itemtype . '|' . $itemsId;
+        if (!isset(self::$cache[$key])) {
+            $items  = LtbpItem::getTable();
+            $laudos = Ltbp::getTable();
+            $row = $DB->request([
+                'COUNT'      => 'cpt',
+                'FROM'       => $items,
+                'INNER JOIN' => [
+                    $laudos => ['ON' => [$items => 'plugin_gac_ltbps_id', $laudos => 'id']],
+                ],
+                'WHERE' => [
+                    "$items.itemtype" => $itemtype,
+                    "$items.items_id" => $itemsId,
+                    "$laudos.status"  => Status::lockingValues(),
+                ],
+            ])->current();
+            self::$cache[$key] = (int) ($row['cpt'] ?? 0) > 0;
+        }
+        return self::$cache[$key];
+    }
+
     public static function flush(): void
     {
         self::$cache = [];
