@@ -175,16 +175,40 @@ class Ltbp extends CommonDBTM
     }
 
     /** Direct status write for services; not exposed to form input on purpose. */
-    public function changeStatus(Status $new, array $extra = []): void
+    /**
+     * @param array<string, mixed> $extra
+     * @param Status|null $expected when given, the change only happens if the stored status still is
+     *                              this one (guards a double submission); returns false when it is not
+     */
+    public function changeStatus(Status $new, array $extra = [], ?Status $expected = null): bool
     {
         global $DB;
 
+        $where = ['id' => $this->getID()];
+        if ($expected !== null) {
+            $where['status'] = $expected->value;
+        }
         $DB->update(
             self::getTable(),
             ['status' => $new->value, 'date_mod' => $_SESSION['glpi_currenttime']] + $extra,
-            ['id' => $this->getID()]
+            $where
         );
+        $changed = $expected === null || $DB->affectedRows() > 0;
         $this->getFromDB($this->getID());
+        return $changed;
+    }
+
+    /**
+     * Reads the stored status locking the row until the end of the transaction; call it inside one.
+     * A concurrent emission/confirmation then waits and finds the status already moved.
+     */
+    public function lockedStatus(): ?Status
+    {
+        global $DB;
+
+        $result = $DB->doQuery(sprintf('SELECT `status` FROM `%s` WHERE `id` = %d FOR UPDATE', self::getTable(), (int) $this->getID()));
+        $row    = $result ? $result->fetch_assoc() : null;
+        return is_array($row) ? Status::tryFrom((string) $row['status']) : null;
     }
 
     /** @return list<array<string, mixed>> */

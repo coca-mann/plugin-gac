@@ -58,6 +58,16 @@ final class StepService
             return ServiceResult::fail(__('Escolha o arquivo do laudo assinado.', 'gac'));
         }
 
+        // The file is served back from this origin: only a PDF or an image, by extension and by real content.
+        $detected = null;
+        if ($file['tmp_name'] !== '' && is_file($file['tmp_name'])) {
+            $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+            $detected = $finfo !== false ? (finfo_file($finfo, $file['tmp_name']) ?: null) : null;
+        }
+        if (!FilePolicy::signedAllowed(basename($file['name']), $detected)) {
+            return ServiceResult::fail(__('O laudo assinado deve ser um PDF ou uma imagem (JPG ou PNG).', 'gac'));
+        }
+
         try {
             $documentId = DocumentStore::attachUpload(
                 $file,
@@ -72,10 +82,12 @@ final class StepService
 
         // The old file stays in the Documents tab; only the pointer moves (plan decision 7).
         $replaced = (int) $laudo->fields['documents_id_signed'] > 0;
-        $laudo->changeStatus(Status::Signed, [
+        if (!$laudo->changeStatus(Status::Signed, [
             'documents_id_signed' => $documentId,
             'date_signed'         => date('Y-m-d'),
-        ]);
+        ], $laudo->getStatus())) {
+            return ServiceResult::fail(__('Este laudo já foi processado.', 'gac'));
+        }
         LtbpEvent::log((int) $laudo->getID(), 'signed_uploaded', '', ['documents_id' => $documentId, 'replaced' => $replaced]);
 
         return ServiceResult::ok($replaced ? __('PDF assinado substituído.', 'gac') : __('PDF assinado anexado.', 'gac'));
@@ -96,7 +108,9 @@ final class StepService
         }
 
         $receivedBy = mb_substr(trim((string) ($data['received_by'] ?? '')), 0, self::TEXT_MAX);
-        $laudo->changeStatus(Status::AtPatrimony, ['date_sent_patrimony' => $date, 'received_by' => $receivedBy]);
+        if (!$laudo->changeStatus(Status::AtPatrimony, ['date_sent_patrimony' => $date, 'received_by' => $receivedBy], Status::Signed)) {
+            return ServiceResult::fail(__('Este laudo já foi processado.', 'gac'));
+        }
         LtbpEvent::log((int) $laudo->getID(), 'sent_to_patrimony', $receivedBy === '' ? '' : sprintf(__('Recebido por %s', 'gac'), $receivedBy));
 
         return ServiceResult::ok(__('Laudo enviado ao patrimônio.', 'gac'));
@@ -124,6 +138,9 @@ final class StepService
 
         try {
             $DB->beginTransaction();
+            if ($laudo->lockedStatus() !== Status::AtPatrimony) {
+                throw new \RuntimeException(__('Este laudo já foi processado.', 'gac'));
+            }
 
             // The assets change status first, while the laudo is still not "Baixado", so the lock
             // never sees them; LtbpGuard makes the pass explicit (plan decision 11).
@@ -217,12 +234,14 @@ final class StepService
             );
         }
 
-        $laudo->changeStatus(Status::Completed, [
+        if (!$laudo->changeStatus(Status::Completed, [
             'date_completed'   => $date,
             'suppliers_id'     => $suppliersId,
             'supplier_name'    => (string) $supplier->fields['name'],
             'completion_notes' => trim((string) ($data['completion_notes'] ?? '')),
-        ]);
+        ], Status::WrittenOff)) {
+            return ServiceResult::fail(__('Este laudo já foi processado.', 'gac'));
+        }
         LtbpEvent::log((int) $laudo->getID(), 'completed', (string) $supplier->fields['name']);
         WrittenOffLock::flush();
 

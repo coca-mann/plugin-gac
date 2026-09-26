@@ -303,7 +303,7 @@ function plugin_gac_install(): bool
         }
     }
 
-    // LTBP right: same rule as the PRE. Profiles that already hold the native 'config' right
+    // LTBP right: profiles that can UPDATE the native 'config' right (read-only ones do not)
     // get everything except "Editar ativo baixado", which each administrator grants per profile.
     $ltbpRight = Ltbp::$rightname;
     if (countElementsInTable(ProfileRight::getTable(), ['name' => $ltbpRight]) === 0) {
@@ -313,7 +313,7 @@ function plugin_gac_install(): bool
             iterator_to_array($DB->request([
                 'SELECT' => 'profiles_id',
                 'FROM'   => ProfileRight::getTable(),
-                'WHERE'  => ['name' => 'config', 'rights' => ['>', 0]],
+                'WHERE'  => ['name' => 'config', 'rights' => ['&', UPDATE]],
             ])),
             'profiles_id'
         );
@@ -329,7 +329,6 @@ function plugin_gac_install(): bool
         }
     }
 
-    // The definitive PDF is stored through Document, which only accepts registered types.
     // Settings used to be gated by GLPI's own "config" right; now they have the feature's
     // "Configurar" bit. Once, give it to the profiles that could configure before.
     if (!isset(Config::getConfigurationValues('plugin:gac')['pre_config_right_migrated'])) {
@@ -351,6 +350,7 @@ function plugin_gac_install(): bool
         Config::setConfigurationValues('plugin:gac', ['pre_config_right_migrated' => '1']);
     }
 
+    // The definitive PDF is stored through Document, which only accepts registered types.
     if (countElementsInTable('glpi_documenttypes', ['ext' => 'pdf']) === 0) {
         $DB->insert('glpi_documenttypes', [
             'name'          => 'PDF',

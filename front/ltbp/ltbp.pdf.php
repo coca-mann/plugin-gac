@@ -31,6 +31,7 @@
  * -------------------------------------------------------------------------
  */
 
+use GlpiPlugin\Gac\Ltbp\FilePolicy;
 use GlpiPlugin\Gac\Ltbp\Ltbp;
 use GlpiPlugin\Gac\Ltbp\PdfRenderer;
 use GlpiPlugin\Gac\Ltbp\Status;
@@ -42,7 +43,9 @@ if (!$laudo->getFromDB((int) ($_GET['id'] ?? 0)) || !$laudo->canViewItem()) {
 
 $send = static function (string $bytes, string $filename, string $mime): never {
     header('Content-Type: ' . $mime);
-    header('Content-Disposition: inline; filename="' . preg_replace('/[^A-Za-z0-9._-]/', '_', $filename) . '"');
+    // Only PDF/PNG/JPEG are shown inline; anything else downloads (a stored html/svg must never run here).
+    header('X-Content-Type-Options: nosniff');
+    header('Content-Disposition: ' . FilePolicy::disposition($mime) . '; filename="' . preg_replace('/[^A-Za-z0-9._-]/', '_', $filename) . '"');
     header('Content-Length: ' . strlen($bytes));
     header('Cache-Control: private, no-store');
     echo $bytes;

@@ -107,6 +107,9 @@ final class IssueService
 
         try {
             $DB->beginTransaction();
+            if ($laudo->lockedStatus() !== Status::Draft) {
+                throw new \RuntimeException(__('Este laudo já foi processado.', 'gac'));
+            }
 
             LtbpGuard::run(static function () use ($lines, $stateIn, $DB): void {
                 foreach ($lines as $line) {
@@ -196,6 +199,10 @@ final class IssueService
 
         try {
             $DB->beginTransaction();
+            $locked = $laudo->lockedStatus();
+            if ($locked === null || !StateMachine::canCancel($locked)) {
+                throw new \RuntimeException(__('Este laudo já foi processado.', 'gac'));
+            }
 
             LtbpGuard::run(function () use ($laudo, $stateIn, &$warnings): void {
                 foreach ($laudo->lines() as $line) {
