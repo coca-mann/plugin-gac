@@ -31,51 +31,26 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
-
-use GlpiPlugin\Gac\Ltbp\Ltbp;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+namespace GlpiPlugin\Gac\Ltbp;
 
 /**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
+ * Atomic per-year counter, same technique as the PRE (INSERT ... ON DUPLICATE KEY UPDATE with
+ * LAST_INSERT_ID(expr) makes the increment and the read one race-free step on this connection).
  */
-final class Features
+final class NumberGenerator
 {
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
-
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
+    public static function next(?int $year = null): string
     {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-        ];
-    }
+        global $DB;
 
-    public static function canConfigure(string $rightname): bool
-    {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
-    }
+        $year ??= (int) date('Y');
+        $DB->doQuery(sprintf(
+            'INSERT INTO `glpi_plugin_gac_ltbpsequences` (`year`, `last`) VALUES (%d, LAST_INSERT_ID(1))'
+            . ' ON DUPLICATE KEY UPDATE `last` = LAST_INSERT_ID(`last` + 1)',
+            $year
+        ));
+        $row = $DB->doQuery('SELECT LAST_INSERT_ID() AS seq')->fetch_assoc();
 
-    public static function canConfigureAny(): bool
-    {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
-        }
-        return false;
+        return LtbpNumber::format($year, (int) $row['seq']);
     }
 }

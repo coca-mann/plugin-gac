@@ -31,6 +31,9 @@
  * -------------------------------------------------------------------------
  */
 
+use GlpiPlugin\Gac\Ltbp\Ltbp;
+use GlpiPlugin\Gac\Ltbp\LtbpReason;
+use GlpiPlugin\Gac\Ltbp\LtbpSettings;
 use GlpiPlugin\Gac\Pre\PreSettings;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 
@@ -143,10 +146,130 @@ function plugin_gac_install(): bool
         ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
     }
 
+    $ltbps = 'glpi_plugin_gac_ltbps';
+    if (!$DB->tableExists($ltbps)) {
+        $DB->doQuery("CREATE TABLE `$ltbps` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `entities_id` INT {$sign} NOT NULL DEFAULT '0',
+            `number` VARCHAR(20) NOT NULL,
+            `status` VARCHAR(20) NOT NULL DEFAULT 'draft',
+            `destination` VARCHAR(20) NOT NULL DEFAULT '',
+            `users_id_tech` INT {$sign} NOT NULL DEFAULT '0',
+            `date_issued` DATE DEFAULT NULL,
+            `date_signed` DATE DEFAULT NULL,
+            `date_sent_patrimony` DATE DEFAULT NULL,
+            `date_written_off` DATE DEFAULT NULL,
+            `date_completed` DATE DEFAULT NULL,
+            `date_canceled` TIMESTAMP NULL DEFAULT NULL,
+            `director_ti_name` VARCHAR(255) DEFAULT NULL,
+            `director_ti_role` VARCHAR(255) DEFAULT NULL,
+            `director_adm_name` VARCHAR(255) DEFAULT NULL,
+            `director_adm_role` VARCHAR(255) DEFAULT NULL,
+            `received_by` VARCHAR(255) DEFAULT NULL,
+            `writeoff_process_number` VARCHAR(255) DEFAULT NULL,
+            `writeoff_notes` TEXT DEFAULT NULL,
+            `suppliers_id` INT {$sign} NOT NULL DEFAULT '0',
+            `supplier_name` VARCHAR(255) DEFAULT NULL,
+            `completion_notes` TEXT DEFAULT NULL,
+            `cancel_reason` TEXT DEFAULT NULL,
+            `documents_id_frozen` INT {$sign} NOT NULL DEFAULT '0',
+            `documents_id_signed` INT {$sign} NOT NULL DEFAULT '0',
+            `comment` TEXT DEFAULT NULL,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `number` (`number`),
+            KEY `entities_id` (`entities_id`),
+            KEY `status` (`status`),
+            KEY `users_id_tech` (`users_id_tech`),
+            KEY `suppliers_id` (`suppliers_id`),
+            KEY `date_creation` (`date_creation`),
+            KEY `date_mod` (`date_mod`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    $ltbpItems = 'glpi_plugin_gac_ltbpitems';
+    if (!$DB->tableExists($ltbpItems)) {
+        $DB->doQuery("CREATE TABLE `$ltbpItems` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `plugin_gac_ltbps_id` INT {$sign} NOT NULL DEFAULT '0',
+            `itemtype` VARCHAR(255) NOT NULL DEFAULT '',
+            `items_id` INT {$sign} NOT NULL DEFAULT '0',
+            `item_entities_id` INT {$sign} NOT NULL DEFAULT '0',
+            `item_name` VARCHAR(255) DEFAULT NULL,
+            `item_type_label` VARCHAR(255) DEFAULT NULL,
+            `brand` VARCHAR(255) DEFAULT NULL,
+            `model` VARCHAR(255) DEFAULT NULL,
+            `serial` VARCHAR(255) DEFAULT NULL,
+            `otherserial` VARCHAR(255) DEFAULT NULL,
+            `plugin_gac_ltbpreasons_id` INT {$sign} NOT NULL DEFAULT '0',
+            `reason_code` VARCHAR(20) DEFAULT NULL,
+            `reason_title` VARCHAR(255) DEFAULT NULL,
+            `reason_description` TEXT DEFAULT NULL,
+            `states_id_before` INT {$sign} DEFAULT NULL,
+            `pre_items_id` INT {$sign} NOT NULL DEFAULT '0',
+            `pre_number` VARCHAR(20) DEFAULT NULL,
+            `tickets_id` INT {$sign} NOT NULL DEFAULT '0',
+            `last_error` TEXT DEFAULT NULL,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `unicity` (`plugin_gac_ltbps_id`, `itemtype`, `items_id`),
+            KEY `item` (`itemtype`, `items_id`),
+            KEY `tickets_id` (`tickets_id`),
+            KEY `plugin_gac_ltbpreasons_id` (`plugin_gac_ltbpreasons_id`),
+            KEY `date_mod` (`date_mod`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    $ltbpEvents = 'glpi_plugin_gac_ltbpevents';
+    if (!$DB->tableExists($ltbpEvents)) {
+        $DB->doQuery("CREATE TABLE `$ltbpEvents` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `plugin_gac_ltbps_id` INT {$sign} NOT NULL DEFAULT '0',
+            `plugin_gac_ltbpitems_id` INT {$sign} NOT NULL DEFAULT '0',
+            `event` VARCHAR(30) NOT NULL,
+            `users_id` INT {$sign} NOT NULL DEFAULT '0',
+            `reason` TEXT DEFAULT NULL,
+            `details` LONGTEXT DEFAULT NULL,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `plugin_gac_ltbps_id` (`plugin_gac_ltbps_id`),
+            KEY `plugin_gac_ltbpitems_id` (`plugin_gac_ltbpitems_id`),
+            KEY `event` (`event`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    $ltbpReasons = 'glpi_plugin_gac_ltbpreasons';
+    if (!$DB->tableExists($ltbpReasons)) {
+        $DB->doQuery("CREATE TABLE `$ltbpReasons` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `code` VARCHAR(20) NOT NULL,
+            `name` VARCHAR(255) NOT NULL DEFAULT '',
+            `comment` TEXT DEFAULT NULL,
+            `is_active` TINYINT NOT NULL DEFAULT '1',
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `code` (`code`),
+            KEY `is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    $ltbpSequences = 'glpi_plugin_gac_ltbpsequences';
+    if (!$DB->tableExists($ltbpSequences)) {
+        $DB->doQuery("CREATE TABLE `$ltbpSequences` (
+            `year` SMALLINT UNSIGNED NOT NULL,
+            `last` INT UNSIGNED NOT NULL DEFAULT '0',
+            PRIMARY KEY (`year`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
     // Default configuration: only keys that do not exist yet, so an update never overwrites
     // what an administrator already configured.
     $current = Config::getConfigurationValues('plugin:gac');
-    $missing = array_diff_key(PreSettings::defaults(), $current);
+    $missing = array_diff_key(PreSettings::defaults() + LtbpSettings::defaults(), $current);
     if ($missing !== []) {
         Config::setConfigurationValues('plugin:gac', $missing);
     }
@@ -176,6 +299,32 @@ function plugin_gac_install(): bool
                     | RepairProtocol::RIGHT_REOPEN
                     | RepairProtocol::RIGHT_CONFIG],
                 ['name' => $right, 'profiles_id' => $admin_profiles]
+            );
+        }
+    }
+
+    // LTBP right: same rule as the PRE. Profiles that already hold the native 'config' right
+    // get everything except "Editar ativo baixado", which each administrator grants per profile.
+    $ltbpRight = Ltbp::$rightname;
+    if (countElementsInTable(ProfileRight::getTable(), ['name' => $ltbpRight]) === 0) {
+        ProfileRight::addProfileRights([$ltbpRight]);
+
+        $ltbp_admin_profiles = array_column(
+            iterator_to_array($DB->request([
+                'SELECT' => 'profiles_id',
+                'FROM'   => ProfileRight::getTable(),
+                'WHERE'  => ['name' => 'config', 'rights' => ['>', 0]],
+            ])),
+            'profiles_id'
+        );
+        if ($ltbp_admin_profiles !== []) {
+            $DB->update(
+                ProfileRight::getTable(),
+                ['rights' => ALLSTANDARDRIGHT
+                    | Ltbp::RIGHT_ISSUE
+                    | Ltbp::RIGHT_CANCEL
+                    | Ltbp::RIGHT_CONFIG],
+                ['name' => $ltbpRight, 'profiles_id' => $ltbp_admin_profiles]
             );
         }
     }
@@ -222,6 +371,22 @@ function plugin_gac_install(): bool
         ]);
     }
 
+    foreach ([
+        Ltbp::class       => [3, 4],
+        LtbpReason::class => [3, 5],
+    ] as $itemtype => $nums) {
+        if (countElementsInTable('glpi_displaypreferences', ['itemtype' => $itemtype]) === 0) {
+            foreach ($nums as $rank => $num) {
+                $DB->insert('glpi_displaypreferences', [
+                    'itemtype' => $itemtype,
+                    'num'      => $num,
+                    'rank'     => $rank + 1,
+                    'users_id' => 0,
+                ]);
+            }
+        }
+    }
+
     $migration->executeMigration();
 
     return true;
@@ -239,6 +404,11 @@ function plugin_gac_uninstall(): bool
         'glpi_plugin_gac_repairprotocolitems',
         'glpi_plugin_gac_repairprotocolevents',
         'glpi_plugin_gac_protocolsequences',
+        'glpi_plugin_gac_ltbps',
+        'glpi_plugin_gac_ltbpitems',
+        'glpi_plugin_gac_ltbpevents',
+        'glpi_plugin_gac_ltbpreasons',
+        'glpi_plugin_gac_ltbpsequences',
     ] as $table) {
         if ($DB->tableExists($table)) {
             $DB->doQuery("DROP TABLE `$table`");
@@ -247,7 +417,13 @@ function plugin_gac_uninstall(): bool
 
     $DB->delete(ProfileRight::getTable(), ['name' => RepairProtocol::$rightname]);
     $DB->delete('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]);
-    Config::deleteConfigurationValues('plugin:gac', array_merge(array_keys(PreSettings::defaults()), ['pre_config_right_migrated']));
+    $DB->delete(ProfileRight::getTable(), ['name' => Ltbp::$rightname]);
+    $DB->delete('glpi_displaypreferences', ['itemtype' => [Ltbp::class, LtbpReason::class]]);
+    Config::deleteConfigurationValues('plugin:gac', array_merge(
+        array_keys(PreSettings::defaults()),
+        array_keys(LtbpSettings::defaults()),
+        ['pre_config_right_migrated']
+    ));
 
     return true;
 }

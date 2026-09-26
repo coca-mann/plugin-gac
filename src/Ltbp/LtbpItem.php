@@ -31,51 +31,37 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
+namespace GlpiPlugin\Gac\Ltbp;
 
-use GlpiPlugin\Gac\Ltbp\Ltbp;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+use CommonDBChild;
 
-/**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
- */
-final class Features
+/** One asset inside a laudo (spec section 5.2). The items tab is added in the pages task. */
+class LtbpItem extends CommonDBChild
 {
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
+    public static $itemtype  = Ltbp::class;
+    public static $items_id  = 'plugin_gac_ltbps_id';
+    public static $rightname = 'plugin_gac_ltbp';
+    public $dohistory        = false;
 
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
+    /** The line has no "name" column; this keeps the native history readable when a line is added or removed. */
+    public function getName($options = [])
     {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-        ];
-    }
-
-    public static function canConfigure(string $rightname): bool
-    {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
-    }
-
-    public static function canConfigureAny(): bool
-    {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
+        if (empty($this->fields['item_name'])) {
+            return parent::getName($options);
         }
-        return false;
+        return sprintf('%s · %s', $this->fields['item_type_label'] ?? '', $this->fields['item_name']);
+    }
+
+    public static function getTable($classname = null)
+    {
+        if ($classname !== null && $classname !== static::class) {
+            return parent::getTable($classname);
+        }
+        return 'glpi_plugin_gac_ltbpitems';
+    }
+
+    public static function getTypeName($nb = 0)
+    {
+        return _n('Item', 'Itens', $nb, 'gac');
     }
 }
