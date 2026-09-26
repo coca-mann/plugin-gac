@@ -18,7 +18,7 @@
         readonly: not header_editable,
     }) }}
 
-    {{ fields.dateField('date_issued', item.fields['date_issued'], __('Data de emissão', 'gac'), {
+    {{ fields.dateField('date_issued', item.fields['date_issued']|default('now'|date('Y-m-d')), __('Data de emissão', 'gac'), {
         disabled: not header_editable,
     }) }}
 
