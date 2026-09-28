@@ -40,7 +40,7 @@ com o motivo.
 | 17 | Extravio | "Marcar como extraviada" | Exige justificativa; conta como final | OK |
 | 18 | Encerramento | Última linha em estado final | PRE `Encerrado` sozinho, `date_closed` preenchida | OK |
 | 19 | Status anterior | Tirar do Pendente um ticket de "Baixa" ou "Manter" | Volta ao status que tinha antes do envio | Parcial: confirmado o dado (`previous_status` original guardado), não a ação manual na tela |
-| 20 | Reabertura | Reabrir com motivo; corrigir custo e nº da OS; concluir | Motivo no histórico; custo do ticket atualizado e renomeado; `Encerrado` só após "Concluir correções" | OK |
+| 20 | Reabertura | Reabrir com motivo; corrigir custo e nº da OS; concluir | Motivo no histórico; custo do ticket atualizado e renomeado; acompanhamento de correção no ticket com os dados corrigidos (D31); `Encerrado` só após "Concluir correções" | Não executado: reverificar após D31 |
 | 21 | Sem reabertura | Corrigir linha de PRE não reaberto (POST forjado) | Recusado | OK |
 | 22 | Direitos | Usuário sem "Enviar", "Registrar retorno" ou "Reabrir" | Botões ausentes e endpoints recusam | Não executado: falta um segundo usuário de teste |
 | 23 | Cancelar | Botão "Cancelar PRE" na aba principal, ao lado de "Salvar" (só em rascunho, com confirmação) | Linhas apagadas; pares voltam a ser candidatos | OK |
