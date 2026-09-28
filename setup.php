@@ -37,7 +37,7 @@ use GlpiPlugin\Gac\Ltbp\AssetUpdateGuard;
 use GlpiPlugin\Gac\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.3.0');
+define('PLUGIN_GAC_VERSION', '0.4.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
