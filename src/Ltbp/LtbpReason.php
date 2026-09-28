@@ -104,6 +104,16 @@ class LtbpReason extends CommonDBTM
         return countElementsInTable(LtbpItem::getTable(), ['plugin_gac_ltbpreasons_id' => $id]) > 0;
     }
 
+    /**
+     * getEmpty() blanks every field to "" regardless of the column's own DB default, which would
+     * otherwise pre-select "Não" on the "new item" form even though the table defaults
+     * is_active to 1 (see hook.php).
+     */
+    public function post_getEmpty()
+    {
+        $this->fields['is_active'] = 1;
+    }
+
     public function prepareInputForAdd($input)
     {
         return $this->checkedInput($input, 0);
