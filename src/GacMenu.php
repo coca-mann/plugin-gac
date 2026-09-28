@@ -34,7 +34,6 @@
 namespace GlpiPlugin\Gac;
 
 use GlpiPlugin\Gac\Ltbp\LtbpMenu;
-use GlpiPlugin\Gac\Pre\ConfigMenu;
 use GlpiPlugin\Gac\Pre\PreMenu;
 use Plugin;
 

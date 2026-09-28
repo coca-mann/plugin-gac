@@ -38,11 +38,15 @@ if (!LtbpReason::canView()) {
     Html::displayRightError();
 }
 
+// The "ltbpreason" option (registered in ConfigMenu) gives this screen its own "+" context-link
+// button pointing at the reason's form, without adding that link to every other config screen
+// that also uses GacMenu::ITEM_CONFIG.
 Html::header(
     LtbpReason::getTypeName(2),
     $_SERVER['PHP_SELF'],
     GacMenu::SECTOR,
-    GacMenu::ITEM_CONFIG
+    GacMenu::ITEM_CONFIG,
+    'ltbpreason'
 );
 
 Search::show(LtbpReason::class);

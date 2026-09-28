@@ -31,10 +31,17 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac;
 
-use GlpiPlugin\Gac\Features;
+use GlpiPlugin\Gac\Ltbp\LtbpReason;
 
+/**
+ * The plugin's shared "Configurações" sidebar entry. A module that manages a standalone
+ * catalog from inside the config page (LTBP's reasons, for instance) registers its own "add"
+ * link here as a named option, so front/<module>/<catalog>.php can pass that option to
+ * Html::header() and get GLPI's native "+" context-link button, without every other config
+ * screen also showing that link (see templates/layout/parts/context_links.html.twig).
+ */
 class ConfigMenu
 {
     public static function getMenuName($nb = 0): string
@@ -47,10 +54,17 @@ class ConfigMenu
         if (!Features::canConfigureAny()) {
             return [];
         }
-        return [
+        $menu = [
             'title' => __('Configurações', 'gac'),
             'page'  => '/plugins/gac/front/config.php',
             'icon'  => 'ti ti-settings',
         ];
+        if (LtbpReason::canCreate()) {
+            $menu['options']['ltbpreason'] = [
+                'title' => LtbpReason::getTypeName(2),
+                'links' => ['add' => LtbpReason::getFormURL(false)],
+            ];
+        }
+        return $menu;
     }
 }
