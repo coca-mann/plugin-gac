@@ -39,8 +39,10 @@ use GlpiPlugin\Gac\Ltbp\LtbpReason;
  * The plugin's shared "Configurações" sidebar entry. A module that manages a standalone
  * catalog from inside the config page (LTBP's reasons, for instance) registers its own "add"
  * link here as a named option, so front/<module>/<catalog>.php can pass that option to
- * Html::header() and get GLPI's native "+" context-link button, without every other config
- * screen also showing that link (see templates/layout/parts/context_links.html.twig).
+ * Html::header() and get GLPI's native "+" context-link button and an extra breadcrumb segment
+ * for that screen, without every other config screen also showing them (both read off
+ * menu[sector]['content'][item]['options'][option]: see templates/layout/parts/breadcrumbs.html.twig
+ * and context_links.html.twig).
  */
 class ConfigMenu
 {
@@ -59,11 +61,19 @@ class ConfigMenu
             'page'  => '/plugins/gac/front/config.php',
             'icon'  => 'ti ti-settings',
         ];
-        if (LtbpReason::canCreate()) {
-            $menu['options']['ltbpreason'] = [
+        if (LtbpReason::canView()) {
+            // "page" (with "title") is what makes breadcrumbs.html.twig add the extra
+            // "Configurações > Motivos de baixa" segment; "links.add" is the separate
+            // "+" context-link button, shown only when the user can also create one.
+            $option = [
                 'title' => LtbpReason::getTypeName(2),
-                'links' => ['add' => LtbpReason::getFormURL(false)],
+                'page'  => LtbpReason::getSearchURL(false),
+                'icon'  => LtbpReason::getIcon(),
             ];
+            if (LtbpReason::canCreate()) {
+                $option['links'] = ['add' => LtbpReason::getFormURL(false)];
+            }
+            $menu['options']['ltbpreason'] = $option;
         }
         return $menu;
     }
