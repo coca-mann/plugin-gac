@@ -48,16 +48,20 @@ if (isset($_POST['add'])) {
     $item->update($_POST);
     Html::back();
 } elseif (isset($_POST['purge'])) {
-    $item->check($_POST['id'], PURGE);
-    if ($item->delete($_POST, 1)) {
-        $item->redirectToList();
+    // canPurgeItem() (checked by $item->check() below) already refuses this once the reason is
+    // in use, but check() reports that by throwing, which would surface as GLPI's generic
+    // access-denied page instead of this friendly message. Catch the in-use case first.
+    if (LtbpReason::isUsed((int) $_POST['id'])) {
+        Session::addMessageAfterRedirect(
+            __('Este motivo já foi usado em algum laudo: inative-o em vez de excluir.', 'gac'),
+            false,
+            ERROR
+        );
+        Html::back();
     }
-    Session::addMessageAfterRedirect(
-        __('Este motivo já foi usado em algum laudo: inative-o em vez de excluir.', 'gac'),
-        false,
-        ERROR
-    );
-    Html::back();
+    $item->check($_POST['id'], PURGE);
+    $item->delete($_POST, 1);
+    $item->redirectToList();
 } else {
     Html::header(
         LtbpReason::getTypeName(1),
