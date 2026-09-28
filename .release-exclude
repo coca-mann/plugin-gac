@@ -4,6 +4,7 @@
 ./.glpi-coverage.json
 ./.php-cs-fixer.php
 ./.release-exclude
+./.superpowers
 ./.twig_cs.dist.php
 ./CLAUDE.md
 ./Makefile
