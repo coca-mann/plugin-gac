@@ -67,6 +67,12 @@ final class LtbpConfigSection implements ConfigSection
         ];
     }
 
+    /** Title of the block where state roles are configured, reused by the missing-mappings alert. */
+    private static function stateSectionTitle(): string
+    {
+        return __('Status do ativo', 'gac');
+    }
+
     public function render(): string
     {
         $s   = LtbpConfig::load();
@@ -78,7 +84,8 @@ final class LtbpConfigSection implements ConfigSection
             $names  = array_map(static fn(string $role): string => $labels[$role], $missing);
             $out .= "<div class='alert alert-warning'>"
                 . htmlescape(__('Mapeamentos obrigatórios ainda não configurados. A emissão do laudo fica bloqueada até preenchê-los:', 'gac'))
-                . ' <strong>' . htmlescape(implode(', ', $names)) . '</strong></div>';
+                . "<ul class='mb-0'><li>" . htmlescape(self::stateSectionTitle()) . ': <strong>'
+                . htmlescape(implode(', ', $names)) . '</strong></li></ul></div>';
         }
         if (LtbpSettings::directorsMissing($s)) {
             $out .= "<div class='alert alert-warning'>"
@@ -97,7 +104,7 @@ final class LtbpConfigSection implements ConfigSection
         }
         $out .= $this->block(
             'ti-device-laptop',
-            __('Status do ativo', 'gac'),
+            self::stateSectionTitle(),
             __('Status aplicados ao ativo em cada etapa do laudo. "Aguardando baixa" costuma ser o mesmo status usado pelo PRE. Escolha um status existente ou crie um novo com o botão + do campo; nenhum é criado sem a sua ação. Crie-os na entidade raiz, com recursividade ligada.', 'gac'),
             $body
         );

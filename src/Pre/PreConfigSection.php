@@ -77,6 +77,18 @@ final class PreConfigSection implements ConfigSection
         ];
     }
 
+    /** Title of the block where state roles are configured, reused by the missing-mappings alert. */
+    private static function stateSectionTitle(): string
+    {
+        return __('Status do ativo', 'gac');
+    }
+
+    /** Title of the block where pending reason roles are configured, reused by the missing-mappings alert. */
+    private static function reasonSectionTitle(): string
+    {
+        return __('Motivos de pendência do ticket', 'gac');
+    }
+
     public function render(): string
     {
         $s = PreConfig::load();
@@ -88,9 +100,22 @@ final class PreConfigSection implements ConfigSection
         }
         $missing = array_values(array_unique($missing));
         if ($missing !== []) {
+            $stateLabels = self::stateRoleLabels();
+            $reasonLabels = self::reasonRoleLabels();
+            $bySection = [];
+            foreach ($missing as $entry) {
+                [$kind, $role] = explode(':', $entry, 2);
+                $section = $kind === 'reason' ? self::reasonSectionTitle() : self::stateSectionTitle();
+                $labels  = $kind === 'reason' ? $reasonLabels : $stateLabels;
+                $bySection[$section][] = $labels[$role] ?? $role;
+            }
+            $items = '';
+            foreach ($bySection as $section => $names) {
+                $items .= '<li>' . htmlescape($section) . ': <strong>' . htmlescape(implode(', ', $names)) . '</strong></li>';
+            }
             $out .= "<div class='alert alert-warning'>"
                 . htmlescape(__('Mapeamentos obrigatórios ainda não configurados. O envio fica bloqueado até preenchê-los:', 'gac'))
-                . ' <strong>' . htmlescape(implode(', ', $missing)) . '</strong></div>';
+                . "<ul class='mb-0'>" . $items . '</ul></div>';
         }
 
         // 1. Eligible categories
@@ -141,7 +166,7 @@ final class PreConfigSection implements ConfigSection
         }
         $out .= $this->block(
             'ti-device-laptop',
-            __('Status do ativo', 'gac'),
+            self::stateSectionTitle(),
             __('Status aplicados ao ativo conforme a etapa do protocolo. Escolha um status existente ou crie um novo com o botão + do campo. Crie-os na entidade raiz, com recursividade ligada, para valerem em todas as entidades. Nenhum status é criado sem a sua ação.', 'gac'),
             $body
         );
@@ -157,7 +182,7 @@ final class PreConfigSection implements ConfigSection
         }
         $out .= $this->block(
             'ti-clock-pause',
-            __('Motivos de pendência do ticket', 'gac'),
+            self::reasonSectionTitle(),
             __('Motivos de pendência aplicados ao ticket enquanto o equipamento está com a assistência ou aguardando uma decisão. Escolha um motivo existente ou crie um novo com o botão + do campo.', 'gac'),
             $body
         );
