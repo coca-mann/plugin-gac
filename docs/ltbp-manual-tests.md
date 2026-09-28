@@ -9,10 +9,18 @@ Legenda dos resultados já preenchidos (26/09/2026): **OK (smoke, code-path)** f
 script que sobe o kernel do GLPI e chama as classes (serviços, guarda, renderização), sem passar
 por uma requisição HTTP real nem pelo navegador. **OK (navegador)** foi exercitado em 26/09/2026
 no Chrome, com requisições HTTP reais e laudos de teste com ativos `ZZBROWSER`. **Não executado**
-significa que nenhuma execução o cobriu. Ficaram sem rodar no navegador os cenários 20 (o botão
-"Confirmar baixa" abre um `confirm()` de JS que a automação não trata; só smoke), 26, 27, 33, 35 e
-40. Os demais cenários com resultado só de smoke, parcial ou "Não executado" precisam ser rodados
-no navegador antes de dar o módulo como validado.
+significa que nenhuma execução o cobriu. Ficaram sem rodar no navegador os cenários 20 e 37 (os
+botões "Confirmar baixa" e "Excluir permanentemente" abrem um `confirm()` de JS que a automação
+não trata; só smoke), 26, 27, 33, 35 e 40. Os demais cenários com resultado só de smoke, parcial ou
+"Não executado" precisam ser rodados no navegador antes de dar o módulo como validado.
+
+Também corrigidos em 28/09/2026, fora do roteiro abaixo (nenhum cenário próprio, achados validando
+o cenário 37 e a tela de configuração): a lista de motivos não tinha o botão nativo "+ Adicionar"
+nem o segmento "Motivos de baixa" no breadcrumb (faltava registrar a página em `ConfigMenu`); a
+recusa de excluir um motivo em uso levantava a página de erro genérica do GLPI em vez da mensagem
+em português (`check()` lança exceção, o código antigo nunca alcançava a mensagem); e o formulário
+de novo motivo nascia com "Ativo = Não" (o `getEmpty()` do GLPI zera os campos, ignorando o default
+da coluna).
 
 Também vistos no navegador (26/09/2026): a página de configuração renderiza as duas seções, com os
 cinco blocos do LTBP e os avisos (OK, navegador); a aba Andamento renderiza nos estados aguardando
@@ -70,7 +78,7 @@ assinaturas, assinado e no patrimônio, cada um só com a ação cabível (ver c
 | 34 | Botão em lote (laudo existente) | Escolher um rascunho existente | Linhas entram; sem seletor de destinação | Parcial: caminho do rascunho existente verificado no serviço (`created=false`, `openDrafts()` lista o rascunho, perfil só de leitura recusado); o esconder do seletor de destinação (JS) não foi visto |
 | 35 | Selo volta | Excluir o rascunho / cancelar o laudo | Linhas do PRE voltam a "Aguardando laudo" | Não executado |
 | 36 | Direitos | Perfil só de leitura; perfil sem ver laudos | Sem formulários de ação; PRE sem selo nem cartão | Parcial: na aba Itens do PRE, direito 0 não mostra selo, coluna nem cartão, e leitura mostra o selo sem cartão nem coluna (smoke); a aba Andamento com perfil de leitura não foi renderizada e nada foi conferido com um login real |
-| 37 | Motivo usado | Tentar excluir um motivo em uso | Recusa; inativar funciona | Não executado |
+| 37 | Motivo usado | Tentar excluir um motivo em uso | Recusa; inativar funciona | OK (smoke, code-path) em 28/09/2026: script rodando exatamente o caminho do controller (`check($id, PURGE)` seguido de `delete()`) confirma que um motivo em uso é recusado (`AccessDeniedHttpException`) e um motivo livre é excluído; inativar um motivo em uso também funciona. Não visto no navegador: o botão "Excluir permanentemente" abre um `confirm()` de JS que trava a automação (como o cenário 20), então a mensagem amigável de recusa nunca foi vista renderizada na tela real |
 | 38 | Excluir rascunho | Excluir um rascunho com linhas | Apaga o laudo e as linhas; ativos livres | Não executado |
 | 39 | Reinstalar | Desinstalar e instalar o plugin | Sem erro; tabelas e direitos recriados | Parcial: desativar, desinstalar, instalar e ativar pelo console rodaram sem erro na Tarefa 5, com as 5 tabelas do LTBP e os direitos recriados; não foi repetido no fim, com o código completo |
 | 40 | Regressão do PRE | Enviar um PRE, registrar retornos, baixar o PDF | Tudo como antes da extração para `Shared` | Não executado (a aba Itens do PRE renderiza em rascunho, enviado e vazio segundo o smoke da Tarefa 14, mas o envio, o retorno e o PDF reais não foram refeitos) |
