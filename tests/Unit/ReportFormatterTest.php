@@ -33,7 +33,7 @@
 
 namespace GlpiPlugin\Gac\Tests\Unit;
 
-use GlpiPlugin\Gac\Pre\ReportFormatter;
+use GlpiPlugin\Gac\Shared\ReportFormatter;
 use PHPUnit\Framework\TestCase;
 
 final class ReportFormatterTest extends TestCase

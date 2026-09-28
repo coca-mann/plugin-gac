@@ -33,10 +33,11 @@
 
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Gac\GacMenu;
+use GlpiPlugin\Gac\Ltbp\AssetUpdateGuard;
 use GlpiPlugin\Gac\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.3.0');
+define('PLUGIN_GAC_VERSION', '0.4.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
@@ -71,6 +72,11 @@ function plugin_init_gac(): void
 
         // Plugin rights are invisible in Perfis unless the plugin adds its own tab.
         Plugin::registerClass(ProfileRights::class, ['addtabon' => Profile::class]);
+
+        // Write-off lock (LTBP spec L14): refuses updates to an asset whose laudo is Baixado or Concluído.
+        foreach (AssetUpdateGuard::itemtypes() as $itemtype) {
+            $PLUGIN_HOOKS[Hooks::PRE_ITEM_UPDATE]['gac'][$itemtype] = [AssetUpdateGuard::class, 'onPreUpdate'];
+        }
     }
 }
 

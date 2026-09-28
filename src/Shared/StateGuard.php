@@ -31,26 +31,50 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac\Shared;
 
-use GlpiPlugin\Gac\Features;
+use PendingReason;
+use State;
 
-class ConfigMenu
+/**
+ * A State or a PendingReason belongs to an entity and is visible to that entity, and to its
+ * descendants only when recursive (spec section 10). The global mapping must be valid for the
+ * entity where it is applied: the asset's entity for a State, the ticket's for a PendingReason.
+ */
+final class StateGuard
 {
-    public static function getMenuName($nb = 0): string
+    public static function isUsable(int $statesId, int $entityId): bool
     {
-        return __('Configurações', 'gac');
+        if ($statesId <= 0) {
+            return false;
+        }
+        $state = new State();
+        if (!$state->getFromDB($statesId)) {
+            return false;
+        }
+        return self::isVisible((int) $state->fields['entities_id'], (bool) $state->fields['is_recursive'], $entityId);
     }
 
-    public static function getMenuContent(): array
+    public static function isReasonUsable(int $reasonId, int $entityId): bool
     {
-        if (!Features::canConfigureAny()) {
-            return [];
+        if ($reasonId <= 0) {
+            return false;
         }
-        return [
-            'title' => __('Configurações', 'gac'),
-            'page'  => '/plugins/gac/front/config.php',
-            'icon'  => 'ti ti-settings',
-        ];
+        $reason = new PendingReason();
+        if (!$reason->getFromDB($reasonId)) {
+            return false;
+        }
+        return self::isVisible((int) $reason->fields['entities_id'], (bool) $reason->fields['is_recursive'], $entityId);
+    }
+
+    private static function isVisible(int $ownerEntity, bool $recursive, int $entityId): bool
+    {
+        if ($ownerEntity === $entityId) {
+            return true;
+        }
+        if (!$recursive) {
+            return false;
+        }
+        return in_array($ownerEntity, array_map('intval', getAncestorsOf('glpi_entities', $entityId)), true);
     }
 }

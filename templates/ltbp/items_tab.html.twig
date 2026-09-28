@@ -1,0 +1,171 @@
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+<div class="p-3" data-gac-ltbp data-ltbp-id="{{ laudo.getID() }}">
+
+    {% if editing %}
+        <form method="post" action="{{ form_url }}">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+    {% endif %}
+
+    <div class="card border mb-4">
+        <div class="card-header bg-body-tertiary">
+            <div class="flex-grow-1">
+                <h4 class="card-title mb-1"><i class="ti ti-list-details me-2"></i>{{ __('Ativos do laudo', 'gac') }}</h4>
+                <div class="text-muted small">
+                    {% if is_draft %}
+                        {{ __('Escolha o motivo da baixa de cada ativo antes de emitir o laudo.', 'gac') }}
+                    {% else %}
+                        {{ __('Ativos listados no laudo emitido. Os dados são uma cópia feita na emissão.', 'gac') }}
+                    {% endif %}
+                </div>
+            </div>
+            {% if can_pdf %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ pdf_url }}" target="_blank" rel="noopener">
+                    <i class="ti ti-file-type-pdf"></i>
+                    {{ is_draft ? __('Pré-visualizar PDF', 'gac') : __('Baixar PDF emitido', 'gac') }}
+                </a>
+            {% endif %}
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover card-table mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ __('Tipo', 'gac') }}</th>
+                        <th>{{ __('Equipamento', 'gac') }}</th>
+                        <th>{{ __('Marca / modelo', 'gac') }}</th>
+                        <th>{{ __('Patrimônio', 'gac') }}</th>
+                        <th>{{ __('Nº de série', 'gac') }}</th>
+                        <th>{{ __('Origem', 'gac') }}</th>
+                        <th>{{ __('Motivo', 'gac') }}</th>
+                        {% if editing %}<th>{{ __('Ações', 'gac') }}</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                        <tr>
+                            <td>{{ line.item_type_label }}</td>
+                            <td>{{ line.item_name }}</td>
+                            <td>{{ [line.brand, line.model]|filter(v => v)|join(' / ') ?: '—' }}</td>
+                            <td>{{ line.otherserial ?: '—' }}</td>
+                            <td>{{ line.serial ?: '—' }}</td>
+                            <td>
+                                {% if line.pre_number %}
+                                    <span class="badge bg-secondary-lt">{{ line.pre_number }}</span>
+                                {% endif %}
+                                {% if line.tickets_id %}
+                                    <a href="{{ line.ticket_url }}">#{{ line.tickets_id }}</a>
+                                {% endif %}
+                                {% if not line.pre_number and not line.tickets_id %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if editing %}
+                                    <select class="form-select form-select-sm" name="reason[{{ line.id }}]" style="min-width: 14rem;">
+                                        {% for reason_id, reason_label in reason_choices %}
+                                            <option value="{{ reason_id }}"{% if reason_id == line.plugin_gac_ltbpreasons_id %} selected{% endif %}>{{ reason_label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    {{ line.reason_text ?: '—' }}
+                                {% endif %}
+                            </td>
+                            {% if editing %}
+                                <td>
+                                    <button type="submit" name="remove_line" value="{{ line.id }}" formnovalidate class="btn btn-sm btn-outline-danger">{{ __('Remover', 'gac') }}</button>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="{{ editing ? 8 : 7 }}" class="text-center text-muted">{{ __('Nenhum ativo neste laudo.', 'gac') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if editing and lines is not empty %}
+            <div class="card-footer">
+                <button type="submit" name="save_reasons" value="1" class="btn btn-primary">{{ __('Salvar motivos', 'gac') }}</button>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if editing %}
+        </form>
+
+        {# Candidates: assets in the "Aguardando baixa" status (includes the ones that came back from the PRE). #}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-package-import me-2"></i>{{ __('Ativos aguardando baixa', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Ativos no status "aguardando baixa" que ainda não estão em nenhum laudo, com a origem no PRE quando houver.', 'gac') }}</div>
+                </div>
+            </div>
+            {% if candidates_hint %}
+                <div class="card-body text-muted">{{ __('Defina o status "Ativo aguardando baixa" na configuração do LTBP para listar os candidatos.', 'gac') }}</div>
+            {% elseif candidates is empty %}
+                <div class="card-body text-muted">{{ __('Nenhum ativo aguardando baixa fora de um laudo.', 'gac') }}</div>
+            {% else %}
+                <form method="post" action="{{ form_url }}">
+                    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                    <div class="table-responsive">
+                        <table class="table table-hover card-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" class="form-check-input" data-gac-select-all title="{{ __('Marcar todos', 'gac') }}" aria-label="{{ __('Marcar todos', 'gac') }}"></th>
+                                    <th>{{ __('Tipo', 'gac') }}</th>
+                                    <th>{{ __('Equipamento', 'gac') }}</th>
+                                    <th>{{ __('Patrimônio', 'gac') }}</th>
+                                    <th>{{ __('Nº de série', 'gac') }}</th>
+                                    <th>{{ __('Origem no PRE', 'gac') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in candidates %}
+                                    <tr>
+                                        <td><input type="checkbox" class="form-check-input" name="select[]" value="{{ c.key }}"></td>
+                                        <td>{{ c.type_label }}</td>
+                                        <td>{{ c.name }}</td>
+                                        <td>{{ c.otherserial ?: '—' }}</td>
+                                        <td>{{ c.serial ?: '—' }}</td>
+                                        <td>
+                                            {% if c.pre_number %}
+                                                <span class="badge bg-secondary-lt">{{ c.pre_number }}</span>
+                                                {% if c.outcome_label %}<span class="small text-muted">{{ c.outcome_label }}</span>{% endif %}
+                                                {% if c.service_description %}<div class="small text-muted">{{ c.service_description }}</div>{% endif %}
+                                            {% else %}
+                                                <span class="text-muted">—</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" name="add_candidates" value="1" class="btn btn-primary">{{ __('Adicionar selecionados ao laudo', 'gac') }}</button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+
+        {# Free search: any asset, for equipment that never went through the PRE. #}
+        <div class="card border mb-4">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-search me-2"></i>{{ __('Buscar outro ativo', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Para equipamentos obsoletos que nunca passaram pelo PRE: escolha o tipo e o ativo.', 'gac') }}</div>
+                </div>
+            </div>
+            <form method="post" action="{{ form_url }}">
+                <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="ltbp_id" value="{{ laudo.getID() }}">
+                <div class="card-body">{{ asset_picker|raw }}</div>
+                <div class="card-footer">
+                    <button type="submit" name="add_asset" value="1" class="btn btn-outline-primary">{{ __('Adicionar ao laudo', 'gac') }}</button>
+                </div>
+            </form>
+        </div>
+    {% endif %}
+</div>

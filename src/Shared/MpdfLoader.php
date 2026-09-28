@@ -31,29 +31,22 @@
  * -------------------------------------------------------------------------
  */
 
-declare(strict_types=1);
+namespace GlpiPlugin\Gac\Shared;
 
-namespace GlpiPlugin\Gac\Pre;
-
-/** Pure: how to walk from an entity up to the root without looping. */
-final class EntityChain
+/** Loads the plugin's own vendor/autoload.php (mPDF) once. */
+final class MpdfLoader
 {
-    /** Longest chain we walk; GLPI entity trees are far shallower. */
-    public const MAX_DEPTH = 32;
-
-    /**
-     * The parent to visit after $current, or null when the walk ends. The root entity's parent
-     * is -1 in a fresh GLPI but NULL in databases migrated from older versions, so anything that
-     * is not a valid, different, non-negative id ends the chain (a NULL cast to 0 pointed the
-     * root back at itself and looped forever).
-     */
-    public static function parentOf(int $current, mixed $parentId): ?int
+    public static function load(): void
     {
-        if ($parentId === null || !is_numeric($parentId)) {
-            return null;
+        if (class_exists(\Mpdf\Mpdf::class)) {
+            return;
         }
-        $parent = (int) $parentId;
-
-        return $parent < 0 || $parent === $current ? null : $parent;
+        $autoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+        if (!is_file($autoload)) {
+            throw new \RuntimeException(
+                'mPDF is missing: use the release package or run "composer install --no-dev" in the plugin folder.'
+            );
+        }
+        require_once $autoload;
     }
 }

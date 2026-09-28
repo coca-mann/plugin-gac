@@ -31,27 +31,26 @@
  * -------------------------------------------------------------------------
  */
 
-declare(strict_types=1);
+namespace GlpiPlugin\Gac\Ltbp;
 
-namespace GlpiPlugin\Gac\Pre;
-
-/** Pure: the size, in millimetres, of a logo scaled to fit a box while keeping its proportions. */
-final class LogoFit
+/**
+ * Atomic per-year counter, same technique as the PRE (INSERT ... ON DUPLICATE KEY UPDATE with
+ * LAST_INSERT_ID(expr) makes the increment and the read one race-free step on this connection).
+ */
+final class NumberGenerator
 {
-    /**
-     * @return array{width: float, height: float}|null null when the image size is unusable
-     */
-    public static function fit(int $pixelsWidth, int $pixelsHeight, float $maxWidthMm, float $maxHeightMm): ?array
+    public static function next(?int $year = null): string
     {
-        if ($pixelsWidth <= 0 || $pixelsHeight <= 0 || $maxWidthMm <= 0 || $maxHeightMm <= 0) {
-            return null;
-        }
+        global $DB;
 
-        $scale = min($maxWidthMm / $pixelsWidth, $maxHeightMm / $pixelsHeight);
+        $year ??= (int) date('Y');
+        $DB->doQuery(sprintf(
+            'INSERT INTO `glpi_plugin_gac_ltbpsequences` (`year`, `last`) VALUES (%d, LAST_INSERT_ID(1))'
+            . ' ON DUPLICATE KEY UPDATE `last` = LAST_INSERT_ID(`last` + 1)',
+            $year
+        ));
+        $row = $DB->doQuery('SELECT LAST_INSERT_ID() AS seq')->fetch_assoc();
 
-        return [
-            'width'  => round($pixelsWidth * $scale, 2),
-            'height' => round($pixelsHeight * $scale, 2),
-        ];
+        return LtbpNumber::format($year, (int) $row['seq']);
     }
 }

@@ -31,29 +31,24 @@
  * -------------------------------------------------------------------------
  */
 
-declare(strict_types=1);
+use GlpiPlugin\Gac\GacMenu;
+use GlpiPlugin\Gac\Ltbp\LtbpReason;
 
-namespace GlpiPlugin\Gac\Pre;
-
-/** Pure text formatting for the report header. */
-final class ReportFormatter
-{
-    /** "2026-09-25" -> "25/09/2026"; anything that is not a valid Y-m-d date is returned as is. */
-    public static function date(string $ymd): string
-    {
-        $d = \DateTimeImmutable::createFromFormat('Y-m-d', $ymd);
-        return ($d !== false && $d->format('Y-m-d') === $ymd) ? $d->format('d/m/Y') : $ymd;
-    }
-
-    public static function addressLine(string $address, string $postcode, string $town, string $state): string
-    {
-        $address  = trim($address);
-        $postcode = trim($postcode);
-        $town     = trim($town);
-        $state    = trim($state);
-
-        $place = $town !== '' && $state !== '' ? $town . '/' . $state : $town . $state;
-
-        return implode(' — ', array_filter([$address, $postcode, $place], static fn(string $p): bool => $p !== ''));
-    }
+if (!LtbpReason::canView()) {
+    Html::displayRightError();
 }
+
+// The "ltbpreason" option (registered in ConfigMenu) gives this screen its own "+" context-link
+// button pointing at the reason's form, without adding that link to every other config screen
+// that also uses GacMenu::ITEM_CONFIG.
+Html::header(
+    LtbpReason::getTypeName(2),
+    $_SERVER['PHP_SELF'],
+    GacMenu::SECTOR,
+    GacMenu::ITEM_CONFIG,
+    'ltbpreason'
+);
+
+Search::show(LtbpReason::class);
+
+Html::footer();

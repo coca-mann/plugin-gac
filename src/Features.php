@@ -33,6 +33,7 @@
 
 namespace GlpiPlugin\Gac;
 
+use GlpiPlugin\Gac\Ltbp\Ltbp;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 use Session;
 
@@ -54,6 +55,11 @@ final class Features
                 'itemtype' => RepairProtocol::class,
                 'label'    => RepairProtocol::getTypeName(2),
                 'field'    => RepairProtocol::$rightname,
+            ],
+            [
+                'itemtype' => Ltbp::class,
+                'label'    => Ltbp::getTypeName(2),
+                'field'    => Ltbp::$rightname,
             ],
         ];
     }

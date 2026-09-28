@@ -36,7 +36,7 @@
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 use GlpiPlugin\Gac\Pre\RepairProtocolItem;
 use GlpiPlugin\Gac\Pre\SendService;
-use GlpiPlugin\Gac\Pre\ServiceResult;
+use GlpiPlugin\Gac\Shared\ServiceResult;
 
 header('Content-Type: application/json; charset=utf-8');
 

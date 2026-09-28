@@ -33,33 +33,50 @@
 
 declare(strict_types=1);
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac\Ltbp;
 
-/** Outcome of a service call; serialized as-is by the AJAX endpoints. */
-final class ServiceResult
+enum Status: string
 {
-    /** @param array<string, mixed> $data */
-    private function __construct(
-        public readonly bool $ok,
-        public readonly string $message,
-        public readonly array $data = []
-    ) {}
+    case Draft = 'draft';
+    case AwaitingSignatures = 'awaiting_signatures';
+    case Signed = 'signed';
+    case AtPatrimony = 'at_patrimony';
+    case WrittenOff = 'written_off';
+    case Completed = 'completed';
+    case Canceled = 'canceled';
 
-    /** @param array<string, mixed> $data */
-    public static function ok(string $message = '', array $data = []): self
+    /** A laudo holds its assets in every status but Canceled (spec L8, L21). */
+    public function holdsAssets(): bool
     {
-        return new self(true, $message, $data);
+        return $this !== self::Canceled;
     }
 
-    /** @param array<string, mixed> $data */
-    public static function fail(string $message, array $data = []): self
+    /** From the write-off on, the assets are locked against edition (spec L14). */
+    public function locksAssets(): bool
     {
-        return new self(false, $message, $data);
+        return $this === self::WrittenOff || $this === self::Completed;
     }
 
-    /** @return array{success: bool, message: string, data: array<string, mixed>} */
-    public function toArray(): array
+    public function isFinal(): bool
     {
-        return ['success' => $this->ok, 'message' => $this->message, 'data' => $this->data];
+        return $this === self::Completed || $this === self::Canceled;
+    }
+
+    /** @return list<string> */
+    public static function holdingValues(): array
+    {
+        return array_values(array_map(
+            static fn(self $s): string => $s->value,
+            array_filter(self::cases(), static fn(self $s): bool => $s->holdsAssets())
+        ));
+    }
+
+    /** @return list<string> */
+    public static function lockingValues(): array
+    {
+        return array_values(array_map(
+            static fn(self $s): string => $s->value,
+            array_filter(self::cases(), static fn(self $s): bool => $s->locksAssets())
+        ));
     }
 }

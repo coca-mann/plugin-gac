@@ -36,6 +36,8 @@ namespace GlpiPlugin\Gac\Pre;
 use Ticket;
 use TicketCost;
 use Toolbox;
+use GlpiPlugin\Gac\Shared\ServiceResult;
+use GlpiPlugin\Gac\Shared\TicketOps;
 
 /**
  * Reopening a closed PRE (spec 7.5, D9). Reopening only unlocks the correction of the return

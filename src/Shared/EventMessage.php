@@ -33,7 +33,7 @@
 
 declare(strict_types=1);
 
-namespace GlpiPlugin\Gac\Pre;
+namespace GlpiPlugin\Gac\Shared;
 
 /**
  * Pure: the one-line text written to GLPI's native history for each PRE event. The native

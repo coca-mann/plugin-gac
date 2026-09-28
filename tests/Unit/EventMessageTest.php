@@ -35,7 +35,7 @@ declare(strict_types=1);
 
 namespace GlpiPlugin\Gac\Tests\Unit;
 
-use GlpiPlugin\Gac\Pre\EventMessage;
+use GlpiPlugin\Gac\Shared\EventMessage;
 use PHPUnit\Framework\TestCase;
 
 final class EventMessageTest extends TestCase

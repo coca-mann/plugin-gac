@@ -1,0 +1,74 @@
+<?php
+
+/**
+ * -------------------------------------------------------------------------
+ * Gac plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * MIT License
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2026 by the Gac plugin team.
+ * @license   MIT https://opensource.org/licenses/mit-license.php
+ * @link      https://github.com/coca-mann/plugin-gac
+ * -------------------------------------------------------------------------
+ */
+
+use GlpiPlugin\Gac\GacMenu;
+use GlpiPlugin\Gac\Ltbp\LtbpReason;
+
+$item = new LtbpReason();
+
+if (isset($_POST['add'])) {
+    $item->check(-1, CREATE, $_POST);
+    $newid = $item->add($_POST);
+    if ($newid) {
+        Html::redirect(LtbpReason::getFormURLWithID($newid));
+    }
+    Html::back();
+} elseif (isset($_POST['update'])) {
+    $item->check($_POST['id'], UPDATE);
+    $item->update($_POST);
+    Html::back();
+} elseif (isset($_POST['purge'])) {
+    // canPurgeItem() (checked by $item->check() below) already refuses this once the reason is
+    // in use, but check() reports that by throwing, which would surface as GLPI's generic
+    // access-denied page instead of this friendly message. Catch the in-use case first.
+    if (LtbpReason::isUsed((int) $_POST['id'])) {
+        Session::addMessageAfterRedirect(
+            __('Este motivo já foi usado em algum laudo: inative-o em vez de excluir.', 'gac'),
+            false,
+            ERROR
+        );
+        Html::back();
+    }
+    $item->check($_POST['id'], PURGE);
+    $item->delete($_POST, 1);
+    $item->redirectToList();
+} else {
+    Html::header(
+        LtbpReason::getTypeName(1),
+        $_SERVER['PHP_SELF'],
+        GacMenu::SECTOR,
+        GacMenu::ITEM_CONFIG
+    );
+    $item->display(['id' => $_GET['id'] ?? -1]);
+    Html::footer();
+}

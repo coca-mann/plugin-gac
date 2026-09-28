@@ -33,7 +33,7 @@
 
 namespace GlpiPlugin\Gac\Tests\Unit;
 
-use GlpiPlugin\Gac\Pre\ServiceResult;
+use GlpiPlugin\Gac\Shared\ServiceResult;
 use PHPUnit\Framework\TestCase;
 
 final class ServiceResultTest extends TestCase

@@ -33,6 +33,8 @@
 
 namespace GlpiPlugin\Gac\Pre;
 
+use GlpiPlugin\Gac\Shared\ServiceResult;
+
 /**
  * Draft-time line operations: import, edit the supplier description, remove.
  */

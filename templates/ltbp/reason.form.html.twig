@@ -1,0 +1,17 @@
+{% extends 'generic_show_form.html.twig' %}
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+{% block form_fields %}
+    {{ fields.textField('code', item.fields['code'], __('Código', 'gac'), {
+        required: true,
+        helper: __('Curto e único, por exemplo M1. É o que aparece na tabela do PDF.', 'gac'),
+    }) }}
+
+    {{ fields.textField('name', item.fields['name'], __('Título', 'gac'), {required: true}) }}
+
+    {{ fields.textareaField('comment', item.fields['comment'], __('Descrição', 'gac'), {
+        helper: __('Aparece na legenda dos motivos do PDF.', 'gac'),
+    }) }}
+
+    {{ fields.dropdownYesNo('is_active', item.fields['is_active'], __('Ativo', 'gac')) }}
+{% endblock %}

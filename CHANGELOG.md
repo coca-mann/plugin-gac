@@ -10,6 +10,17 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [0.4.0] - 2026-09-27
+
+### Added
+
+- [d30ff77](https://github.com/coca-mann/plugin-gac/commit/d30ff77), [4dcce7d](https://github.com/coca-mann/plugin-gac/commit/4dcce7d), [3ce49a8](https://github.com/coca-mann/plugin-gac/commit/3ce49a8), [71bddd9](https://github.com/coca-mann/plugin-gac/commit/71bddd9), [dedf3c8](https://github.com/coca-mann/plugin-gac/commit/dedf3c8), [eb446b1](https://github.com/coca-mann/plugin-gac/commit/eb446b1), [e33487f](https://github.com/coca-mann/plugin-gac/commit/e33487f), [906dc34](https://github.com/coca-mann/plugin-gac/commit/906dc34), [cff1ad8](https://github.com/coca-mann/plugin-gac/commit/cff1ad8), [78c7c63](https://github.com/coca-mann/plugin-gac/commit/78c7c63), [93f5c3e](https://github.com/coca-mann/plugin-gac/commit/93f5c3e), [17b9759](https://github.com/coca-mann/plugin-gac/commit/17b9759), [771b009](https://github.com/coca-mann/plugin-gac/commit/771b009), [b2e75c2](https://github.com/coca-mann/plugin-gac/commit/b2e75c2), [1368f2f](https://github.com/coca-mann/plugin-gac/commit/1368f2f), [1cbba32](https://github.com/coca-mann/plugin-gac/commit/1cbba32) - Novo módulo **LTBP (Laudo Técnico de Baixa Patrimonial)**: o técnico monta o laudo escolhendo os ativos (candidatos "aguardando baixa" ou busca livre) e um motivo de um catálogo próprio (gerenciável pela tela de configuração, com o botão nativo "+ Adicionar" e recusa ao tentar excluir um motivo já usado), emite o PDF em retrato para a assinatura em papel dos diretores, confirma a baixa — o que já bloqueia qualquer edição do ativo, inclusive por inventário e cron — e conclui com a destinação (descarte ou doação), o beneficiário e o comprovante.
+- [44406bc](https://github.com/coca-mann/plugin-gac/commit/44406bc) - Retornos do PRE marcados para baixa podem ser levados direto para um laudo do LTBP, em lote, pela aba Itens do PRE.
+
+### Fixed
+
+- [ed518f9](https://github.com/coca-mann/plugin-gac/commit/ed518f9) - A mensagem de mapeamentos obrigatórios pendentes, nas configurações do PRE e do LTBP, mostrava as chaves internas dos campos (ex.: "state:at_supplier") em vez do nome amigável; agora mostra o nome e agrupa os campos por seção.
+
 ## [0.3.0] - 2026-09-26
 
 ### Added

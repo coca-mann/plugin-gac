@@ -31,50 +31,41 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Pre;
+declare(strict_types=1);
 
-use PendingReason;
-use State;
+namespace GlpiPlugin\Gac\Ltbp;
 
 /**
- * A State or a PendingReason belongs to an entity and is visible to that entity, and to its
- * descendants only when recursive (spec section 10). The global mapping must be valid for the
- * entity where it is applied: the asset's entity for a State, the ticket's for a PendingReason.
+ * Pure: the pre-checks of "Emitir" (spec 6.1), as codes. The service turns each code into a
+ * translated message, so this stays free of GLPI.
  */
-final class StateGuard
+final class EmissionValidator
 {
-    public static function isUsable(int $statesId, int $entityId): bool
+    /**
+     * @param array{destination: string, line_count: int, lines_without_reason: int, missing_state_roles: list<string>, directors_missing: bool, conflicts: int} $facts
+     * @return list<string> codes: destination, no_lines, reason, states, directors, conflicts
+     */
+    public static function validate(array $facts): array
     {
-        if ($statesId <= 0) {
-            return false;
+        $errors = [];
+        if (Destination::tryFrom($facts['destination']) === null) {
+            $errors[] = 'destination';
         }
-        $state = new State();
-        if (!$state->getFromDB($statesId)) {
-            return false;
+        if ($facts['line_count'] <= 0) {
+            $errors[] = 'no_lines';
         }
-        return self::isVisible((int) $state->fields['entities_id'], (bool) $state->fields['is_recursive'], $entityId);
-    }
-
-    public static function isReasonUsable(int $reasonId, int $entityId): bool
-    {
-        if ($reasonId <= 0) {
-            return false;
+        if ($facts['lines_without_reason'] > 0) {
+            $errors[] = 'reason';
         }
-        $reason = new PendingReason();
-        if (!$reason->getFromDB($reasonId)) {
-            return false;
+        if ($facts['missing_state_roles'] !== []) {
+            $errors[] = 'states';
         }
-        return self::isVisible((int) $reason->fields['entities_id'], (bool) $reason->fields['is_recursive'], $entityId);
-    }
-
-    private static function isVisible(int $ownerEntity, bool $recursive, int $entityId): bool
-    {
-        if ($ownerEntity === $entityId) {
-            return true;
+        if ($facts['directors_missing']) {
+            $errors[] = 'directors';
         }
-        if (!$recursive) {
-            return false;
+        if ($facts['conflicts'] > 0) {
+            $errors[] = 'conflicts';
         }
-        return in_array($ownerEntity, array_map('intval', getAncestorsOf('glpi_entities', $entityId)), true);
+        return $errors;
     }
 }

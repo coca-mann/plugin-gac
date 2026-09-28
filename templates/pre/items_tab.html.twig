@@ -5,6 +5,7 @@
     {% include '@gac/pre/items_import.html.twig' ignore missing %}
 
     {% set editing = is_draft and can_edit %}
+    {% set link_col = can_link_ltbp and (lines|filter(l => l.awaiting_ltbp)|length) > 0 %}
     {% if editing %}
         <form method="post" action="{{ form_url }}">
             <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
@@ -45,6 +46,9 @@
         <table class="table table-hover card-table mb-0">
             <thead>
                 <tr>
+                    {% if link_col %}
+                        <th><input type="checkbox" class="form-check-input" data-gac-ltbp-all title="{{ __('Marcar todos', 'gac') }}" aria-label="{{ __('Marcar todos', 'gac') }}"></th>
+                    {% endif %}
                     <th>{{ __('Ticket', 'gac') }}</th>
                     <th>{{ __('Tipo', 'gac') }}</th>
                     <th>{{ __('Equipamento', 'gac') }}</th>
@@ -58,6 +62,13 @@
             <tbody>
                 {% for line in lines %}
                     <tr>
+                        {% if link_col %}
+                            <td>
+                                {% if line.awaiting_ltbp %}
+                                    <input type="checkbox" class="form-check-input" form="gac-ltbp-link" name="pre_items[]" value="{{ line.id }}" aria-label="{{ __('Levar para um laudo de baixa', 'gac') }}">
+                                {% endif %}
+                            </td>
+                        {% endif %}
                         <td><a href="{{ line.ticket_url }}">#{{ line.tickets_id }}</a></td>
                         <td>{{ line.item_type_label }}</td>
                         <td>{{ line.item_name }}</td>
@@ -73,6 +84,11 @@
                         <td>
                             <span class="badge {{ status_badges[line.status]|default('bg-secondary-lt') }}">{{ line.status_label }}</span>
                             {% if line.outcome_label %}<div class="small text-muted mt-1">{{ line.outcome_label }}{% if line.destination_label and line.destination != 'none' %} · {{ line.destination_label }}{% endif %}</div>{% endif %}
+                            {% if line.awaiting_ltbp %}
+                                <div class="mt-1"><span class="badge bg-warning-lt">{{ __('Aguardando laudo', 'gac') }}</span></div>
+                            {% elseif line.ltbp_number %}
+                                <div class="mt-1"><a class="badge bg-info-lt" href="{{ line.ltbp_url }}">{{ line.ltbp_number }} · {{ line.ltbp_status_label }}</a></div>
+                            {% endif %}
                         </td>
                         <td>
                             {% if editing and line.can_remove_draft %}
@@ -82,7 +98,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td colspan="8" class="text-center text-muted">{{ __('Nenhum item neste protocolo.', 'gac') }}</td></tr>
+                    <tr><td colspan="{{ link_col ? 9 : 8 }}" class="text-center text-muted">{{ __('Nenhum item neste protocolo.', 'gac') }}</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -97,6 +113,57 @@
 
     {% if editing %}
         </form>
+    {% endif %}
+
+    {% if link_col %}
+        <form method="post" action="{{ ltbp_link_url }}" id="gac-ltbp-link" class="card border mb-4">
+            <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}">
+            <div class="card-header bg-body-tertiary">
+                <div>
+                    <h4 class="card-title mb-1"><i class="ti ti-file-certificate me-2"></i>{{ __('Levar para um laudo de baixa (LTBP)', 'gac') }}</h4>
+                    <div class="text-muted small">{{ __('Marque as linhas "Aguardando laudo" e escolha um laudo em rascunho ou crie um novo. O status do ativo só muda quando o laudo é emitido.', 'gac') }}</div>
+                </div>
+            </div>
+            <div class="card-body row g-2">
+                <div class="col-md-5">
+                    <label class="form-label">{{ __('Laudo', 'gac') }}</label>
+                    <select class="form-select" name="ltbp_id" data-gac-ltbp-target>
+                        <option value="0">{{ __('Novo laudo…', 'gac') }}</option>
+                        {% for draft in ltbp_drafts %}
+                            <option value="{{ draft.id }}">{{ draft.number }}{% if draft.destination_label %} — {{ draft.destination_label }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4" data-gac-ltbp-destination>
+                    <label class="form-label">{{ __('Destinação do novo laudo', 'gac') }}</label>
+                    <select class="form-select" name="destination">
+                        {% for value, label in ltbp_destinations %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" name="link_pre" value="1" class="btn btn-primary">{{ __('Adicionar a laudo', 'gac') }}</button>
+                </div>
+            </div>
+        </form>
+        <script>
+            (function () {
+                const all = document.querySelector('[data-gac-ltbp-all]');
+                if (all) {
+                    all.addEventListener('change', function () {
+                        document.querySelectorAll('input[form="gac-ltbp-link"][name="pre_items[]"]').forEach(function (box) { box.checked = all.checked; });
+                    });
+                }
+                const target = document.querySelector('[data-gac-ltbp-target]');
+                const destination = document.querySelector('[data-gac-ltbp-destination]');
+                if (target && destination) {
+                    const sync = function () { destination.hidden = target.value !== '0'; };
+                    target.addEventListener('change', sync);
+                    sync();
+                }
+            })();
+        </script>
     {% endif %}
 
     {% include '@gac/pre/items_return_forms.html.twig' ignore missing %}

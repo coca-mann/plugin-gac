@@ -35,6 +35,9 @@ namespace GlpiPlugin\Gac\Pre;
 
 use Ticket;
 use Toolbox;
+use GlpiPlugin\Gac\Shared\ServiceResult;
+use GlpiPlugin\Gac\Shared\StateGuard;
+use GlpiPlugin\Gac\Shared\TicketOps;
 
 /**
  * Return registration per line (spec 7.4): apply the configured ticket and asset actions,
