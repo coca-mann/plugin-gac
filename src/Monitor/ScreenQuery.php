@@ -36,6 +36,7 @@ namespace GlpiPlugin\Gac\Monitor;
 use SavedSearch;
 use Search;
 use Ticket;
+use User;
 
 /**
  * Runs a MonitorScreen's query: the SavedSearch's own criteria, entity scope forced from the
@@ -112,15 +113,18 @@ final class ScreenQuery
 
         $rows = [];
         foreach ($data['data']['rows'] ?? [] as $row) {
-            $id = self::cellValue($row, 2);
-            if ($id === '') {
+            $idParts = self::cellParts($row, 2);
+            if ($idParts === []) {
                 continue;
             }
+            $id  = $idParts[0];
             $out = ['id' => $id];
             foreach ($columns as $key) {
                 if ($key === 'elapsed') {
-                    $opened    = self::cellValue($row, 15);
-                    $out[$key] = $opened === '' ? '' : ElapsedTimeLabel::format($opened, new \DateTimeImmutable());
+                    $openedParts = self::cellParts($row, 15);
+                    $out[$key]   = $openedParts === []
+                        ? ''
+                        : ElapsedTimeLabel::format($openedParts[0], new \DateTimeImmutable());
                     continue;
                 }
                 $out[$key] = self::columnValue($row, $key);
@@ -137,10 +141,16 @@ final class ScreenQuery
     }
 
     /**
-     * Reads one column's display value out of a search row. "status" and "priority" are stored
-     * as raw integer codes on glpi_tickets (verified with the probe script, plan Task 6 Step 1):
-     * their search-engine "name" cell is the code itself, not a label, so they go through
-     * Ticket's own label helpers instead of being shown as a bare number.
+     * Reads one column's display value out of a search row. Three columns need their raw value
+     * translated before display, all found with the probe script (plan Task 6 Step 1, Task 9
+     * Step "verificar manualmente"):
+     * - "status"/"priority" are raw integer codes on glpi_tickets; their search-engine "name"
+     *   cell is the code itself, not a label, so they go through Ticket's own label helpers.
+     * - "requester"/"technician" are actor fields (CommonITILObject search options 4/5,
+     *   forcegroupby+use_subquery): their "name" cell is the linked user's **id**, not the
+     *   username — GLPI only resolves it to a readable name in the pre-rendered HTML
+     *   "displayname" cell (tooltips, avatars), unusable for a plain-text board — so each id is
+     *   resolved through User::getFriendlyName().
      *
      * @param array<string, mixed> $row
      */
@@ -150,30 +160,50 @@ final class ScreenQuery
         if ($optionId === null) {
             return '';
         }
-        $raw = self::cellValue($row, $optionId);
-        if ($raw === '') {
+        $parts = self::cellParts($row, $optionId);
+        if ($parts === []) {
             return '';
         }
-        return match ($key) {
-            'status'   => (string) Ticket::getStatus((int) $raw),
-            'priority' => (string) Ticket::getPriorityName((int) $raw),
-            default    => $raw,
-        };
+        if ($key === 'status') {
+            return (string) Ticket::getStatus((int) $parts[0]);
+        }
+        if ($key === 'priority') {
+            return (string) Ticket::getPriorityName((int) $parts[0]);
+        }
+        if ($key === 'requester' || $key === 'technician') {
+            $names = [];
+            foreach ($parts as $userId) {
+                $names[] = self::userFriendlyName((int) $userId);
+            }
+            return implode(', ', array_filter($names, static fn(string $n): bool => $n !== ''));
+        }
+        return implode(', ', $parts);
+    }
+
+    private static function userFriendlyName(int $userId): string
+    {
+        if ($userId <= 0) {
+            return '';
+        }
+        $user = new User();
+        return $user->getFromDB($userId) ? $user->getFriendlyName() : '';
     }
 
     /**
-     * Reads one search option's raw value out of a Search::getDatas() row. Legacy row format
-     * "ITEM_Ticket_<id>", which Search::getDatas() parses into the key "Ticket_<id>" with each
-     * value under [0..count-1]['name'] — verified against the GLPI 11 core source and the probe
-     * script (plan Task 6, Step 1).
+     * Reads one search option's raw values out of a Search::getDatas() row, one per linked
+     * record (e.g. several requesters). Legacy row format "ITEM_Ticket_<id>", which
+     * Search::getDatas() parses into the key "Ticket_<id>" with each value under
+     * [0..count-1]['name'] — verified against the GLPI 11 core source and the probe script
+     * (plan Task 6, Step 1).
      *
      * @param array<string, mixed> $row
+     * @return list<string>
      */
-    private static function cellValue(array $row, int $searchOptionId): string
+    private static function cellParts(array $row, int $searchOptionId): array
     {
         $cell = $row['Ticket_' . $searchOptionId] ?? null;
         if (!is_array($cell)) {
-            return '';
+            return [];
         }
         $count = (int) ($cell['count'] ?? 1);
         $parts = [];
@@ -183,7 +213,7 @@ final class ScreenQuery
                 $parts[] = (string) $value;
             }
         }
-        return implode(', ', $parts);
+        return $parts;
     }
 
     private static function forceEntityScope(int $entitiesId, bool $recursive): void
