@@ -287,15 +287,15 @@ class MonitorScreen extends CommonDBTM
             ],
             [
                 'id' => 7, 'table' => $t, 'field' => 'sort_mode', 'name' => __('Ordenação', 'gac'),
-                'datatype' => 'string', 'massiveaction' => false,
+                'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
                 'id' => 8, 'table' => $t, 'field' => 'theme', 'name' => __('Tema', 'gac'),
-                'datatype' => 'string', 'massiveaction' => false,
+                'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
                 'id' => 9, 'table' => $t, 'field' => 'font_size', 'name' => __('Tamanho da fonte', 'gac'),
-                'datatype' => 'number', 'massiveaction' => false,
+                'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
                 'id' => 80, 'table' => 'glpi_entities', 'field' => 'completename',
@@ -311,5 +311,25 @@ class MonitorScreen extends CommonDBTM
         unset($option);
 
         return $options;
+    }
+
+    /**
+     * Translates the raw stored value of sort_mode/theme/font_size (search options 7-9) into
+     * their pt-BR label — same convention CommonITILObject uses for Ticket's own enum fields
+     * (status, urgency, ...). Without this, GLPI's generic history log (Log::getHistoryData(),
+     * which calls this for any search option whose table matches the item's own table) shows the
+     * raw internal code ('priority', 'dark', '3') instead of the label the form itself shows.
+     */
+    public static function getSpecificValueToDisplay($field, $values, array $options = [])
+    {
+        if (!is_array($values)) {
+            $values = [$field => $values];
+        }
+        return match ($field) {
+            'sort_mode' => htmlescape(MonitorLabels::sortMode((string) $values[$field])),
+            'theme'     => htmlescape(MonitorLabels::theme((string) $values[$field])),
+            'font_size' => htmlescape(MonitorLabels::fontSize((int) $values[$field])),
+            default     => parent::getSpecificValueToDisplay($field, $values, $options),
+        };
     }
 }
