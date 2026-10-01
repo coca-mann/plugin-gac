@@ -1,7 +1,7 @@
 .gac-monitor-board {
     background: #0b1220;
     color: #e6edf3;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-family: Arial, 'Helvetica Neue', Helvetica, 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh;
     padding: 1.25rem 1.75rem;
     box-sizing: border-box;
@@ -89,6 +89,9 @@
     border-collapse: separate;
     border-spacing: 0;
     font-size: var(--gac-table-font-size, 1.05rem);
+    /* Digits occupy a fixed width, so numeric-ish columns (ID, Abertura, Tempo decorrido) align
+       vertically instead of each row's digits shifting slightly with the row above/below. */
+    font-variant-numeric: tabular-nums;
     background: #0f1830;
     border-radius: 10px;
     overflow: hidden;
