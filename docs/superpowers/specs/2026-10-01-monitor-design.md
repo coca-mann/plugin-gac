@@ -78,6 +78,7 @@ Fora da v1 (decidido):
 | M7 | O diff de "ticket novo" (para o alerta) é calculado **no cliente (JS)**, comparando o conjunto de IDs do poll atual com o do poll anterior em memória — **sem estado de "últimos vistos" no servidor** | Não há sessão persistente do lado público para guardar esse estado; a página fica aberta o tempo todo, então memória do JS basta. Evita criar uma classe/tabela só para isso |
 | M8 | Som/alerta de ticket novo é **configurável por URL** na configuração global (`monitor_alert_sound_url`, vazio por padrão — sem arquivo embutido no plugin), ligado/desligado por Tela (`alert_enabled`), **sem condição extra**: qualquer linha nova no resultado já filtrado dispara o alerta. Sem URL configurada, o alerta fica só visual (linha piscando), sem som | Decisão do dono (som entra em escopo). O próprio critério da Pesquisa Salva já define "o que conta" para aquela Tela; uma camada extra de condição de alerta seria redundante. Embutir um arquivo de áudio no plugin não é necessário: a mesma URL configurável que o Django já usava resolve, sem exigir um binário versionado no repositório |
 | M9 | Dashboard de KPIs, projetos e controle remoto de tela ficam **fora da v1** | Decisão do dono: focar só na lista de tickets, que é o que falta para descontinuar o Django |
+| M10 | A ordem das linhas é **configurável por Tela** (`sort_mode`, `priority` ou `id`), calculada em PHP depois de buscar os dados — nunca delegada ao sort nativo do GLPI (que só ordena por uma coluna se ela estiver entre as exibidas, e não suporta a prioridade customizada de status abaixo). O modo `priority` reproduz a regra que o Django já usava (`get_panel_data()`): urgência decrescente, depois status numa prioridade própria (Novo → Em atendimento → Em atendimento planejado → Pendente → Aprovação → Solucionado → qualquer outro), depois data de abertura decrescente. `priority` é o padrão de uma Tela nova | Achado tardio: o dono perguntou sobre ordenação depois da v1 já implementada e lembrou que o Django já resolvia isso; a v1 original não tinha decidido nada aqui e caía no `ORDER BY id` crescente do GLPI por acidente, não por escolha — ruim para uma tela de monitoramento (ticket novo entra no fim da lista). Configurável por Tela (não fixo) a pedido do dono, para o caso de uma Tela específica preferir a ordem padrão do GLPI |
 
 ## 5. Modelo de dados
 
@@ -91,6 +92,7 @@ Prefixo `glpi_plugin_gac_`. Tipos exatos ficam para o plano de implementação.
   `is_private = 0`)
 - `display_columns` (lista ordenada das chaves do catálogo curado, ex.: `["id", "title",
   "status", "urgency", "requester", "technician", "elapsed"]`)
+- `sort_mode` (`priority` ou `id`; ver M10 — padrão `priority`)
 - `poll_interval_seconds` (nullable; vazio usa o padrão global)
 - `is_public` (bool), `public_token` (string, nullable, único — gerado quando `is_public` é
   ligado pela primeira vez; pode ser regenerado, invalidando URLs antigas)

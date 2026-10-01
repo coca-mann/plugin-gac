@@ -118,6 +118,11 @@ class MonitorScreen extends CommonDBTM
             );
         }
 
+        if (array_key_exists('sort_mode', $input)) {
+            $mode = (string) $input['sort_mode'];
+            $input['sort_mode'] = TicketSortOrder::isValidMode($mode) ? $mode : TicketSortOrder::DEFAULT_MODE;
+        }
+
         foreach (['is_recursive', 'is_public', 'alert_enabled', 'is_active'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $input[$flag] = ((string) $input[$flag]) === '1' ? 1 : 0;
@@ -209,13 +214,19 @@ class MonitorScreen extends CommonDBTM
             $columnChoices[$key] = MonitorLabels::column($key);
         }
 
+        $sortModeChoices = [];
+        foreach (TicketSortOrder::MODES as $mode) {
+            $sortModeChoices[$mode] = MonitorLabels::sortMode($mode);
+        }
+
         TemplateRenderer::getInstance()->display('@gac/monitor/monitorscreen.form.html.twig', [
-            'item'           => $this,
-            'params'         => $options,
-            'columns'        => ColumnCatalog::allKeys(),
-            'chosen'         => $this->isNewItem() ? ColumnCatalog::DEFAULT_COLUMNS : $this->displayColumns(),
-            'column_choices' => $columnChoices,
-            'saved_searches' => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
+            'item'              => $this,
+            'params'            => $options,
+            'columns'           => ColumnCatalog::allKeys(),
+            'chosen'            => $this->isNewItem() ? ColumnCatalog::DEFAULT_COLUMNS : $this->displayColumns(),
+            'column_choices'    => $columnChoices,
+            'sort_mode_choices' => $sortModeChoices,
+            'saved_searches'    => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
             'public_url'     => empty($this->fields['public_token'] ?? null)
                 ? ''
                 : $CFG_GLPI['root_doc'] . '/plugins/gac/front/monitor/public.php?token=' . $this->fields['public_token'],
@@ -243,6 +254,10 @@ class MonitorScreen extends CommonDBTM
             [
                 'id' => 6, 'table' => $t, 'field' => 'poll_interval_seconds', 'name' => __('Intervalo (s)', 'gac'),
                 'datatype' => 'number', 'massiveaction' => false,
+            ],
+            [
+                'id' => 7, 'table' => $t, 'field' => 'sort_mode', 'name' => __('Ordenação', 'gac'),
+                'datatype' => 'string', 'massiveaction' => false,
             ],
             [
                 'id' => 80, 'table' => 'glpi_entities', 'field' => 'completename',

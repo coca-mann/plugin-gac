@@ -277,6 +277,7 @@ function plugin_gac_install(): bool
             `name` VARCHAR(255) NOT NULL DEFAULT '',
             `savedsearches_id` INT {$sign} NOT NULL DEFAULT '0',
             `display_columns` TEXT DEFAULT NULL,
+            `sort_mode` VARCHAR(20) NOT NULL DEFAULT 'priority',
             `poll_interval_seconds` INT UNSIGNED DEFAULT NULL,
             `is_public` TINYINT NOT NULL DEFAULT '0',
             `public_token` VARCHAR(64) DEFAULT NULL,

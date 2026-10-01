@@ -73,7 +73,15 @@ final class ScreenQuery
         $params['list_limit'] = self::LIST_LIMIT;
         $params['criteria']   = $params['criteria'] ?? [];
 
+        $sortMode     = TicketSortOrder::isValidMode((string) ($screen->fields['sort_mode'] ?? ''))
+            ? (string) $screen->fields['sort_mode']
+            : TicketSortOrder::DEFAULT_MODE;
         $forcedisplay = ColumnCatalog::searchOptionIdsFor($columns);
+        if ($sortMode === TicketSortOrder::MODE_PRIORITY) {
+            // Urgency (10), status (12) and opening date (15) are needed to sort even when the
+            // Tela does not display them as columns.
+            $forcedisplay = array_values(array_unique([...$forcedisplay, 10, 12, 15]));
+        }
 
         if ($asServiceAccount) {
             if (!ServiceSession::login(MonitorConfig::load())) {
@@ -111,7 +119,7 @@ final class ScreenQuery
             }
         }
 
-        $rows = [];
+        $entries = [];
         foreach ($data['data']['rows'] ?? [] as $row) {
             $idParts = self::cellParts($row, 2);
             if ($idParts === []) {
@@ -129,8 +137,18 @@ final class ScreenQuery
                 }
                 $out[$key] = self::columnValue($row, $key);
             }
-            $rows[] = $out;
+            $entries[] = [
+                'out'     => $out,
+                'urgency' => (int) (self::cellParts($row, 10)[0] ?? 0),
+                'status'  => (int) (self::cellParts($row, 12)[0] ?? 0),
+                'date'    => (string) (self::cellParts($row, 15)[0] ?? ''),
+            ];
         }
+
+        if ($sortMode === TicketSortOrder::MODE_PRIORITY) {
+            usort($entries, static fn(array $a, array $b): int => TicketSortOrder::compare($a, $b));
+        }
+        $rows = array_map(static fn(array $entry): array => $entry['out'], $entries);
 
         $labels = [];
         foreach ($columns as $key) {
