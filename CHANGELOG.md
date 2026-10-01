@@ -10,6 +10,16 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Added
+
+- [e9c3cd7](https://github.com/coca-mann/plugin-gac/commit/e9c3cd7), [410c1c9](https://github.com/coca-mann/plugin-gac/commit/410c1c9), [c0e17fe](https://github.com/coca-mann/plugin-gac/commit/c0e17fe), [8f05880](https://github.com/coca-mann/plugin-gac/commit/8f05880), [be446ad](https://github.com/coca-mann/plugin-gac/commit/be446ad), [f5a95e5](https://github.com/coca-mann/plugin-gac/commit/f5a95e5), [47c33d5](https://github.com/coca-mann/plugin-gac/commit/47c33d5), [29c176e](https://github.com/coca-mann/plugin-gac/commit/29c176e), [d4907bb](https://github.com/coca-mann/plugin-gac/commit/d4907bb), [70e105f](https://github.com/coca-mann/plugin-gac/commit/70e105f), [5091971](https://github.com/coca-mann/plugin-gac/commit/5091971), [a27ae03](https://github.com/coca-mann/plugin-gac/commit/a27ae03), [7c235d0](https://github.com/coca-mann/plugin-gac/commit/7c235d0), [95dd823](https://github.com/coca-mann/plugin-gac/commit/95dd823), [5d33836](https://github.com/coca-mann/plugin-gac/commit/5d33836), [e19f364](https://github.com/coca-mann/plugin-gac/commit/e19f364), [2a5b980](https://github.com/coca-mann/plugin-gac/commit/2a5b980) - Novo módulo **Monitor** (painel de monitoramento de tickets, substituindo o painel equivalente do app Django descontinuado): cadastro de Telas de Monitoramento, cada uma vinculada a uma Pesquisa Salva compartilhada de Ticket, com colunas e ordem de exibição escolhidas pelo administrador (inclusive por arrastar), ordenação das linhas configurável (urgência, status e data, ou o ID padrão do GLPI), intervalo de atualização (padrão global ou por Tela), tema claro/escuro e tamanho de fonte da tabela — todos aplicados na tela sem precisar recarregar a página. Exibição autenticada dentro do GLPI e exibição pública por link com token (sem login, pensada para TV/kiosk), com botão para copiar o link completo. Relógio sincronizado com o horário do servidor, anel de contagem regressiva até a próxima atualização (no lugar do indicador de conexão) e badges de prioridade com as cores configuradas no GLPI.
+
+### Fixed
+
+- [1a1ae78](https://github.com/coca-mann/plugin-gac/commit/1a1ae78) - Ao reabrir um PRE e corrigir os dados de retorno de uma linha, nenhum acompanhamento era registrado no ticket com os dados corrigidos — só o histórico interno do PRE e o custo eram atualizados.
+
 ## [0.4.0] - 2026-09-27
 
 ### Added
