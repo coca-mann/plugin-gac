@@ -219,21 +219,29 @@ em `front/monitor/`. Twig em `templates/monitor/`, JS em `public/js/monitor.js`,
 
 ## 11. Pendências e riscos
 
-- **R-1 (aberto)**: confirmar, já na implementação contra o GLPI local, se `Search::getDatas`
-  funciona de forma limpa **sem sessão nenhuma** (`public_data.php` é stateless: `$_SESSION` não
-  é necessariamente inicializado, não só "sem usuário logado"), ou se exige simular um contexto
-  mínimo de direitos (ex.: `Session::callAsSystem()` ou um usuário de serviço interno, montado à
-  mão dentro do próprio request stateless). Se não for limpo, a alternativa é montar a query
-  diretamente com `$DB`/`DBmysqlIterator` em vez de `Search::getDatas`, perdendo parte do
-  reaproveitamento da Pesquisa Salva.
-- **R-2**: mapear as colunas do catálogo curado (seção 5.3) para os índices reais de search
-  option de `Ticket::getSearchOptions()` no GLPI 11.0.x — fazer na implementação, não adivinhar
-  aqui.
-- **R-3**: verificar se `Search::getDatas` aceita forçar a entidade de busca independente de
-  `$_SESSION['glpiactiveentities']` sem efeito colateral em requisições concorrentes (ex.: se a
-  implementação interna exige setar essa chave de sessão temporariamente, isso precisa ser seguro
-  sob múltiplas Telas sendo consultadas ao mesmo tempo, em processos PHP possivelmente
-  compartilhando sessão — improvável no fluxo stateless, mas a confirmar).
+- **R-1 (resolvido por evidência, implementação Tarefa 6)**: `Search::getDatas('Ticket', ...)`
+  funciona com uma sessão autenticada normal (testado logado como superadmin contra o GLPI
+  local); o caminho verdadeiramente stateless (`public_data.php`, sem sessão nenhuma) ainda não
+  foi testado literalmente sem sessão, mas como `ScreenQuery` já monta `$_SESSION['glpiativ...']`
+  manualmente antes de cada chamada (ver R-3), o mecanismo não depende de um usuário logado — só
+  das chaves de sessão que ele mesmo escreve. Confirmar isso de ponta a ponta fica para a Tarefa 8
+  (exibição pública), que exercita o caminho stateless de verdade.
+- **R-2 (resolvido, implementação Tarefa 1)**: colunas do catálogo curado mapeadas para os
+  índices reais de search option via grep no código-fonte do GLPI 11.0.8 local
+  (`CommonITILObject.php`): `1`=Título, `2`=ID, `3`=Prioridade, `4`=Solicitante, `5`=Técnico,
+  `7`=Categoria, `8`=Grupo técnico, `15`=Abertura, `80`=Entidade.
+- **R-3 (resolvido por evidência, implementação Tarefa 6)**: forçar a entidade via
+  `$_SESSION['glpiactiveentities']`/`glpiactiveentities_string` **não bastava** — um probe real
+  contra o GLPI local mostrou que `DbUtils::getEntitiesRestrictRequest()` pula a restrição de
+  entidade por completo quando `$_SESSION['glpishowallentities']` está "ligado" (verdadeiro para
+  qualquer perfil com direito de ver todas as entidades, como o superadmin usado no teste).
+  `ScreenQuery::forceEntityScope()` força também `glpishowallentities = 0` durante a chamada, e o
+  `try`/`finally` que restaura as chaves de sessão depois cobre essa também. Sem esse ajuste, uma
+  Tela configurada para a entidade X mostraria tickets de todas as entidades sempre que o técnico
+  logado tivesse esse direito — um bug real de vazamento entre entidades, não hipotético. Sobre o
+  risco original de concorrência entre múltiplas Telas: não se aplica — cada requisição HTTP tem
+  seu próprio `$_SESSION` isolado (mesmo autenticado), não há estado compartilhado entre
+  requisições simultâneas de Telas diferentes.
 - **R-4**: o token fica na URL (query string) de telas públicas, o que o expõe em logs de acesso
   do servidor web — comum a qualquer esquema de token em URL, aceitável para o caso de uso (rede
   interna do GAC), mas registrado aqui como trade-off consciente, não como descuido.
