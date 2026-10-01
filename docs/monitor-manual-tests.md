@@ -1,10 +1,11 @@
 # Monitor — roteiro de teste manual
 
 Ambiente: GLPI local (`http://glpi11local.test/`), plugin `gac` instalado e ativo. Última
-execução: 2026-10-01, durante a implementação (Tarefa 10 do plano), via `curl` autenticado
-(sessão real, não simulada) e um navegador real para os pontos visuais. Conta de serviço do
-Monitor configurada como `tech`/`tech` (conta de demonstração do GLPI) para este teste; em
-produção, usar uma conta dedicada, só leitura de tickets.
+execução: 2026-10-01, durante a implementação (Tarefa 10 do plano) e numa rodada posterior de
+ajustes (tema claro/escuro, tamanho de fonte, correção do relógio e do formato de data), via
+`curl` autenticado (sessão real, não simulada) e um navegador real para os pontos visuais. Conta
+de serviço do Monitor configurada como `tech`/`tech` (conta de demonstração do GLPI) para este
+teste; em produção, usar uma conta dedicada, só leitura de tickets.
 
 | # | Cenário | Passos | Resultado esperado | Resultado |
 |---|---|---|---|---|
@@ -29,9 +30,15 @@ produção, usar uma conta dedicada, só leitura de tickets.
 | 19 | Ordenação (`sort_mode=id`) | Mesma Tela, trocando para `sort_mode=id` | Volta para ordem crescente de ID simples (o padrão do GLPI) | **Passou** |
 | 20 | Copiar URL pública | Clicar no botão de copiar ao lado do campo "URL pública" no formulário | A URL completa (com domínio) vai para a área de transferência; o ícone pisca um check de confirmação | **Passou** |
 | 21 | Reordenar colunas por arrastar | Arrastar uma coluna pelo ícone de grip para outra posição na lista; marcar/desmarcar colunas; salvar | A ordem salva (`display_columns`) reflete exatamente o arraste e as marcações feitas | **Passou** |
-| 22 | Relógio | Abrir a exibição (autenticada e pública) | Relógio no canto superior direito mostra a hora real do navegador e avança a cada segundo | **Passou** |
+| 22 | Relógio | Abrir a exibição (autenticada e pública) | Relógio no canto superior direito avança a cada segundo, mostrando a hora do servidor GLPI (corrigida a cada ciclo de polling a partir do `generated_at` da resposta, não a hora crua do computador que exibe a tela) | **Passou** |
 | 23 | Cores de prioridade | Tickets com as 6 prioridades do GLPI (Muito baixa a Crítica), com as cores de produção configuradas em Configurações > Valores padrão > Cores das Prioridades | Cada prioridade aparece como um badge colorido com a cor configurada; o texto do badge fica legível (preto em fundos claros, branco em fundos escuros) em todas as 6 cores | **Passou** |
 | 24 | Anel de contagem regressiva | Deixar a tela aberta um ciclo inteiro; observar o anel | O anel fica parado (sem animar) enquanto a requisição está em andamento — pisca suavemente nesse período —, e só começa a esvaziar de verdade depois que os dados chegam, terminando de esvaziar exatamente quando a próxima requisição é disparada. Verde quando a última requisição teve sucesso, vermelho quando falhou | **Passou** |
+| 25 | Tema claro | Tela com `theme=light`; abrir a exibição (autenticada e pública) | Fundo claro, tabela branca, texto escuro, cabeçalho da página (`public_display.html.twig`) também claro antes mesmo do CSS carregar; badges de prioridade continuam legíveis | **Passou** |
+| 26 | Tamanho da fonte | Tela com `font_size=1` (Pequena); abrir a exibição | Só o texto das linhas da tabela fica menor; o título, o relógio e o cabeçalho das colunas mantêm o tamanho normal | **Passou** |
+| 27 | Formato de data da coluna Abertura | Tela com a coluna "Abertura"; comparar exibição autenticada e pública lado a lado, com o formato de data configurado em GLPI como dd-mm-aaaa (`glpidate_format=1`) | Os dois caminhos mostram a mesma data no mesmo formato (`25-09-2026 20:41:36`), não um formato cru/ISO (`2026-09-25...`) | **Passou** (achado um bug nessa checagem, ver abaixo) |
+| 28 | Reinstalação com schema novo | Rodar `plugin:install --force gac` numa instalação que já tinha a tabela `glpi_plugin_gac_monitorscreens` de antes das colunas `theme`/`font_size` existirem | As duas colunas novas aparecem via `ALTER TABLE`, sem apagar os dados existentes (telas e tokens antigos continuam lá) | **Passou** |
+| 29 | Tema/fonte aplicados sem recarregar | Deixar a exibição aberta (autenticada); mudar `theme` e `font_size` da Tela direto no banco, sem tocar na página | No ciclo de polling seguinte (até `poll_interval_seconds`), o tema e o tamanho da fonte da tabela mudam sozinhos, sem reload manual | **Passou** |
+| 30 | Intervalo de atualização aplicado sem recarregar | Deixar a exibição aberta com `poll_interval_seconds=10`; mudar para `30` direto no banco, sem tocar na página; medir os instantes reais das requisições via `performance.getEntriesByType('resource')` | O ciclo em andamento (agendado com o valor antigo) completa normalmente; a partir dele, os ciclos seguintes passam a respeitar ~30s, não mais ~10s — confirmado com os instantes `502ms, 11431ms, 42434ms, 73431ms` | **Passou** |
 
 ## Achados registrados durante a implementação (não são bugs abertos — já corrigidos)
 
@@ -55,6 +62,11 @@ produção, usar uma conta dedicada, só leitura de tickets.
   SortableJS que o nome sugere — é a HTML5Sortable (`lukasoppermann/html5sortable`), exposta como
   `window.sortable(elemento, opções)` (função minúscula), não `Sortable.create(...)`. Só se
   percebe isso lendo o arquivo-fonte real; o nome do arquivo engana.
+- `ScreenQuery::run()` montava as linhas (com a formatação de data) **depois** de
+  `ServiceSession::logout()` no caminho público — `logout()` destrói `$_SESSION` inteira, então
+  `Html::convDateTime()` sempre caía no formato padrão embutido do GLPI (`Y-m-d`), ignorando o
+  formato configurado (`glpidate_format`). A exibição autenticada não tinha esse problema (nunca
+  faz logout no meio da função). Corrigido movendo a montagem das linhas para antes do logout.
 
 ## Pendências conhecidas
 
