@@ -34,6 +34,8 @@
 use GlpiPlugin\Gac\Ltbp\Ltbp;
 use GlpiPlugin\Gac\Ltbp\LtbpReason;
 use GlpiPlugin\Gac\Ltbp\LtbpSettings;
+use GlpiPlugin\Gac\Monitor\MonitorScreen;
+use GlpiPlugin\Gac\Monitor\MonitorSettings;
 use GlpiPlugin\Gac\Pre\PreSettings;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 
@@ -266,10 +268,37 @@ function plugin_gac_install(): bool
         ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
     }
 
+    $monitorScreens = 'glpi_plugin_gac_monitorscreens';
+    if (!$DB->tableExists($monitorScreens)) {
+        $DB->doQuery("CREATE TABLE `$monitorScreens` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `entities_id` INT {$sign} NOT NULL DEFAULT '0',
+            `is_recursive` TINYINT NOT NULL DEFAULT '0',
+            `name` VARCHAR(255) NOT NULL DEFAULT '',
+            `savedsearches_id` INT {$sign} NOT NULL DEFAULT '0',
+            `display_columns` TEXT DEFAULT NULL,
+            `poll_interval_seconds` INT UNSIGNED DEFAULT NULL,
+            `is_public` TINYINT NOT NULL DEFAULT '0',
+            `public_token` VARCHAR(64) DEFAULT NULL,
+            `alert_enabled` TINYINT NOT NULL DEFAULT '1',
+            `is_active` TINYINT NOT NULL DEFAULT '1',
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `public_token` (`public_token`),
+            KEY `entities_id` (`entities_id`),
+            KEY `savedsearches_id` (`savedsearches_id`),
+            KEY `is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
     // Default configuration: only keys that do not exist yet, so an update never overwrites
     // what an administrator already configured.
     $current = Config::getConfigurationValues('plugin:gac');
-    $missing = array_diff_key(PreSettings::defaults() + LtbpSettings::defaults(), $current);
+    $missing = array_diff_key(
+        PreSettings::defaults() + LtbpSettings::defaults() + MonitorSettings::defaults(),
+        $current
+    );
     if ($missing !== []) {
         Config::setConfigurationValues('plugin:gac', $missing);
     }
@@ -325,6 +354,29 @@ function plugin_gac_install(): bool
                     | Ltbp::RIGHT_CANCEL
                     | Ltbp::RIGHT_CONFIG],
                 ['name' => $ltbpRight, 'profiles_id' => $ltbp_admin_profiles]
+            );
+        }
+    }
+
+    // Monitor right: profiles that can UPDATE the native 'config' right get full access
+    // (standard CRUD + Configurar); every other profile starts without access.
+    $monitorRight = MonitorScreen::$rightname;
+    if (countElementsInTable(ProfileRight::getTable(), ['name' => $monitorRight]) === 0) {
+        ProfileRight::addProfileRights([$monitorRight]);
+
+        $monitor_admin_profiles = array_column(
+            iterator_to_array($DB->request([
+                'SELECT' => 'profiles_id',
+                'FROM'   => ProfileRight::getTable(),
+                'WHERE'  => ['name' => 'config', 'rights' => ['&', UPDATE]],
+            ])),
+            'profiles_id'
+        );
+        if ($monitor_admin_profiles !== []) {
+            $DB->update(
+                ProfileRight::getTable(),
+                ['rights' => ALLSTANDARDRIGHT | MonitorScreen::RIGHT_CONFIG],
+                ['name' => $monitorRight, 'profiles_id' => $monitor_admin_profiles]
             );
         }
     }
@@ -387,6 +439,15 @@ function plugin_gac_install(): bool
         }
     }
 
+    if (countElementsInTable('glpi_displaypreferences', ['itemtype' => MonitorScreen::class]) === 0) {
+        $DB->insert('glpi_displaypreferences', [
+            'itemtype' => MonitorScreen::class,
+            'num'      => 80, // search option 80 = entidade (ver MonitorScreen::rawSearchOptions())
+            'rank'     => 1,
+            'users_id' => 0,
+        ]);
+    }
+
     $migration->executeMigration();
 
     return true;
@@ -409,6 +470,7 @@ function plugin_gac_uninstall(): bool
         'glpi_plugin_gac_ltbpevents',
         'glpi_plugin_gac_ltbpreasons',
         'glpi_plugin_gac_ltbpsequences',
+        'glpi_plugin_gac_monitorscreens',
     ] as $table) {
         if ($DB->tableExists($table)) {
             $DB->doQuery("DROP TABLE `$table`");
@@ -419,9 +481,12 @@ function plugin_gac_uninstall(): bool
     $DB->delete('glpi_displaypreferences', ['itemtype' => RepairProtocol::class]);
     $DB->delete(ProfileRight::getTable(), ['name' => Ltbp::$rightname]);
     $DB->delete('glpi_displaypreferences', ['itemtype' => [Ltbp::class, LtbpReason::class]]);
+    $DB->delete(ProfileRight::getTable(), ['name' => MonitorScreen::$rightname]);
+    $DB->delete('glpi_displaypreferences', ['itemtype' => MonitorScreen::class]);
     Config::deleteConfigurationValues('plugin:gac', array_merge(
         array_keys(PreSettings::defaults()),
         array_keys(LtbpSettings::defaults()),
+        array_keys(MonitorSettings::defaults()),
         ['pre_config_right_migrated']
     ));
 

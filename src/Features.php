@@ -34,6 +34,7 @@
 namespace GlpiPlugin\Gac;
 
 use GlpiPlugin\Gac\Ltbp\Ltbp;
+use GlpiPlugin\Gac\Monitor\MonitorScreen;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
 use Session;
 
@@ -60,6 +61,11 @@ final class Features
                 'itemtype' => Ltbp::class,
                 'label'    => Ltbp::getTypeName(2),
                 'field'    => Ltbp::$rightname,
+            ],
+            [
+                'itemtype' => MonitorScreen::class,
+                'label'    => MonitorScreen::getTypeName(2),
+                'field'    => MonitorScreen::$rightname,
             ],
         ];
     }
