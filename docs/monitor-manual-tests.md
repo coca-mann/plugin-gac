@@ -29,6 +29,9 @@ produção, usar uma conta dedicada, só leitura de tickets.
 | 19 | Ordenação (`sort_mode=id`) | Mesma Tela, trocando para `sort_mode=id` | Volta para ordem crescente de ID simples (o padrão do GLPI) | **Passou** |
 | 20 | Copiar URL pública | Clicar no botão de copiar ao lado do campo "URL pública" no formulário | A URL completa (com domínio) vai para a área de transferência; o ícone pisca um check de confirmação | **Passou** |
 | 21 | Reordenar colunas por arrastar | Arrastar uma coluna pelo ícone de grip para outra posição na lista; marcar/desmarcar colunas; salvar | A ordem salva (`display_columns`) reflete exatamente o arraste e as marcações feitas | **Passou** |
+| 22 | Relógio | Abrir a exibição (autenticada e pública) | Relógio no canto superior direito mostra a hora real do navegador e avança a cada segundo | **Passou** |
+| 23 | Cores de prioridade | Tickets com as 6 prioridades do GLPI (Muito baixa a Crítica), com as cores de produção configuradas em Configurações > Valores padrão > Cores das Prioridades | Cada prioridade aparece como um badge colorido com a cor configurada; o texto do badge fica legível (preto em fundos claros, branco em fundos escuros) em todas as 6 cores | **Passou** |
+| 24 | Anel de contagem regressiva | Deixar a tela aberta um ciclo inteiro; observar o anel | O anel fica parado (sem animar) enquanto a requisição está em andamento — pisca suavemente nesse período —, e só começa a esvaziar de verdade depois que os dados chegam, terminando de esvaziar exatamente quando a próxima requisição é disparada. Verde quando a última requisição teve sucesso, vermelho quando falhou | **Passou** |
 
 ## Achados registrados durante a implementação (não são bugs abertos — já corrigidos)
 

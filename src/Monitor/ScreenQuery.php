@@ -33,6 +33,7 @@
 
 namespace GlpiPlugin\Gac\Monitor;
 
+use Config;
 use SavedSearch;
 use Search;
 use Ticket;
@@ -53,7 +54,7 @@ final class ScreenQuery
      *     R-1/R-3), so this logs in as the Monitor service account for the duration of the call
      *     and logs back out before returning. Never true for the authenticated display, which
      *     already has the technician's own real session.
-     * @return array{columns: list<array{key: string, label: string}>, rows: list<array<string, string>>}
+     * @return array{columns: list<array{key: string, label: string}>, rows: list<array<string, string>>, priority_colors: array<int, string>}
      */
     public static function run(MonitorScreen $screen, bool $asServiceAccount = false): array
     {
@@ -73,15 +74,14 @@ final class ScreenQuery
         $params['list_limit'] = self::LIST_LIMIT;
         $params['criteria']   = $params['criteria'] ?? [];
 
-        $sortMode     = TicketSortOrder::isValidMode((string) ($screen->fields['sort_mode'] ?? ''))
+        $sortMode = TicketSortOrder::isValidMode((string) ($screen->fields['sort_mode'] ?? ''))
             ? (string) $screen->fields['sort_mode']
             : TicketSortOrder::DEFAULT_MODE;
-        $forcedisplay = ColumnCatalog::searchOptionIdsFor($columns);
-        if ($sortMode === TicketSortOrder::MODE_PRIORITY) {
-            // Urgency (10), status (12) and opening date (15) are needed to sort even when the
-            // Tela does not display them as columns.
-            $forcedisplay = array_values(array_unique([...$forcedisplay, 10, 12, 15]));
-        }
+        // Priority (3) is always fetched, regardless of whether "priority" is a chosen display
+        // column: it drives the row highlight color, a visual cue independent of the text
+        // column. Urgency (10), status (12) and opening date (15) are likewise always needed to
+        // sort even when the Tela does not display them.
+        $forcedisplay = array_values(array_unique([...ColumnCatalog::searchOptionIdsFor($columns), 3, 10, 12, 15]));
 
         if ($asServiceAccount) {
             if (!ServiceSession::login(MonitorConfig::load())) {
@@ -126,7 +126,7 @@ final class ScreenQuery
                 continue;
             }
             $id  = $idParts[0];
-            $out = ['id' => $id];
+            $out = ['id' => $id, 'priority_raw' => (int) (self::cellParts($row, 3)[0] ?? 0)];
             foreach ($columns as $key) {
                 if ($key === 'elapsed') {
                     $openedParts = self::cellParts($row, 15);
@@ -155,7 +155,32 @@ final class ScreenQuery
             $labels[] = ['key' => $key, 'label' => MonitorLabels::column($key)];
         }
 
-        return ['columns' => $labels, 'rows' => $rows];
+        return ['columns' => $labels, 'rows' => $rows, 'priority_colors' => self::priorityColors()];
+    }
+
+    /**
+     * The admin-configured priority colors (Configurações > Valores padrão > Cores das
+     * Prioridades in GLPI's own UI) — a plain glpi_configs read, no session involved, so it
+     * works identically for the authenticated and the service-account path. Reusing these
+     * instead of a Monitor-specific palette keeps the board's priority colors consistent with
+     * the rest of GLPI.
+     *
+     * @return array<int, string> priority value (1-6) => hex color
+     */
+    private static function priorityColors(): array
+    {
+        $raw = Config::getConfigurationValues('core', array_map(
+            static fn(int $p): string => 'priority_' . $p,
+            range(1, 6)
+        ));
+        $colors = [];
+        foreach (range(1, 6) as $priority) {
+            $value = $raw['priority_' . $priority] ?? '';
+            if ($value !== '') {
+                $colors[$priority] = (string) $value;
+            }
+        }
+        return $colors;
     }
 
     /**

@@ -3,43 +3,141 @@
     color: #e6edf3;
     font-family: 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh;
-    padding: 1rem 1.5rem;
+    padding: 1.25rem 1.75rem;
     box-sizing: border-box;
 }
+
 .gac-monitor-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #1f2a3c;
 }
-.gac-monitor-topbar h1 {
-    font-size: 1.5rem;
+
+.gac-monitor-title {
+    font-size: 1.6rem;
+    font-weight: 600;
     margin: 0;
+    letter-spacing: 0.01em;
 }
+
+.gac-monitor-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.gac-monitor-clock {
+    font-family: 'Consolas', 'SFMono-Regular', Menlo, monospace;
+    font-size: 2.4rem;
+    font-weight: 600;
+    color: #cfe3ff;
+    letter-spacing: 0.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+/* Countdown ring: drains from full to empty over the poll interval (see monitor.js
+   restartCountdown()); its color doubles as the connection indicator (green = last poll
+   succeeded, red = failed), replacing the old static dot. */
+.gac-monitor-countdown {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+}
+
+.gac-countdown-ring {
+    width: 38px;
+    height: 38px;
+    transform: rotate(-90deg);
+}
+
+.gac-countdown-ring-bg,
+.gac-countdown-ring-fg {
+    fill: none;
+    stroke-width: 3;
+}
+
+.gac-countdown-ring-bg {
+    stroke: rgba(255, 255, 255, 0.12);
+}
+
+.gac-countdown-ring-fg {
+    stroke: #2ecc71;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 0;
+    stroke-linecap: round;
+}
+
+.gac-monitor-waiting .gac-countdown-ring {
+    animation: gac-countdown-pulse 1s ease-in-out infinite;
+}
+
+@keyframes gac-countdown-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.2; }
+}
+
+.gac-monitor-status-stale .gac-countdown-ring-fg {
+    stroke: #e74c3c;
+}
+
 .gac-monitor-board table {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 1.1rem;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 1.05rem;
+    background: #0f1830;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
+
 .gac-monitor-board thead th {
     text-align: left;
-    padding: 0.5rem 0.75rem;
-    border-bottom: 2px solid #1f2a3c;
+    padding: 0.6rem 0.9rem;
+    background: #141f3d;
     color: #8fa3bf;
     text-transform: uppercase;
-    font-size: 0.8rem;
-    letter-spacing: 0.05em;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    font-weight: 600;
 }
+
 .gac-monitor-board tbody td {
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.9rem;
     border-bottom: 1px solid #1a2436;
 }
+
+.gac-monitor-board tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.gac-monitor-board tbody tr {
+    border-left: 4px solid var(--gac-row-accent, transparent);
+    transition: background-color 0.15s ease;
+}
+
+.gac-monitor-board tbody tr:hover {
+    background: #121d38;
+}
+
+.gac-priority-badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
 .gac-monitor-row-new {
     animation: gac-monitor-flash 2s ease-out 1;
 }
+
 @keyframes gac-monitor-flash {
     0%   { background-color: #ffcc00; color: #111; }
     100% { background-color: transparent; }
 }
-.gac-monitor-status-ok::before    { content: '●'; color: #2ecc71; margin-right: 0.35rem; }
-.gac-monitor-status-stale::before { content: '●'; color: #e74c3c; margin-right: 0.35rem; }
