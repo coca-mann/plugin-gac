@@ -84,8 +84,10 @@ final class ScreenQuery
         // sort even when the Tela does not display them.
         $forcedisplay = array_values(array_unique([...ColumnCatalog::searchOptionIdsFor($columns), 3, 10, 12, 15]));
 
+        $settings = MonitorConfig::load();
+
         if ($asServiceAccount) {
-            if (!ServiceSession::login(MonitorConfig::load())) {
+            if (!ServiceSession::login($settings)) {
                 throw new \RuntimeException('Monitor service account is not configured or login failed.');
             }
         }
@@ -160,7 +162,17 @@ final class ScreenQuery
             $labels[] = ['key' => $key, 'label' => MonitorLabels::column($key)];
         }
 
-        return ['columns' => $labels, 'rows' => $rows, 'priority_colors' => self::priorityColors()];
+        return [
+            'columns'               => $labels,
+            'rows'                  => $rows,
+            'priority_colors'       => self::priorityColors(),
+            // Sent on every poll (not just the initial page render) so a theme/font-size/interval
+            // change made to the Tela while a screen is already open (e.g. a TV left running)
+            // takes effect on the next cycle instead of requiring a manual reload.
+            'theme'                 => (string) $screen->fields['theme'],
+            'font_size_rem'         => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
+            'poll_interval_seconds' => $screen->pollIntervalSeconds($settings),
+        ];
     }
 
     /**

@@ -5,13 +5,16 @@
         return String(n).padStart(2, '0');
     }
 
-    function startClock(root) {
+    // Renders the GLPI server's time, not the viewing machine's: `getOffsetMs` returns the
+    // drift (server minus local) computed from each poll's `generated_at` (see boot()), so a
+    // wrong clock on the TV/kiosk box doesn't show a wrong time here.
+    function startClock(root, getOffsetMs) {
         const clock = root.querySelector('[data-gac-monitor-clock]');
         if (!clock) {
             return;
         }
         const tick = function () {
-            const now = new Date();
+            const now = new Date(Date.now() + getOffsetMs());
             clock.textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
         };
         tick();
@@ -82,6 +85,15 @@
         return hasNew;
     }
 
+    // Applied on every poll (not just the initial page render), so a theme/font-size change made
+    // to the Tela while this screen is already open takes effect on the next cycle.
+    function applyAppearance(root, theme, fontSizeRem) {
+        root.classList.toggle('gac-theme-light', theme === 'light');
+        if (fontSizeRem) {
+            root.style.setProperty('--gac-table-font-size', fontSizeRem);
+        }
+    }
+
     function setConnectionState(root, ok, when) {
         const indicator = root.querySelector('[data-gac-monitor-status]');
         if (!indicator) {
@@ -129,10 +141,13 @@
 
     function boot(root) {
         const url = root.dataset.ajaxUrl;
-        const interval = Math.max(5, parseInt(root.dataset.pollInterval, 10) || 15) * 1000;
+        // Mutable: a poll_interval_seconds change on the Tela (see applyAppearance's sibling
+        // update in tick()) takes effect from the next cycle on, same as theme/font size.
+        let interval = Math.max(5, parseInt(root.dataset.pollInterval, 10) || 15) * 1000;
         const alertEnabled = root.dataset.alertEnabled === '1';
 
-        startClock(root);
+        let clockOffsetMs = 0;
+        startClock(root, function () { return clockOffsetMs; });
 
         let lastSuccess = null;
         let fetching = false;
@@ -156,6 +171,15 @@
                 if (!response.ok || payload.error) {
                     throw new Error(payload.error || ('HTTP ' + response.status));
                 }
+                const serverNow = Date.parse(payload.generated_at);
+                if (!Number.isNaN(serverNow)) {
+                    clockOffsetMs = serverNow - Date.now();
+                }
+                const pollSeconds = parseInt(payload.poll_interval_seconds, 10);
+                if (!Number.isNaN(pollSeconds) && pollSeconds > 0) {
+                    interval = Math.max(5, pollSeconds) * 1000;
+                }
+                applyAppearance(root, payload.theme, payload.font_size_rem);
                 renderHeader(root, payload.columns);
                 // Um alerta por ciclo, não um por ticket novo (plan, "Decisões de implementação" item 8).
                 const hasNew = renderRows(root, payload.columns, payload.rows, payload.priority_colors);
