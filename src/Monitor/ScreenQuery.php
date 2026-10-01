@@ -34,6 +34,7 @@
 namespace GlpiPlugin\Gac\Monitor;
 
 use Config;
+use Html;
 use SavedSearch;
 use Search;
 use Ticket;
@@ -113,36 +114,40 @@ final class ScreenQuery
                     $_SESSION['glpishowallentities'] = $previousShowAll;
                 }
             }
+
+            // Built while the session (service account or real) is still alive: columnValue()
+            // formats dates through Html::convDateTime(), which reads the session's configured
+            // date format — ServiceSession::logout() below wipes $_SESSION entirely, so building
+            // rows after it would silently fall back to GLPI's hardcoded Y-m-d default.
+            $entries = [];
+            foreach ($data['data']['rows'] ?? [] as $row) {
+                $idParts = self::cellParts($row, 2);
+                if ($idParts === []) {
+                    continue;
+                }
+                $id  = $idParts[0];
+                $out = ['id' => $id, 'priority_raw' => (int) (self::cellParts($row, 3)[0] ?? 0)];
+                foreach ($columns as $key) {
+                    if ($key === 'elapsed') {
+                        $openedParts = self::cellParts($row, 15);
+                        $out[$key]   = $openedParts === []
+                            ? ''
+                            : ElapsedTimeLabel::format($openedParts[0], new \DateTimeImmutable());
+                        continue;
+                    }
+                    $out[$key] = self::columnValue($row, $key);
+                }
+                $entries[] = [
+                    'out'     => $out,
+                    'urgency' => (int) (self::cellParts($row, 10)[0] ?? 0),
+                    'status'  => (int) (self::cellParts($row, 12)[0] ?? 0),
+                    'date'    => (string) (self::cellParts($row, 15)[0] ?? ''),
+                ];
+            }
         } finally {
             if ($asServiceAccount) {
                 ServiceSession::logout();
             }
-        }
-
-        $entries = [];
-        foreach ($data['data']['rows'] ?? [] as $row) {
-            $idParts = self::cellParts($row, 2);
-            if ($idParts === []) {
-                continue;
-            }
-            $id  = $idParts[0];
-            $out = ['id' => $id, 'priority_raw' => (int) (self::cellParts($row, 3)[0] ?? 0)];
-            foreach ($columns as $key) {
-                if ($key === 'elapsed') {
-                    $openedParts = self::cellParts($row, 15);
-                    $out[$key]   = $openedParts === []
-                        ? ''
-                        : ElapsedTimeLabel::format($openedParts[0], new \DateTimeImmutable());
-                    continue;
-                }
-                $out[$key] = self::columnValue($row, $key);
-            }
-            $entries[] = [
-                'out'     => $out,
-                'urgency' => (int) (self::cellParts($row, 10)[0] ?? 0),
-                'status'  => (int) (self::cellParts($row, 12)[0] ?? 0),
-                'date'    => (string) (self::cellParts($row, 15)[0] ?? ''),
-            ];
         }
 
         if ($sortMode === TicketSortOrder::MODE_PRIORITY) {
@@ -194,6 +199,9 @@ final class ScreenQuery
      *   username — GLPI only resolves it to a readable name in the pre-rendered HTML
      *   "displayname" cell (tooltips, avatars), unusable for a plain-text board — so each id is
      *   resolved through User::getFriendlyName().
+     * - "opening_date" is the raw MySQL datetime; goes through Html::convDateTime() so it
+     *   respects whichever date format GLPI itself is configured to show (session
+     *   "glpidate_format", safe to read even without a real login — see Html::convDate()).
      *
      * @param array<string, mixed> $row
      */
@@ -212,6 +220,9 @@ final class ScreenQuery
         }
         if ($key === 'priority') {
             return (string) Ticket::getPriorityName((int) $parts[0]);
+        }
+        if ($key === 'opening_date') {
+            return (string) Html::convDateTime($parts[0], null, true);
         }
         if ($key === 'requester' || $key === 'technician') {
             $names = [];
