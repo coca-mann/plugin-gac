@@ -32,6 +32,7 @@
  */
 
 use GlpiPlugin\Gac\GacMenu;
+use GlpiPlugin\Gac\Monitor\BoardAppearance;
 use GlpiPlugin\Gac\Monitor\MonitorConfig;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
 use GlpiPlugin\Gac\Monitor\MonitorSettings;
@@ -65,6 +66,8 @@ TemplateRenderer::getInstance()->display('@gac/monitor/display.html.twig', [
     // Empty when not configured: public/sounds/ is not guaranteed to have a bundled file (Task
     // 9, Step 3). The JS's play() call already swallows a missing/empty source silently.
     'alert_sound_url' => MonitorSettings::alertSoundUrl($settings),
+    'theme'           => $screen->fields['theme'],
+    'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
     'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,
     'asset_css'       => $CFG_GLPI['root_doc'] . '/plugins/gac/css/monitor.css?v=' . $version,
 ]);

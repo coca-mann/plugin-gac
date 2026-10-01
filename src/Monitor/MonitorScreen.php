@@ -123,6 +123,16 @@ class MonitorScreen extends CommonDBTM
             $input['sort_mode'] = TicketSortOrder::isValidMode($mode) ? $mode : TicketSortOrder::DEFAULT_MODE;
         }
 
+        if (array_key_exists('theme', $input)) {
+            $theme = (string) $input['theme'];
+            $input['theme'] = BoardAppearance::isValidTheme($theme) ? $theme : BoardAppearance::DEFAULT_THEME;
+        }
+
+        if (array_key_exists('font_size', $input)) {
+            $size = is_numeric($input['font_size']) ? (int) $input['font_size'] : BoardAppearance::DEFAULT_FONT_SIZE;
+            $input['font_size'] = BoardAppearance::isValidFontSize($size) ? $size : BoardAppearance::DEFAULT_FONT_SIZE;
+        }
+
         foreach (['is_recursive', 'is_public', 'alert_enabled', 'is_active'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $input[$flag] = ((string) $input[$flag]) === '1' ? 1 : 0;
@@ -219,6 +229,16 @@ class MonitorScreen extends CommonDBTM
             $sortModeChoices[$mode] = MonitorLabels::sortMode($mode);
         }
 
+        $themeChoices = [];
+        foreach (BoardAppearance::THEMES as $theme) {
+            $themeChoices[$theme] = MonitorLabels::theme($theme);
+        }
+
+        $fontSizeChoices = [];
+        foreach (range(BoardAppearance::MIN_FONT_SIZE, BoardAppearance::MAX_FONT_SIZE) as $size) {
+            $fontSizeChoices[$size] = MonitorLabels::fontSize($size);
+        }
+
         // Chosen columns first, in their saved order, then the rest of the catalog: the admin
         // sees the current configuration already in place and only has to drag unchecked rows
         // in, not hunt for them.
@@ -232,6 +252,8 @@ class MonitorScreen extends CommonDBTM
             'chosen'            => $chosen,
             'column_choices'    => $columnChoices,
             'sort_mode_choices' => $sortModeChoices,
+            'theme_choices'     => $themeChoices,
+            'font_size_choices' => $fontSizeChoices,
             'saved_searches'    => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
             // Absolute (scheme + host), not root_doc (path only): this URL is meant to be
             // opened on another device (a TV), not just fetched from the current page.
@@ -266,6 +288,14 @@ class MonitorScreen extends CommonDBTM
             [
                 'id' => 7, 'table' => $t, 'field' => 'sort_mode', 'name' => __('Ordenação', 'gac'),
                 'datatype' => 'string', 'massiveaction' => false,
+            ],
+            [
+                'id' => 8, 'table' => $t, 'field' => 'theme', 'name' => __('Tema', 'gac'),
+                'datatype' => 'string', 'massiveaction' => false,
+            ],
+            [
+                'id' => 9, 'table' => $t, 'field' => 'font_size', 'name' => __('Tamanho da fonte', 'gac'),
+                'datatype' => 'number', 'massiveaction' => false,
             ],
             [
                 'id' => 80, 'table' => 'glpi_entities', 'field' => 'completename',

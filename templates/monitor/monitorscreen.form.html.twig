@@ -15,6 +15,9 @@
 
     {{ fields.dropdownArrayField('sort_mode', item.fields['sort_mode']|default('priority'), sort_mode_choices, __('Ordenação dos tickets', 'gac')) }}
 
+    {{ fields.dropdownArrayField('theme', item.fields['theme']|default('dark'), theme_choices, __('Tema da tela', 'gac')) }}
+    {{ fields.dropdownArrayField('font_size', item.fields['font_size']|default(3), font_size_choices, __('Tamanho da fonte (só a tabela)', 'gac')) }}
+
     {{ fields.numberField('poll_interval_seconds', item.fields['poll_interval_seconds'], __('Intervalo de atualização (segundos)', 'gac'), {
         min: 5,
         placeholder: __('Em branco usa o padrão da configuração global', 'gac'),

@@ -278,6 +278,8 @@ function plugin_gac_install(): bool
             `savedsearches_id` INT {$sign} NOT NULL DEFAULT '0',
             `display_columns` TEXT DEFAULT NULL,
             `sort_mode` VARCHAR(20) NOT NULL DEFAULT 'priority',
+            `theme` VARCHAR(10) NOT NULL DEFAULT 'dark',
+            `font_size` TINYINT UNSIGNED NOT NULL DEFAULT '3',
             `poll_interval_seconds` INT UNSIGNED DEFAULT NULL,
             `is_public` TINYINT NOT NULL DEFAULT '0',
             `public_token` VARCHAR(64) DEFAULT NULL,
@@ -291,6 +293,15 @@ function plugin_gac_install(): bool
             KEY `savedsearches_id` (`savedsearches_id`),
             KEY `is_active` (`is_active`)
         ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    // theme/font_size were added after the table above first shipped: the CREATE TABLE is
+    // skipped once the table exists, so an existing install needs these added explicitly.
+    if (!$DB->fieldExists($monitorScreens, 'theme')) {
+        $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `theme` VARCHAR(10) NOT NULL DEFAULT 'dark' AFTER `sort_mode`");
+    }
+    if (!$DB->fieldExists($monitorScreens, 'font_size')) {
+        $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `font_size` TINYINT UNSIGNED NOT NULL DEFAULT '3' AFTER `theme`");
     }
 
     // Default configuration: only keys that do not exist yet, so an update never overwrites

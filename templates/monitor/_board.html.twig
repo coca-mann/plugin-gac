@@ -1,4 +1,5 @@
-<div class="gac-monitor-board"
+<div class="gac-monitor-board{{ theme == 'light' ? ' gac-theme-light' : '' }}"
+     style="--gac-table-font-size: {{ font_size_rem }};"
      data-gac-monitor
      data-ajax-url="{{ ajax_url }}"
      data-poll-interval="{{ poll_interval }}"

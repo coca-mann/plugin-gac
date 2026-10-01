@@ -62,4 +62,25 @@ final class MonitorLabels
             default                        => $mode,
         };
     }
+
+    public static function theme(string $theme): string
+    {
+        return match ($theme) {
+            BoardAppearance::THEME_DARK  => __('Escuro', 'gac'),
+            BoardAppearance::THEME_LIGHT => __('Claro', 'gac'),
+            default                      => $theme,
+        };
+    }
+
+    public static function fontSize(int $size): string
+    {
+        return match ($size) {
+            1       => __('Pequena', 'gac'),
+            2       => __('Normal', 'gac'),
+            3       => __('Grande (recomendado)', 'gac'),
+            4       => __('Muito grande', 'gac'),
+            5       => __('Extra grande', 'gac'),
+            default => (string) $size,
+        };
+    }
 }

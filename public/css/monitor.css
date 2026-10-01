@@ -88,7 +88,7 @@
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 1.05rem;
+    font-size: var(--gac-table-font-size, 1.05rem);
     background: #0f1830;
     border-radius: 10px;
     overflow: hidden;
@@ -140,4 +140,43 @@
 @keyframes gac-monitor-flash {
     0%   { background-color: #ffcc00; color: #111; }
     100% { background-color: transparent; }
+}
+
+/* Light theme: overrides only the colors that are otherwise hardcoded for dark above.
+   Toggled per Tela via BoardAppearance/theme (see MonitorScreen); applied as a class on
+   the board root (see _board.html.twig) and on the standalone page body (public_display). */
+.gac-theme-light {
+    background: #f4f6fa;
+    color: #1c2636;
+}
+
+.gac-theme-light .gac-monitor-topbar {
+    border-bottom-color: #d8dee8;
+}
+
+.gac-theme-light .gac-monitor-clock {
+    color: #1b4d8f;
+}
+
+.gac-theme-light .gac-countdown-ring-bg {
+    stroke: rgba(0, 0, 0, 0.12);
+}
+
+.gac-theme-light .gac-monitor-board table,
+.gac-theme-light table {
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.gac-theme-light thead th {
+    background: #e8edf5;
+    color: #51607a;
+}
+
+.gac-theme-light tbody td {
+    border-bottom-color: #e3e8f0;
+}
+
+.gac-theme-light tbody tr:hover {
+    background: #eef2f8;
 }

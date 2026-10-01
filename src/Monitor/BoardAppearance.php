@@ -31,37 +31,46 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\Monitor\BoardAppearance;
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\MonitorSettings;
-use GlpiPlugin\Gac\Monitor\PublicToken;
-use Glpi\Application\View\TemplateRenderer;
-use Glpi\Exception\Http\NotFoundHttpException;
+declare(strict_types=1);
 
-global $CFG_GLPI;
+namespace GlpiPlugin\Gac\Monitor;
 
-$token  = (string) ($_GET['token'] ?? '');
-$screen = new MonitorScreen();
-if (
-    !PublicToken::isWellFormed($token)
-    || !$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])
-) {
-    throw new NotFoundHttpException();
+/** Pure: the Tela's visual customization — theme (M-decision pending) and table font size. */
+final class BoardAppearance
+{
+    public const THEME_DARK  = 'dark';
+    public const THEME_LIGHT = 'light';
+
+    /** @var list<string> */
+    public const THEMES = [self::THEME_DARK, self::THEME_LIGHT];
+
+    public const DEFAULT_THEME = self::THEME_DARK;
+
+    public const MIN_FONT_SIZE     = 1;
+    public const MAX_FONT_SIZE     = 5;
+    public const DEFAULT_FONT_SIZE = 3;
+
+    /** @var array<int, string> font size level => CSS rem value, table rows only */
+    private const FONT_SIZE_REM = [
+        1 => '0.85rem',
+        2 => '1rem',
+        3 => '1.15rem',
+        4 => '1.4rem',
+        5 => '1.7rem',
+    ];
+
+    public static function isValidTheme(string $theme): bool
+    {
+        return in_array($theme, self::THEMES, true);
+    }
+
+    public static function isValidFontSize(int $size): bool
+    {
+        return $size >= self::MIN_FONT_SIZE && $size <= self::MAX_FONT_SIZE;
+    }
+
+    public static function fontSizeRem(int $size): string
+    {
+        return self::FONT_SIZE_REM[$size] ?? self::FONT_SIZE_REM[self::DEFAULT_FONT_SIZE];
+    }
 }
-
-$settings = MonitorConfig::load();
-$version  = Plugin::getPluginFilesVersion('gac');
-
-TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig', [
-    'screen'          => $screen,
-    'ajax_url'        => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/public_data.php?token=' . $token,
-    'poll_interval'   => $screen->pollIntervalSeconds($settings),
-    'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
-    // Empty when not configured: see the note in front/monitor/display.php.
-    'alert_sound_url' => MonitorSettings::alertSoundUrl($settings),
-    'theme'           => $screen->fields['theme'],
-    'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
-    'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,
-    'asset_css'       => $CFG_GLPI['root_doc'] . '/plugins/gac/css/monitor.css?v=' . $version,
-]);

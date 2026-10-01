@@ -31,37 +31,42 @@
  * -------------------------------------------------------------------------
  */
 
+declare(strict_types=1);
+
+namespace GlpiPlugin\Gac\Tests\Unit;
+
 use GlpiPlugin\Gac\Monitor\BoardAppearance;
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\MonitorSettings;
-use GlpiPlugin\Gac\Monitor\PublicToken;
-use Glpi\Application\View\TemplateRenderer;
-use Glpi\Exception\Http\NotFoundHttpException;
+use PHPUnit\Framework\TestCase;
 
-global $CFG_GLPI;
+final class BoardAppearanceTest extends TestCase
+{
+    public function testIsValidTheme(): void
+    {
+        $this->assertTrue(BoardAppearance::isValidTheme('dark'));
+        $this->assertTrue(BoardAppearance::isValidTheme('light'));
+        $this->assertFalse(BoardAppearance::isValidTheme('bogus'));
+    }
 
-$token  = (string) ($_GET['token'] ?? '');
-$screen = new MonitorScreen();
-if (
-    !PublicToken::isWellFormed($token)
-    || !$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])
-) {
-    throw new NotFoundHttpException();
+    public function testIsValidFontSize(): void
+    {
+        $this->assertTrue(BoardAppearance::isValidFontSize(1));
+        $this->assertTrue(BoardAppearance::isValidFontSize(5));
+        $this->assertFalse(BoardAppearance::isValidFontSize(0));
+        $this->assertFalse(BoardAppearance::isValidFontSize(6));
+    }
+
+    public function testFontSizeRemIsMonotonicallyIncreasing(): void
+    {
+        $previous = 0.0;
+        foreach (range(1, 5) as $size) {
+            $rem = (float) rtrim(BoardAppearance::fontSizeRem($size), 'rem');
+            $this->assertGreaterThan($previous, $rem);
+            $previous = $rem;
+        }
+    }
+
+    public function testFontSizeRemFallsBackToDefaultForUnknownSize(): void
+    {
+        $this->assertSame(BoardAppearance::fontSizeRem(BoardAppearance::DEFAULT_FONT_SIZE), BoardAppearance::fontSizeRem(42));
+    }
 }
-
-$settings = MonitorConfig::load();
-$version  = Plugin::getPluginFilesVersion('gac');
-
-TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig', [
-    'screen'          => $screen,
-    'ajax_url'        => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/public_data.php?token=' . $token,
-    'poll_interval'   => $screen->pollIntervalSeconds($settings),
-    'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
-    // Empty when not configured: see the note in front/monitor/display.php.
-    'alert_sound_url' => MonitorSettings::alertSoundUrl($settings),
-    'theme'           => $screen->fields['theme'],
-    'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
-    'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,
-    'asset_css'       => $CFG_GLPI['root_doc'] . '/plugins/gac/css/monitor.css?v=' . $version,
-]);
