@@ -25,6 +25,8 @@ produção, usar uma conta dedicada, só leitura de tickets.
 | 15 | Intervalo próprio da Tela | Tela com `poll_interval_seconds=10`, diferente do padrão global (15) | `data-poll-interval="10"` no HTML da exibição, não 15 | **Passou** |
 | 16 | Colunas e ordem | Tela com as 11 colunas do catálogo, nessa ordem: ID, Título, Entidade, Status, Prioridade, Solicitante, Técnico, Categoria, Grupo técnico, Abertura, Tempo decorrido | A tabela renderizada mostra exatamente essas colunas, nessa ordem (confirmado visualmente) | **Passou** |
 | 17 | Excluir Tela | Excluir (`purge`) uma Tela pública | A URL pública antiga passa a dar 404 imediatamente | **Passou** |
+| 18 | Ordenação (`sort_mode=priority`) | Tela com tickets de urgências variadas (1, 3 e 5) e uma data de abertura mais nova num dos tickets de urgência 3 | O ticket de urgência 5 vem primeiro, o de urgência 1 vem por último, e dentro da urgência 3 o ticket mais novo aparece antes dos mais antigos do mesmo status | **Passou** |
+| 19 | Ordenação (`sort_mode=id`) | Mesma Tela, trocando para `sort_mode=id` | Volta para ordem crescente de ID simples (o padrão do GLPI) | **Passou** |
 
 ## Achados registrados durante a implementação (não são bugs abertos — já corrigidos)
 
@@ -38,6 +40,9 @@ produção, usar uma conta dedicada, só leitura de tickets.
   no campo `name` da busca, não o nome — resolvido com `User::getFriendlyName()`.
 - Status e prioridade são códigos inteiros crus na tabela `glpi_tickets`; precisam passar por
   `Ticket::getStatus()`/`getPriorityName()` para virar texto.
+- A ordenação de linhas não estava decidida na v1 original (passou batido na brainstorming) e
+  caía, por acidente, no `ORDER BY id` crescente do GLPI — ruim para uma tela de monitoramento.
+  Adicionada depois (`sort_mode`), reproduzindo a regra que o app Django já usava.
 
 ## Pendências conhecidas
 
