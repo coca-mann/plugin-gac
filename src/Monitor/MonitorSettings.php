@@ -49,6 +49,8 @@ final class MonitorSettings
         return [
             'monitor_default_poll_interval_seconds' => '15',
             'monitor_alert_sound_url'                 => '',
+            'monitor_service_username'                => '',
+            'monitor_service_password'                => '',
         ];
     }
 
@@ -73,6 +75,17 @@ final class MonitorSettings
             $out['monitor_alert_sound_url'] = trim((string) $raw['monitor_alert_sound_url']);
         }
 
+        if (array_key_exists('monitor_service_username', $raw)) {
+            $out['monitor_service_username'] = trim((string) $raw['monitor_service_username']);
+        }
+
+        // The password is encrypted at rest by GLPI (SECURED_CONFIGS hook, setup.php) and
+        // decrypted by Config::getConfigurationValues() before it ever reaches normalize(), so
+        // this is just a pass-through — never trim/alter it (encrypted strings are not text).
+        if (array_key_exists('monitor_service_password', $raw)) {
+            $out['monitor_service_password'] = (string) $raw['monitor_service_password'];
+        }
+
         return $out;
     }
 
@@ -86,6 +99,24 @@ final class MonitorSettings
     public static function alertSoundUrl(array $s): string
     {
         return (string) ($s['monitor_alert_sound_url'] ?? '');
+    }
+
+    /** @param array<string, string> $s */
+    public static function serviceUsername(array $s): string
+    {
+        return (string) ($s['monitor_service_username'] ?? '');
+    }
+
+    /** @param array<string, string> $s */
+    public static function servicePassword(array $s): string
+    {
+        return (string) ($s['monitor_service_password'] ?? '');
+    }
+
+    /** Whether a service account is configured at all, for the public (stateless) search path. */
+    public static function hasServiceAccount(array $s): bool
+    {
+        return self::serviceUsername($s) !== '' && self::servicePassword($s) !== '';
     }
 
     /** Clamps a Tela's own poll interval override; null (use the global default) stays null. */

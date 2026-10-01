@@ -31,31 +31,34 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Monitor;
+use GlpiPlugin\Gac\Monitor\MonitorConfig;
+use GlpiPlugin\Gac\Monitor\MonitorScreen;
+use GlpiPlugin\Gac\Monitor\MonitorSettings;
+use GlpiPlugin\Gac\Monitor\PublicToken;
+use Glpi\Application\View\TemplateRenderer;
+use Glpi\Exception\Http\NotFoundHttpException;
 
-use GLPIKey;
+global $CFG_GLPI;
 
-/** Storage of the Monitor settings: glpi_configs, context plugin:gac, keys prefixed monitor_. */
-final class MonitorConfig
-{
-    public const CONTEXT = 'plugin:gac';
-
-    /** @return array<string, string> normalized settings (see MonitorSettings) */
-    public static function load(): array
-    {
-        $raw = \Config::getConfigurationValues(self::CONTEXT);
-        // Config::getConfigurationValues() returns the stored value as-is: encryption
-        // (SECURED_CONFIGS hook, setup.php) is only applied on write by
-        // Config::setConfigurationValues(), so the read side has to decrypt explicitly.
-        if (!empty($raw['monitor_service_password'])) {
-            $raw['monitor_service_password'] = (string) (new GLPIKey())->decrypt($raw['monitor_service_password']);
-        }
-        return MonitorSettings::normalize($raw);
-    }
-
-    /** @param array<string, mixed> $raw */
-    public static function save(array $raw): void
-    {
-        \Config::setConfigurationValues(self::CONTEXT, MonitorSettings::normalize($raw));
-    }
+$token  = (string) ($_GET['token'] ?? '');
+$screen = new MonitorScreen();
+if (
+    !PublicToken::isWellFormed($token)
+    || !$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])
+) {
+    throw new NotFoundHttpException();
 }
+
+$settings = MonitorConfig::load();
+$version  = Plugin::getPluginFilesVersion('gac');
+
+TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig', [
+    'screen'          => $screen,
+    'ajax_url'        => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/public_data.php?token=' . $token,
+    'poll_interval'   => $screen->pollIntervalSeconds($settings),
+    'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
+    // Empty when not configured: see the note in front/monitor/display.php.
+    'alert_sound_url' => MonitorSettings::alertSoundUrl($settings),
+    'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,
+    'asset_css'       => $CFG_GLPI['root_doc'] . '/plugins/gac/css/monitor.css?v=' . $version,
+]);

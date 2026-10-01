@@ -74,7 +74,7 @@ Fora da v1 (decidido):
 | M3 | O filtro de conteúdo (status, categoria, urgência etc.) vem de uma **Pesquisa Salva do GLPI** (`SavedSearch`, tipo Ticket) referenciada por ID, restrita a **compartilhadas** (`is_private = 0`) | Reaproveita a search engine nativa (`Search::getDatas`) em vez de reinventar um motor de filtro; restringir a compartilhadas evita que uma Tela quebre em silêncio se o dono de uma busca pessoal a editar ou apagar |
 | M4 | As colunas exibidas são um **conjunto curado** (~11 campos voltados a monitoramento: ID, título, entidade, status, urgência/prioridade, categoria, solicitante, técnico atribuído, grupo atribuído, data de abertura, tempo decorrido), escolhidas e **ordenadas pelo admin por Tela** | Decisão do dono. Evita colunas inadequadas para uma tela de TV (textos longos, campos técnicos); a lista completa de search options do Ticket (centenas de campos) é demais para esse uso |
 | M5 | Atualização por **polling AJAX**, intervalo configurável (padrão global, com override por Tela), não WebSocket/push real | Decisão do dono. GLPI roda em PHP síncrono (Apache/PHP-FPM); push real exigiria um processo separado (Node/Mercure/Soketi) que este ambiente não tem e que tiraria a simplicidade de "é só um plugin GLPI" |
-| M6 | Exibição pública (sem login) usa uma **rota stateless** (`SessionManager::registerPluginStatelessPath`), autenticada por um **token opaco por Tela**, nunca a sessão GLPI | TVs ficam ligadas o dia todo sem ninguém logado; evita o problema de sessão expirando numa aba que nunca fecha |
+| M6 | Exibição pública (sem login) usa uma **rota stateless** (`SessionManager::registerPluginStatelessPath`), autenticada por um **token opaco por Tela**: o cliente (TV) nunca guarda cookie de sessão nem faz login. Internamente, cada requisição de dados se autentica de forma transparente como uma **conta de serviço do GLPI** (configurada no módulo, só leitura de tickets) só pelo tempo da consulta, e a sessão é destruída antes da resposta — achado da Tarefa 8 de implementação: `Search::getDatas` precisa de mais do que a entidade forçada (lê `$_SESSION['glpigroups']` e outras chaves de uma sessão real; ver R-1/R-3) | TVs ficam ligadas o dia todo sem ninguém logado; evita o problema de sessão expirando numa aba que nunca fecha. A alternativa de montar SQL próprio foi descartada (ver escolha na implementação) para manter 100% do reaproveitamento da Pesquisa Salva |
 | M7 | O diff de "ticket novo" (para o alerta) é calculado **no cliente (JS)**, comparando o conjunto de IDs do poll atual com o do poll anterior em memória — **sem estado de "últimos vistos" no servidor** | Não há sessão persistente do lado público para guardar esse estado; a página fica aberta o tempo todo, então memória do JS basta. Evita criar uma classe/tabela só para isso |
 | M8 | Som/alerta de ticket novo é **configurável por URL** na configuração global (`monitor_alert_sound_url`, vazio por padrão — sem arquivo embutido no plugin), ligado/desligado por Tela (`alert_enabled`), **sem condição extra**: qualquer linha nova no resultado já filtrado dispara o alerta. Sem URL configurada, o alerta fica só visual (linha piscando), sem som | Decisão do dono (som entra em escopo). O próprio critério da Pesquisa Salva já define "o que conta" para aquela Tela; uma camada extra de condição de alerta seria redundante. Embutir um arquivo de áudio no plugin não é necessário: a mesma URL configurável que o Django já usava resolve, sem exigir um binário versionado no repositório |
 | M9 | Dashboard de KPIs, projetos e controle remoto de tela ficam **fora da v1** | Decisão do dono: focar só na lista de tickets, que é o que falta para descontinuar o Django |
@@ -102,6 +102,10 @@ Prefixo `glpi_plugin_gac_`. Tipos exatos ficam para o plano de implementação.
 
 - `monitor_default_poll_interval_seconds` (padrão sugerido: 15)
 - `monitor_alert_sound_url` (padrão: vazio — sem URL configurada, o alerta fica só visual)
+- `monitor_service_username`, `monitor_service_password` (achado da Tarefa 8, ver M6/R-1): a
+  conta de serviço usada internamente pela exibição pública. A senha é criptografada em repouso
+  pelo próprio mecanismo do GLPI (`Hooks::SECURED_CONFIGS`), nunca reexibida em texto puro no
+  formulário (campo fica em branco; em branco no salvar mantém a senha atual)
 
 ### 5.3 Catálogo de colunas curado
 
@@ -219,13 +223,22 @@ em `front/monitor/`. Twig em `templates/monitor/`, JS em `public/js/monitor.js`,
 
 ## 11. Pendências e riscos
 
-- **R-1 (resolvido por evidência, implementação Tarefa 6)**: `Search::getDatas('Ticket', ...)`
-  funciona com uma sessão autenticada normal (testado logado como superadmin contra o GLPI
-  local); o caminho verdadeiramente stateless (`public_data.php`, sem sessão nenhuma) ainda não
-  foi testado literalmente sem sessão, mas como `ScreenQuery` já monta `$_SESSION['glpiativ...']`
-  manualmente antes de cada chamada (ver R-3), o mecanismo não depende de um usuário logado — só
-  das chaves de sessão que ele mesmo escreve. Confirmar isso de ponta a ponta fica para a Tarefa 8
-  (exibição pública), que exercita o caminho stateless de verdade.
+- **R-1 (resolvido por evidência, implementações Tarefas 6 e 8)**: `Search::getDatas('Ticket',
+  ...)` **não** funciona numa requisição verdadeiramente sem sessão — um teste real contra o
+  GLPI local, com um token válido e nenhum cookie, deu erro fatal
+  (`count(): Argument #1 ($value) must be of type Countable|array, null given`) dentro de
+  `SQLProvider::getDefaultJoinCriteria()`, que lê `$_SESSION['glpigroups']` (a lógica de "tickets
+  visíveis para mim", usada mesmo numa busca que não pede isso). Forçar só a entidade (R-3) não
+  bastava. A correção, decidida com o dono (ver M6): a exibição pública se autentica
+  internamente como uma **conta de serviço** do GLPI (`ServiceSession`, usuário/senha guardados
+  na configuração do módulo, senha criptografada via `Hooks::SECURED_CONFIGS`) só pelo tempo da
+  consulta, e a sessão é destruída antes da resposta — o cliente (TV) nunca guarda cookie, mas o
+  servidor usa uma sessão real e completa por trás. Verificado de ponta a ponta (token sem
+  nenhum cookie, resposta 200 com os tickets certos, `Set-Cookie` da sessão descartável emitido
+  mas sem efeito porque o servidor já a destruiu). Efeito colateral encontrado e corrigido junto:
+  `Ticket::getStatus()`/`getPriorityName()` (usados pelas colunas status/prioridade) seguem o
+  idioma da sessão atual, que por padrão seria o da conta de serviço, não necessariamente pt-BR —
+  `ServiceSession::login()` força `Session::loadLanguage('pt_BR')` depois do login.
 - **R-2 (resolvido, implementação Tarefa 1)**: colunas do catálogo curado mapeadas para os
   índices reais de search option via grep no código-fonte do GLPI 11.0.8 local
   (`CommonITILObject.php`): `1`=Título, `2`=ID, `3`=Prioridade, `4`=Solicitante, `5`=Técnico,

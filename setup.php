@@ -31,6 +31,7 @@
  * -------------------------------------------------------------------------
  */
 
+use Glpi\Http\SessionManager;
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Gac\GacMenu;
 use GlpiPlugin\Gac\Ltbp\AssetUpdateGuard;
@@ -77,6 +78,15 @@ function plugin_init_gac(): void
         foreach (AssetUpdateGuard::itemtypes() as $itemtype) {
             $PLUGIN_HOOKS[Hooks::PRE_ITEM_UPDATE]['gac'][$itemtype] = [AssetUpdateGuard::class, 'onPreUpdate'];
         }
+
+        // Monitor: a exibição pública (TV/kiosk) roda sem sessão GLPI — M6/spec seção 7. Casa
+        // só estes dois arquivos; display.php e data.php autenticados continuam exigindo login.
+        SessionManager::registerPluginStatelessPath('gac', '#^/front/monitor/public\.php$#');
+        SessionManager::registerPluginStatelessPath('gac', '#^/ajax/monitor/public_data\.php$#');
+
+        // The Monitor service account's password (glpi_configs, plugin:gac) is encrypted at
+        // rest with GLPI's own key, same mechanism as the native SMTP secret.
+        $PLUGIN_HOOKS[Hooks::SECURED_CONFIGS]['gac'] = ['monitor_service_password'];
     }
 }
 

@@ -45,6 +45,30 @@ final class MonitorSettingsTest extends TestCase
         $s = MonitorSettings::normalize([]);
         $this->assertSame(15, MonitorSettings::defaultPollIntervalSeconds($s));
         $this->assertSame('', MonitorSettings::alertSoundUrl($s));
+        $this->assertSame('', MonitorSettings::serviceUsername($s));
+        $this->assertSame('', MonitorSettings::servicePassword($s));
+        $this->assertFalse(MonitorSettings::hasServiceAccount($s));
+    }
+
+    public function testServiceAccountFields(): void
+    {
+        $s = MonitorSettings::normalize([
+            'monitor_service_username' => '  monitor-bot  ',
+            'monitor_service_password' => 'whatever-the-encrypted-blob-is',
+        ]);
+        $this->assertSame('monitor-bot', MonitorSettings::serviceUsername($s));
+        $this->assertSame('whatever-the-encrypted-blob-is', MonitorSettings::servicePassword($s));
+        $this->assertTrue(MonitorSettings::hasServiceAccount($s));
+    }
+
+    public function testHasServiceAccountRequiresBothFields(): void
+    {
+        $this->assertFalse(MonitorSettings::hasServiceAccount(
+            MonitorSettings::normalize(['monitor_service_username' => 'monitor-bot'])
+        ));
+        $this->assertFalse(MonitorSettings::hasServiceAccount(
+            MonitorSettings::normalize(['monitor_service_password' => 'secret'])
+        ));
     }
 
     public function testEveryDefaultKeyIsPrefixed(): void

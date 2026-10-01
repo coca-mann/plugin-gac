@@ -46,8 +46,15 @@ final class ScreenQuery
 {
     private const LIST_LIMIT = 200;
 
-    /** @return array{columns: list<array{key: string, label: string}>, rows: list<array<string, string>>} */
-    public static function run(MonitorScreen $screen): array
+    /**
+     * @param bool $asServiceAccount Public, session-less path only (Task 8): Search::getDatas()
+     *     needs a real logged-in session shape (profile, groups — not just entities, see spec
+     *     R-1/R-3), so this logs in as the Monitor service account for the duration of the call
+     *     and logs back out before returning. Never true for the authenticated display, which
+     *     already has the technician's own real session.
+     * @return array{columns: list<array{key: string, label: string}>, rows: list<array<string, string>>}
+     */
+    public static function run(MonitorScreen $screen, bool $asServiceAccount = false): array
     {
         $columns = $screen->displayColumns();
 
@@ -67,27 +74,39 @@ final class ScreenQuery
 
         $forcedisplay = ColumnCatalog::searchOptionIdsFor($columns);
 
-        $previousEntities       = $_SESSION['glpiactiveentities'] ?? null;
-        $previousEntitiesString = $_SESSION['glpiactiveentities_string'] ?? null;
-        $previousShowAll        = $_SESSION['glpishowallentities'] ?? null;
-        self::forceEntityScope((int) $screen->fields['entities_id'], (bool) $screen->fields['is_recursive']);
+        if ($asServiceAccount) {
+            if (!ServiceSession::login(MonitorConfig::load())) {
+                throw new \RuntimeException('Monitor service account is not configured or login failed.');
+            }
+        }
 
         try {
-            $data = Search::getDatas('Ticket', $params, $forcedisplay);
-        } finally {
-            // Never leaves a real session (the authenticated display) scoped to the Tela's
-            // entity instead of the technician's own — restore exactly what was there before,
-            // or clear it if there was nothing (the stateless public path).
-            if ($previousEntities === null) {
-                unset($_SESSION['glpiactiveentities'], $_SESSION['glpiactiveentities_string']);
-            } else {
-                $_SESSION['glpiactiveentities']        = $previousEntities;
-                $_SESSION['glpiactiveentities_string'] = $previousEntitiesString;
+            $previousEntities       = $_SESSION['glpiactiveentities'] ?? null;
+            $previousEntitiesString = $_SESSION['glpiactiveentities_string'] ?? null;
+            $previousShowAll        = $_SESSION['glpishowallentities'] ?? null;
+            self::forceEntityScope((int) $screen->fields['entities_id'], (bool) $screen->fields['is_recursive']);
+
+            try {
+                $data = Search::getDatas('Ticket', $params, $forcedisplay);
+            } finally {
+                // Never leaves a real session (the authenticated display, or the service
+                // account below) scoped to the Tela's entity — restore exactly what was there
+                // before, or clear it if there was nothing.
+                if ($previousEntities === null) {
+                    unset($_SESSION['glpiactiveentities'], $_SESSION['glpiactiveentities_string']);
+                } else {
+                    $_SESSION['glpiactiveentities']        = $previousEntities;
+                    $_SESSION['glpiactiveentities_string'] = $previousEntitiesString;
+                }
+                if ($previousShowAll === null) {
+                    unset($_SESSION['glpishowallentities']);
+                } else {
+                    $_SESSION['glpishowallentities'] = $previousShowAll;
+                }
             }
-            if ($previousShowAll === null) {
-                unset($_SESSION['glpishowallentities']);
-            } else {
-                $_SESSION['glpishowallentities'] = $previousShowAll;
+        } finally {
+            if ($asServiceAccount) {
+                ServiceSession::logout();
             }
         }
 

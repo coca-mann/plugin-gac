@@ -31,31 +31,32 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac\Monitor;
+// Rota stateless (setup.php): sem sessão GLPI, sem Session::checkCSRF() — somente leitura, GET.
+use GlpiPlugin\Gac\Monitor\MonitorScreen;
+use GlpiPlugin\Gac\Monitor\PublicToken;
+use GlpiPlugin\Gac\Monitor\ScreenQuery;
 
-use GLPIKey;
+header('Content-Type: application/json; charset=utf-8');
 
-/** Storage of the Monitor settings: glpi_configs, context plugin:gac, keys prefixed monitor_. */
-final class MonitorConfig
-{
-    public const CONTEXT = 'plugin:gac';
+$token = (string) ($_GET['token'] ?? '');
+if (!PublicToken::isWellFormed($token)) {
+    http_response_code(404);
+    echo json_encode(['error' => __('Tela não encontrada.', 'gac')], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
-    /** @return array<string, string> normalized settings (see MonitorSettings) */
-    public static function load(): array
-    {
-        $raw = \Config::getConfigurationValues(self::CONTEXT);
-        // Config::getConfigurationValues() returns the stored value as-is: encryption
-        // (SECURED_CONFIGS hook, setup.php) is only applied on write by
-        // Config::setConfigurationValues(), so the read side has to decrypt explicitly.
-        if (!empty($raw['monitor_service_password'])) {
-            $raw['monitor_service_password'] = (string) (new GLPIKey())->decrypt($raw['monitor_service_password']);
-        }
-        return MonitorSettings::normalize($raw);
-    }
+$screen = new MonitorScreen();
+if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])) {
+    http_response_code(404);
+    echo json_encode(['error' => __('Tela não encontrada.', 'gac')], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
-    /** @param array<string, mixed> $raw */
-    public static function save(array $raw): void
-    {
-        \Config::setConfigurationValues(self::CONTEXT, MonitorSettings::normalize($raw));
-    }
+try {
+    $result = ScreenQuery::run($screen, true);
+    echo json_encode($result + ['generated_at' => date('c')], JSON_UNESCAPED_UNICODE);
+} catch (\Throwable $e) {
+    Toolbox::logInFile('gac', 'monitor public_data.php: ' . $e->getMessage() . "\n");
+    http_response_code(500);
+    echo json_encode(['error' => __('Erro ao buscar os tickets.', 'gac')], JSON_UNESCAPED_UNICODE);
 }

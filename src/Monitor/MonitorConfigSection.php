@@ -74,10 +74,38 @@ final class MonitorConfigSection implements ConfigSection
                 'value' => MonitorSettings::alertSoundUrl($s),
             ])
         );
+        $out = $this->block('ti-device-tv', $this->title(), '', $body);
 
-        return "<div class='card border mb-4'><div class='card-header bg-body-tertiary'>"
-            . "<h4 class='card-title mb-1'><i class='ti ti-device-tv me-2'></i>" . htmlescape($this->title()) . '</h4>'
-            . "</div><div class='card-body'>" . $body . '</div></div>';
+        $serviceBody = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
+            . htmlescape(__('As Telas públicas (sem login, para TV) não têm sessão de usuário. Para poder buscar os tickets mesmo assim, elas se autenticam com esta conta, só pelo tempo da consulta. Cadastre um usuário GLPI dedicado, com direito de leitura de tickets nas entidades que as Telas públicas vão usar — sem outros direitos.', 'gac'))
+            . '</div>'
+            . $this->row(__('Usuário', 'gac'), Html::input('monitor_service_username', [
+                'value' => MonitorSettings::serviceUsername($s),
+            ]))
+            . $this->row(
+                MonitorSettings::servicePassword($s) !== ''
+                    ? __('Senha (já configurada; deixe em branco para manter)', 'gac')
+                    : __('Senha', 'gac'),
+                Html::input('monitor_service_password', ['type' => 'password', 'value' => ''])
+            );
+        $out .= $this->block(
+            'ti-key',
+            __('Conta de serviço para Telas públicas', 'gac'),
+            '',
+            $serviceBody
+        );
+
+        return $out;
+    }
+
+    /** A titled, bordered block, matching the other modules' config sections. */
+    private function block(string $icon, string $title, string $description, string $content): string
+    {
+        $descriptionHtml = $description === '' ? '' : "<div class='text-muted small'>" . htmlescape($description) . '</div>';
+        return "<div class='card border mb-4'><div class='card-header bg-body-tertiary'><div>"
+            . "<h4 class='card-title mb-1'><i class='ti " . htmlescape($icon) . " me-2'></i>" . htmlescape($title) . '</h4>'
+            . $descriptionHtml
+            . "</div></div><div class='card-body'>" . $content . '</div></div>';
     }
 
     private function row(string $label, string $control): string
@@ -94,6 +122,13 @@ final class MonitorConfigSection implements ConfigSection
         $raw = MonitorConfig::load();
         $raw['monitor_default_poll_interval_seconds'] = (string) (int) ($post['monitor_default_poll_interval_seconds'] ?? 15);
         $raw['monitor_alert_sound_url'] = trim((string) ($post['monitor_alert_sound_url'] ?? ''));
+        $raw['monitor_service_username'] = trim((string) ($post['monitor_service_username'] ?? ''));
+        // Blank password on submit means "keep the current one" — the field is never
+        // pre-filled with the real secret (see render()), so an empty submit is not a request
+        // to clear it, same convention GLPI's own SMTP OAuth secret field uses.
+        if (trim((string) ($post['monitor_service_password'] ?? '')) !== '') {
+            $raw['monitor_service_password'] = $post['monitor_service_password'];
+        }
         MonitorConfig::save($raw);
         Session::addMessageAfterRedirect(__('Configuração do Monitor salva.', 'gac'));
     }
