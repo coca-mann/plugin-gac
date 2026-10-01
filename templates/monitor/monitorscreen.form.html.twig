@@ -25,7 +25,49 @@
     {{ fields.sliderField('is_public', item.fields['is_public'], __('Exibição pública (sem login, para TV)', 'gac')) }}
 
     {% if item.fields['is_public'] and item.fields['public_token'] %}
-        {{ fields.readOnlyField('public_url_display', public_url, __('URL pública', 'gac')) }}
+        {{ fields.readOnlyField('public_url_display', public_url, __('URL pública', 'gac'), {
+            inline_add_field_html: true,
+            add_field_html: '<button type="button" class="btn btn-outline-secondary ms-1" data-gac-copy-url="' ~ public_url|e('html_attr') ~ '" title="' ~ __('Copiar link', 'gac')|e('html_attr') ~ '"><i class="ti ti-copy"></i></button>',
+        }) }}
+        <script>
+            (function () {
+                const button = document.querySelector('[data-gac-copy-url]');
+                if (!button) { return; }
+                const icon = button.querySelector('i');
+                const resetIcon = function () { icon.className = 'ti ti-copy'; };
+                const showResult = function (ok) {
+                    icon.className = ok ? 'ti ti-check text-success' : 'ti ti-x text-danger';
+                    setTimeout(resetIcon, 1500);
+                };
+                button.addEventListener('click', function () {
+                    const url = button.getAttribute('data-gac-copy-url');
+                    if (window.isSecureContext && navigator.clipboard) {
+                        navigator.clipboard.writeText(url).then(function () {
+                            showResult(true);
+                        }).catch(function () {
+                            showResult(false);
+                        });
+                        return;
+                    }
+                    // Plain HTTP (no secure context): navigator.clipboard is unavailable there,
+                    // fall back to the classic hidden-textarea + execCommand trick.
+                    const temp = document.createElement('textarea');
+                    temp.value = url;
+                    temp.style.position = 'fixed';
+                    temp.style.opacity = '0';
+                    document.body.appendChild(temp);
+                    temp.select();
+                    let ok = false;
+                    try {
+                        ok = document.execCommand('copy');
+                    } catch (e) {
+                        ok = false;
+                    }
+                    document.body.removeChild(temp);
+                    showResult(ok);
+                });
+            })();
+        </script>
         <div class="d-none" data-gac-regenerate-holder>
             <button type="submit" name="regenerate_token" value="1" class="btn btn-outline-warning me-2"
                     formnovalidate onclick="return confirm('{{ __('Gerar um novo link público? O link atual deixa de funcionar.', 'gac')|e('js') }}');">
@@ -52,8 +94,58 @@
     {% endif %}
 
     <hr>
-    <h4>{{ __('Colunas exibidas, na ordem', 'gac') }}</h4>
-    {% for i in 0..(columns|length - 1) %}
-        {{ fields.dropdownArrayField('display_columns[]', chosen[i]|default(''), column_choices, (__('Posição', 'gac') ~ ' ' ~ (i + 1))) }}
-    {% endfor %}
+    <h4>{{ __('Colunas exibidas', 'gac') }}</h4>
+    <p class="text-muted small">{{ __('Marque as colunas e arraste para reordenar (arraste pelo ícone à esquerda). A ordem da lista é a ordem de exibição.', 'gac') }}</p>
+    <ul class="list-group mb-3" data-gac-column-list style="max-width: 32rem;">
+        {% for key in columns_ordered %}
+            <li class="list-group-item d-flex align-items-center" data-column-key="{{ key }}">
+                <i class="ti ti-grip-vertical gac-drag-handle me-2" style="cursor: grab;"></i>
+                <div class="form-check mb-0 flex-grow-1">
+                    <input class="form-check-input" type="checkbox" value="1"
+                           id="gac_column_{{ key }}" data-gac-column-check
+                           {{ key in chosen ? 'checked' : '' }}>
+                    <label class="form-check-label" for="gac_column_{{ key }}">{{ column_choices[key] }}</label>
+                </div>
+            </li>
+        {% endfor %}
+    </ul>
+    <script>
+        (function () {
+            const list = document.querySelector('[data-gac-column-list]');
+            if (!list) { return; }
+
+            // GLPI's bundled library here is HTML5Sortable (lukasoppermann/html5sortable,
+            // confirmed by reading public/lib/sortable.js), exposed as the lowercase function
+            // window.sortable(elements, options) — not the unrelated "SortableJS" package (a
+            // class with Sortable.create()) its filename suggests. It also loads near the end of
+            // the page (after this block runs), so init the drag behavior once the page has
+            // finished loading, same pattern as the regenerate-token button placement above.
+            const initDrag = function () {
+                if (typeof window.sortable === 'function') {
+                    window.sortable(list, { handle: '.gac-drag-handle' });
+                }
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initDrag);
+            } else {
+                initDrag();
+            }
+
+            const form = list.closest('form');
+            if (!form) { return; }
+            form.addEventListener('submit', function () {
+                form.querySelectorAll('[data-gac-column-hidden]').forEach(function (el) { el.remove(); });
+                list.querySelectorAll('[data-column-key]').forEach(function (li) {
+                    const checkbox = li.querySelector('[data-gac-column-check]');
+                    if (!checkbox || !checkbox.checked) { return; }
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'display_columns[]';
+                    input.value = li.dataset.columnKey;
+                    input.setAttribute('data-gac-column-hidden', '1');
+                    form.appendChild(input);
+                });
+            });
+        })();
+    </script>
 {% endblock %}

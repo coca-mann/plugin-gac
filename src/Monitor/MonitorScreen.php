@@ -209,7 +209,7 @@ class MonitorScreen extends CommonDBTM
         $this->initForm($ID, $options);
         global $CFG_GLPI;
 
-        $columnChoices = ['' => Dropdown::EMPTY_VALUE];
+        $columnChoices = [];
         foreach (ColumnCatalog::allKeys() as $key) {
             $columnChoices[$key] = MonitorLabels::column($key);
         }
@@ -219,17 +219,25 @@ class MonitorScreen extends CommonDBTM
             $sortModeChoices[$mode] = MonitorLabels::sortMode($mode);
         }
 
+        // Chosen columns first, in their saved order, then the rest of the catalog: the admin
+        // sees the current configuration already in place and only has to drag unchecked rows
+        // in, not hunt for them.
+        $chosen         = $this->isNewItem() ? ColumnCatalog::DEFAULT_COLUMNS : $this->displayColumns();
+        $orderedColumns = array_values(array_unique([...$chosen, ...ColumnCatalog::allKeys()]));
+
         TemplateRenderer::getInstance()->display('@gac/monitor/monitorscreen.form.html.twig', [
             'item'              => $this,
             'params'            => $options,
-            'columns'           => ColumnCatalog::allKeys(),
-            'chosen'            => $this->isNewItem() ? ColumnCatalog::DEFAULT_COLUMNS : $this->displayColumns(),
+            'columns_ordered'   => $orderedColumns,
+            'chosen'            => $chosen,
             'column_choices'    => $columnChoices,
             'sort_mode_choices' => $sortModeChoices,
             'saved_searches'    => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
+            // Absolute (scheme + host), not root_doc (path only): this URL is meant to be
+            // opened on another device (a TV), not just fetched from the current page.
             'public_url'     => empty($this->fields['public_token'] ?? null)
                 ? ''
-                : $CFG_GLPI['root_doc'] . '/plugins/gac/front/monitor/public.php?token=' . $this->fields['public_token'],
+                : $CFG_GLPI['url_base'] . '/plugins/gac/front/monitor/public.php?token=' . $this->fields['public_token'],
         ]);
 
         return true;

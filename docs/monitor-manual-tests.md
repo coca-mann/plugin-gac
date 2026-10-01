@@ -27,6 +27,8 @@ produção, usar uma conta dedicada, só leitura de tickets.
 | 17 | Excluir Tela | Excluir (`purge`) uma Tela pública | A URL pública antiga passa a dar 404 imediatamente | **Passou** |
 | 18 | Ordenação (`sort_mode=priority`) | Tela com tickets de urgências variadas (1, 3 e 5) e uma data de abertura mais nova num dos tickets de urgência 3 | O ticket de urgência 5 vem primeiro, o de urgência 1 vem por último, e dentro da urgência 3 o ticket mais novo aparece antes dos mais antigos do mesmo status | **Passou** |
 | 19 | Ordenação (`sort_mode=id`) | Mesma Tela, trocando para `sort_mode=id` | Volta para ordem crescente de ID simples (o padrão do GLPI) | **Passou** |
+| 20 | Copiar URL pública | Clicar no botão de copiar ao lado do campo "URL pública" no formulário | A URL completa (com domínio) vai para a área de transferência; o ícone pisca um check de confirmação | **Passou** |
+| 21 | Reordenar colunas por arrastar | Arrastar uma coluna pelo ícone de grip para outra posição na lista; marcar/desmarcar colunas; salvar | A ordem salva (`display_columns`) reflete exatamente o arraste e as marcações feitas | **Passou** |
 
 ## Achados registrados durante a implementação (não são bugs abertos — já corrigidos)
 
@@ -43,6 +45,13 @@ produção, usar uma conta dedicada, só leitura de tickets.
 - A ordenação de linhas não estava decidida na v1 original (passou batido na brainstorming) e
   caía, por acidente, no `ORDER BY id` crescente do GLPI — ruim para uma tela de monitoramento.
   Adicionada depois (`sort_mode`), reproduzindo a regra que o app Django já usava.
+- A URL pública do formulário usava `$CFG_GLPI['root_doc']` (só o caminho, ex. `/plugins/gac/...`)
+  em vez de `$CFG_GLPI['url_base']` (domínio completo) — o botão de copiar levava um link que só
+  funcionava se colado em uma aba já aberta no próprio GLPI, inútil pra abrir numa TV.
+- A biblioteca de arrastar-e-soltar que o GLPI já carrega em `/lib/sortable.min.js` **não** é a
+  SortableJS que o nome sugere — é a HTML5Sortable (`lukasoppermann/html5sortable`), exposta como
+  `window.sortable(elemento, opções)` (função minúscula), não `Sortable.create(...)`. Só se
+  percebe isso lendo o arquivo-fonte real; o nome do arquivo engana.
 
 ## Pendências conhecidas
 
