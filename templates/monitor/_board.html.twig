@@ -1,0 +1,15 @@
+<div class="gac-monitor-board"
+     data-gac-monitor
+     data-ajax-url="{{ ajax_url }}"
+     data-poll-interval="{{ poll_interval }}"
+     data-alert-enabled="{{ alert_enabled ? '1' : '0' }}">
+    <div class="gac-monitor-topbar">
+        <h1>{{ screen.fields.name }}</h1>
+        <span data-gac-monitor-status class="gac-monitor-status-stale"></span>
+    </div>
+    <table>
+        <thead><tr data-gac-monitor-head></tr></thead>
+        <tbody data-gac-monitor-body></tbody>
+    </table>
+    <audio data-gac-monitor-audio src="{{ alert_sound_url }}" preload="auto"></audio>
+</div>
