@@ -31,57 +31,25 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
+declare(strict_types=1);
 
-use GlpiPlugin\Gac\Ltbp\Ltbp;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+namespace GlpiPlugin\Gac\Monitor;
 
 /**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
+ * The opaque token that authenticates a public (no-login) Tela display. Pure: no GLPI, no
+ * database — a Tela's public_token column is just this format. See spec M6 and section 6.3.
  */
-final class Features
+final class PublicToken
 {
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
+    private const LENGTH_HEX_CHARS = 48;
 
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
+    public static function generate(): string
     {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-            [
-                'itemtype' => MonitorScreen::class,
-                'label'    => MonitorScreen::getTypeName(2),
-                'field'    => MonitorScreen::$rightname,
-            ],
-        ];
+        return bin2hex(random_bytes((int) (self::LENGTH_HEX_CHARS / 2)));
     }
 
-    public static function canConfigure(string $rightname): bool
+    public static function isWellFormed(string $token): bool
     {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
-    }
-
-    public static function canConfigureAny(): bool
-    {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
-        }
-        return false;
+        return (bool) preg_match('/^[0-9a-f]{' . self::LENGTH_HEX_CHARS . '}$/', $token);
     }
 }

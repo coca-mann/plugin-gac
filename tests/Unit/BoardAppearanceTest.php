@@ -31,57 +31,42 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
+declare(strict_types=1);
 
-use GlpiPlugin\Gac\Ltbp\Ltbp;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+namespace GlpiPlugin\Gac\Tests\Unit;
 
-/**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
- */
-final class Features
+use GlpiPlugin\Gac\Monitor\BoardAppearance;
+use PHPUnit\Framework\TestCase;
+
+final class BoardAppearanceTest extends TestCase
 {
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
-
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
+    public function testIsValidTheme(): void
     {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-            [
-                'itemtype' => MonitorScreen::class,
-                'label'    => MonitorScreen::getTypeName(2),
-                'field'    => MonitorScreen::$rightname,
-            ],
-        ];
+        $this->assertTrue(BoardAppearance::isValidTheme('dark'));
+        $this->assertTrue(BoardAppearance::isValidTheme('light'));
+        $this->assertFalse(BoardAppearance::isValidTheme('bogus'));
     }
 
-    public static function canConfigure(string $rightname): bool
+    public function testIsValidFontSize(): void
     {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
+        $this->assertTrue(BoardAppearance::isValidFontSize(1));
+        $this->assertTrue(BoardAppearance::isValidFontSize(5));
+        $this->assertFalse(BoardAppearance::isValidFontSize(0));
+        $this->assertFalse(BoardAppearance::isValidFontSize(6));
     }
 
-    public static function canConfigureAny(): bool
+    public function testFontSizeRemIsMonotonicallyIncreasing(): void
     {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
+        $previous = 0.0;
+        foreach (range(1, 5) as $size) {
+            $rem = (float) rtrim(BoardAppearance::fontSizeRem($size), 'rem');
+            $this->assertGreaterThan($previous, $rem);
+            $previous = $rem;
         }
-        return false;
+    }
+
+    public function testFontSizeRemFallsBackToDefaultForUnknownSize(): void
+    {
+        $this->assertSame(BoardAppearance::fontSizeRem(BoardAppearance::DEFAULT_FONT_SIZE), BoardAppearance::fontSizeRem(42));
     }
 }

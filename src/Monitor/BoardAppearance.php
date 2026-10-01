@@ -31,57 +31,46 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
+declare(strict_types=1);
 
-use GlpiPlugin\Gac\Ltbp\Ltbp;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+namespace GlpiPlugin\Gac\Monitor;
 
-/**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
- */
-final class Features
+/** Pure: the Tela's visual customization — theme (M-decision pending) and table font size. */
+final class BoardAppearance
 {
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
+    public const THEME_DARK  = 'dark';
+    public const THEME_LIGHT = 'light';
 
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
+    /** @var list<string> */
+    public const THEMES = [self::THEME_DARK, self::THEME_LIGHT];
+
+    public const DEFAULT_THEME = self::THEME_DARK;
+
+    public const MIN_FONT_SIZE     = 1;
+    public const MAX_FONT_SIZE     = 5;
+    public const DEFAULT_FONT_SIZE = 3;
+
+    /** @var array<int, string> font size level => CSS rem value, table rows only */
+    private const FONT_SIZE_REM = [
+        1 => '0.85rem',
+        2 => '1rem',
+        3 => '1.15rem',
+        4 => '1.4rem',
+        5 => '1.7rem',
+    ];
+
+    public static function isValidTheme(string $theme): bool
     {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-            [
-                'itemtype' => MonitorScreen::class,
-                'label'    => MonitorScreen::getTypeName(2),
-                'field'    => MonitorScreen::$rightname,
-            ],
-        ];
+        return in_array($theme, self::THEMES, true);
     }
 
-    public static function canConfigure(string $rightname): bool
+    public static function isValidFontSize(int $size): bool
     {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
+        return $size >= self::MIN_FONT_SIZE && $size <= self::MAX_FONT_SIZE;
     }
 
-    public static function canConfigureAny(): bool
+    public static function fontSizeRem(int $size): string
     {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
-        }
-        return false;
+        return self::FONT_SIZE_REM[$size] ?? self::FONT_SIZE_REM[self::DEFAULT_FONT_SIZE];
     }
 }

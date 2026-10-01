@@ -1,0 +1,24 @@
+<div class="gac-monitor-board{{ theme == 'light' ? ' gac-theme-light' : '' }}"
+     style="--gac-table-font-size: {{ font_size_rem }};"
+     data-gac-monitor
+     data-ajax-url="{{ ajax_url }}"
+     data-poll-interval="{{ poll_interval }}"
+     data-alert-enabled="{{ alert_enabled ? '1' : '0' }}">
+    <div class="gac-monitor-topbar">
+        <h1 class="gac-monitor-title">{{ screen.fields.name }}</h1>
+        <div class="gac-monitor-topbar-right">
+            <div class="gac-monitor-clock" data-gac-monitor-clock>00:00:00</div>
+            <div class="gac-monitor-countdown" data-gac-monitor-status title="">
+                <svg viewBox="0 0 36 36" class="gac-countdown-ring">
+                    <circle class="gac-countdown-ring-bg" cx="18" cy="18" r="15.9" pathLength="100"></circle>
+                    <circle class="gac-countdown-ring-fg" cx="18" cy="18" r="15.9" pathLength="100" data-gac-countdown-circle></circle>
+                </svg>
+            </div>
+        </div>
+    </div>
+    <table>
+        <thead><tr data-gac-monitor-head></tr></thead>
+        <tbody data-gac-monitor-body></tbody>
+    </table>
+    <audio data-gac-monitor-audio src="{{ alert_sound_url }}" preload="auto"></audio>
+</div>

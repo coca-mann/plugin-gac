@@ -34,6 +34,7 @@
 namespace GlpiPlugin\Gac;
 
 use GlpiPlugin\Gac\Ltbp\LtbpMenu;
+use GlpiPlugin\Gac\Monitor\MonitorMenu;
 use GlpiPlugin\Gac\Pre\PreMenu;
 use Plugin;
 
@@ -49,6 +50,7 @@ class GacMenu
     /** Item keys, used by the pages as the third argument of Html::header(). */
     public const ITEM_PRE = 'pre';
     public const ITEM_LTBP = 'ltbp';
+    public const ITEM_MONITOR = 'monitor';
     public const ITEM_CONFIG = 'config';
 
     /** Single source of the plugin name: the "name" field of plugin_version_gac(). */
@@ -77,6 +79,10 @@ class GacMenu
         $ltbp = LtbpMenu::getMenuContent();
         if ($ltbp !== []) {
             $entries[self::ITEM_LTBP] = $ltbp;
+        }
+        $monitor = MonitorMenu::getMenuContent();
+        if ($monitor !== []) {
+            $entries[self::ITEM_MONITOR] = $monitor;
         }
         $config = ConfigMenu::getMenuContent();
         if ($config !== []) {

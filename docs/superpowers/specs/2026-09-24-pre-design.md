@@ -91,6 +91,7 @@ Fora da v1 (decidido):
 | D28 | O PDF é pensado para impressão em preto e branco: os cabeçalhos das tabelas usam fundo cinza claro único (`#e3e6eb`) com texto escuro, em vez de fundo azul escuro com texto branco, e todas as bordas das tabelas têm o mesmo cinza médio (`#9ca3af`), inclusive na base do cabeçalho da tabela de itens (mesmo tom e espessura das demais). O espaço entre o título e a tabela do cabeçalho é de 4 mm | Decisão do dono: na impressão preto e branco os cabeçalhos ficavam com tons e bordas diferentes |
 | D29 | A lista de importação só traz tickets ligados a **ativos**: o filtro usa a lista de classes de ativo do próprio GLPI (`$CFG_GLPI['asset_types']`, que inclui os ativos personalizados) na consulta de `glpi_items_tickets`, então itens de outros tipos ligados ao ticket (como as respostas do Forms) não aparecem. A importação reconfere a chave no servidor, então uma chave de outro tipo enviada à mão também é recusada | Decisão do dono: tickets abertos por formulários trazem o item do Forms associado, que não é equipamento. A lista de ativos do GLPI também inclui licenças de software e certificados |
 | D30 | No rascunho, o cartão "Importar tickets" tem o botão "Recolher itens para importar", que esconde a lista de candidatos (os itens que provavelmente não entram neste PRE) e deixa só os itens já importados, para trabalhar nas descrições. A escolha fica guardada no navegador por PRE (`localStorage`). O botão só existe quando há candidatos | Decisão do dono: com muitos candidatos, a lista empurra os itens já importados para baixo |
+| D31 | Corrigir uma linha (PRE reaberto) grava, além do evento `line_corrected`, um acompanhamento no ticket com os dados corrigidos (data, serviço, custo, OS/nota, garantia) | Bug: a correção alterava o `TicketCost` e o histórico do PRE, mas o ticket ficava sem qualquer registro da correção |
 | D14 | **Sem migração** dos PREs do app Django. O app antigo vira arquivo de consulta; o plugin começa do zero, com a sequência de numeração começando em 1, **sem campo de valor inicial** | Decisão do dono: não há itens pendentes no fornecedor, o custo da migração não compensa, e a repetição de números com o app antigo é aceita sem ressalvas. Ver R-4 |
 
 ## 5. Modelo de dados
@@ -266,7 +267,9 @@ o PRE (podendo encerrar). "Marcar como extraviada" exige justificativa.
 ### 7.5 Reabrir
 
 Permissão própria e motivo obrigatório, gravado como evento `reopened` no histórico (seção 5.2.1);
-cada correção posterior grava `line_corrected` com o antes e o depois. Libera somente a **correção dos dados de retorno** (custo,
+cada correção posterior grava `line_corrected` com o antes e o depois, **e um acompanhamento no
+ticket** (D31) com os dados corrigidos, no mesmo estilo do acompanhamento-resumo do retorno (seção
+7.4). Libera somente a **correção dos dados de retorno** (custo,
 OS, garantia, descrição). Corrigir o custo atualiza o `TicketCost` já criado. A reabertura **não
 refaz** as ações no ticket nem no ativo: trocar o resultado registrado é uma correção manual.
 

@@ -31,57 +31,45 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
-
-use GlpiPlugin\Gac\Ltbp\Ltbp;
+use GlpiPlugin\Gac\GacMenu;
+use GlpiPlugin\Gac\Monitor\BoardAppearance;
+use GlpiPlugin\Gac\Monitor\MonitorConfig;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+use GlpiPlugin\Gac\Monitor\MonitorSettings;
+use Glpi\Application\View\TemplateRenderer;
 
-/**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
- */
-final class Features
-{
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
-
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
-    {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-            [
-                'itemtype' => MonitorScreen::class,
-                'label'    => MonitorScreen::getTypeName(2),
-                'field'    => MonitorScreen::$rightname,
-            ],
-        ];
-    }
-
-    public static function canConfigure(string $rightname): bool
-    {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
-    }
-
-    public static function canConfigureAny(): bool
-    {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
-        }
-        return false;
-    }
+if (!MonitorScreen::canView()) {
+    Html::displayRightError();
 }
+
+$screen = new MonitorScreen();
+if (!$screen->getFromDB((int) ($_GET['id'] ?? 0)) || !$screen->fields['is_active']) {
+    Html::displayNotFoundError();
+}
+
+Html::header(
+    $screen->fields['name'],
+    $_SERVER['PHP_SELF'],
+    GacMenu::SECTOR,
+    GacMenu::ITEM_MONITOR
+);
+
+global $CFG_GLPI;
+$settings = MonitorConfig::load();
+$version  = Plugin::getPluginFilesVersion('gac');
+
+TemplateRenderer::getInstance()->display('@gac/monitor/display.html.twig', [
+    'screen'          => $screen,
+    'ajax_url'        => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/data.php?id=' . $screen->getID(),
+    'poll_interval'   => $screen->pollIntervalSeconds($settings),
+    'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
+    // Empty when not configured: public/sounds/ is not guaranteed to have a bundled file (Task
+    // 9, Step 3). The JS's play() call already swallows a missing/empty source silently.
+    'alert_sound_url' => MonitorSettings::alertSoundUrl($settings),
+    'theme'           => $screen->fields['theme'],
+    'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
+    'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,
+    'asset_css'       => $CFG_GLPI['root_doc'] . '/plugins/gac/css/monitor.css?v=' . $version,
+]);
+
+Html::footer();

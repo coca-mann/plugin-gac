@@ -31,57 +31,30 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
-
-use GlpiPlugin\Gac\Ltbp\Ltbp;
+// Somente leitura, GET: não precisa de Session::checkCSRF().
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+use GlpiPlugin\Gac\Monitor\ScreenQuery;
 
-/**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
- */
-final class Features
-{
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
+header('Content-Type: application/json; charset=utf-8');
 
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
-    {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-            [
-                'itemtype' => MonitorScreen::class,
-                'label'    => MonitorScreen::getTypeName(2),
-                'field'    => MonitorScreen::$rightname,
-            ],
-        ];
-    }
+if (!MonitorScreen::canView()) {
+    http_response_code(403);
+    echo json_encode(['error' => __('Acesso negado.', 'gac')], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
-    public static function canConfigure(string $rightname): bool
-    {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
-    }
+$screen = new MonitorScreen();
+if (!$screen->getFromDB((int) ($_GET['id'] ?? 0)) || !$screen->fields['is_active']) {
+    http_response_code(404);
+    echo json_encode(['error' => __('Tela não encontrada.', 'gac')], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
-    public static function canConfigureAny(): bool
-    {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
-        }
-        return false;
-    }
+try {
+    $result = ScreenQuery::run($screen);
+    echo json_encode($result + ['generated_at' => date('c')], JSON_UNESCAPED_UNICODE);
+} catch (\Throwable $e) {
+    Toolbox::logInFile('gac', 'monitor data.php: ' . $e->getMessage() . "\n");
+    http_response_code(500);
+    echo json_encode(['error' => __('Erro ao buscar os tickets.', 'gac')], JSON_UNESCAPED_UNICODE);
 }

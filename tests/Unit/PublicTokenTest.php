@@ -31,57 +31,30 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
+declare(strict_types=1);
 
-use GlpiPlugin\Gac\Ltbp\Ltbp;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
+namespace GlpiPlugin\Gac\Tests\Unit;
 
-/**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
- */
-final class Features
+use GlpiPlugin\Gac\Monitor\PublicToken;
+use PHPUnit\Framework\TestCase;
+
+final class PublicTokenTest extends TestCase
 {
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
-
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
+    public function testGenerateProducesAWellFormedToken(): void
     {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-            [
-                'itemtype' => MonitorScreen::class,
-                'label'    => MonitorScreen::getTypeName(2),
-                'field'    => MonitorScreen::$rightname,
-            ],
-        ];
+        $this->assertTrue(PublicToken::isWellFormed(PublicToken::generate()));
     }
 
-    public static function canConfigure(string $rightname): bool
+    public function testGenerateIsNotConstant(): void
     {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
+        $this->assertNotSame(PublicToken::generate(), PublicToken::generate());
     }
 
-    public static function canConfigureAny(): bool
+    public function testIsWellFormedRejectsGarbage(): void
     {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
-        }
-        return false;
+        $this->assertFalse(PublicToken::isWellFormed(''));
+        $this->assertFalse(PublicToken::isWellFormed('abc'));
+        $this->assertFalse(PublicToken::isWellFormed(str_repeat('g', 48)));
+        $this->assertFalse(PublicToken::isWellFormed(str_repeat('a', 47)));
     }
 }

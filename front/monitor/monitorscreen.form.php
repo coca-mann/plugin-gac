@@ -31,57 +31,38 @@
  * -------------------------------------------------------------------------
  */
 
-namespace GlpiPlugin\Gac;
-
-use GlpiPlugin\Gac\Ltbp\Ltbp;
+use GlpiPlugin\Gac\GacMenu;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Pre\RepairProtocol;
-use Session;
 
-/**
- * The plugin's features as seen by the rights system: one row per feature in the profile tab
- * (each with its own right name) and a "Configurar" bit that gates that feature's settings.
- * A new module adds one row to all().
- */
-final class Features
-{
-    /** Bit every feature's right uses for "Configurar" (above the standard rights and the module's own). */
-    public const RIGHT_CONFIG = 2048;
+$item = new MonitorScreen();
 
-    /** @return list<array{itemtype: class-string, label: string, field: string}> */
-    public static function all(): array
-    {
-        return [
-            [
-                'itemtype' => RepairProtocol::class,
-                'label'    => RepairProtocol::getTypeName(2),
-                'field'    => RepairProtocol::$rightname,
-            ],
-            [
-                'itemtype' => Ltbp::class,
-                'label'    => Ltbp::getTypeName(2),
-                'field'    => Ltbp::$rightname,
-            ],
-            [
-                'itemtype' => MonitorScreen::class,
-                'label'    => MonitorScreen::getTypeName(2),
-                'field'    => MonitorScreen::$rightname,
-            ],
-        ];
+if (isset($_POST['add'])) {
+    $item->check(-1, CREATE, $_POST);
+    $newid = $item->add($_POST);
+    if ($newid) {
+        Html::redirect(MonitorScreen::getFormURLWithID($newid));
     }
-
-    public static function canConfigure(string $rightname): bool
-    {
-        return (bool) Session::haveRight($rightname, self::RIGHT_CONFIG);
-    }
-
-    public static function canConfigureAny(): bool
-    {
-        foreach (self::all() as $feature) {
-            if (self::canConfigure($feature['field'])) {
-                return true;
-            }
-        }
-        return false;
-    }
+    Html::back();
+} elseif (isset($_POST['regenerate_token'])) {
+    $item->check($_POST['id'], UPDATE);
+    $item->regenerateToken();
+    Session::addMessageAfterRedirect(__('Novo link público gerado.', 'gac'));
+    Html::back();
+} elseif (isset($_POST['update'])) {
+    $item->check($_POST['id'], UPDATE);
+    $item->update($_POST);
+    Html::back();
+} elseif (isset($_POST['purge'])) {
+    $item->check($_POST['id'], PURGE);
+    $item->delete($_POST, 1);
+    $item->redirectToList();
+} else {
+    Html::header(
+        MonitorScreen::getTypeName(1),
+        $_SERVER['PHP_SELF'],
+        GacMenu::SECTOR,
+        GacMenu::ITEM_MONITOR
+    );
+    $item->display(['id' => $_GET['id'] ?? -1]);
+    Html::footer();
 }

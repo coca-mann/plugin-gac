@@ -34,6 +34,7 @@
 namespace GlpiPlugin\Gac;
 
 use GlpiPlugin\Gac\Ltbp\LtbpConfigSection;
+use GlpiPlugin\Gac\Monitor\MonitorConfigSection;
 use GlpiPlugin\Gac\Pre\PreConfigSection;
 use Html;
 
@@ -49,6 +50,7 @@ final class Config
         return [
             new PreConfigSection(),
             new LtbpConfigSection(),
+            new MonitorConfigSection(),
         ];
     }
 

@@ -131,6 +131,8 @@ final class ReopenService
                 $costId = TicketOps::addCost($ticket, $costName, $cost, $date);
             }
 
+            TicketOps::followup($ticket, self::summary((string) $protocol->fields['number'], $after));
+
             $DB->update(
                 RepairProtocolItem::getTable(),
                 $after + ['ticketcosts_id' => $costId, 'date_mod' => $_SESSION['glpi_currenttime']],
@@ -184,5 +186,25 @@ final class ReopenService
         $value = trim($value);
         $d = \DateTimeImmutable::createFromFormat('Y-m-d', $value);
         return ($d !== false && $d->format('Y-m-d') === $value) ? $value : null;
+    }
+
+    /** @param array<string, mixed> $after */
+    private static function summary(string $protocolNumber, array $after): string
+    {
+        $parts = [sprintf(__('Correção do retorno da assistência (protocolo %s).', 'gac'), $protocolNumber)];
+        $parts[] = sprintf(__('Data: %s.', 'gac'), $after['date_return']);
+        if (trim((string) $after['service_description']) !== '') {
+            $parts[] = sprintf(__('Serviço: %s.', 'gac'), trim((string) $after['service_description']));
+        }
+        if ($after['cost'] !== null) {
+            $parts[] = sprintf(__('Custo: R$ %s.', 'gac'), number_format((float) $after['cost'], 2, ',', '.'));
+        }
+        if (trim((string) $after['supplier_ref']) !== '') {
+            $parts[] = sprintf(__('OS/Nota do fornecedor: %s.', 'gac'), trim((string) $after['supplier_ref']));
+        }
+        if ($after['warranty_until'] !== null) {
+            $parts[] = sprintf(__('Garantia até: %s.', 'gac'), $after['warranty_until']);
+        }
+        return implode(' ', $parts);
     }
 }
