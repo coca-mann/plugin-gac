@@ -100,11 +100,13 @@
 
 .gac-monitor-board thead th {
     text-align: left;
-    padding: 0.6rem 0.9rem;
+    padding: 0.55em 0.8em;
     background: #141f3d;
     color: #8fa3bf;
     text-transform: uppercase;
-    font-size: 0.78rem;
+    /* em, not rem: scales with the table's own font-size (--gac-table-font-size), which the
+       font-size setting changes, instead of staying fixed to the root font-size. */
+    font-size: 0.68em;
     letter-spacing: 0.06em;
     font-weight: 600;
 }
@@ -129,9 +131,12 @@
 
 .gac-priority-badge {
     display: inline-block;
-    padding: 0.15rem 0.6rem;
+    padding: 0.2em 0.75em;
     border-radius: 999px;
-    font-size: 0.85rem;
+    /* em, not rem: inherits the cell's font-size (--gac-table-font-size), so the pill — both
+       its text and its padding/box, since padding here is also em — grows with the font-size
+       setting instead of staying fixed to the root font-size. */
+    font-size: 0.85em;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -140,8 +145,11 @@
     animation: gac-monitor-flash 2s ease-out 1;
 }
 
+/* Distinct from the countdown ring's green (#2ecc71, connection status) on purpose, even though
+   both read as "green" — different shape/position, so no real confusion, but a slightly
+   different shade avoids the two looking like copy-pasted code. */
 @keyframes gac-monitor-flash {
-    0%   { background-color: #ffcc00; color: #111; }
+    0%   { background-color: #27ae60; color: #fff; }
     100% { background-color: transparent; }
 }
 

@@ -1,11 +1,13 @@
 # Monitor — roteiro de teste manual
 
 Ambiente: GLPI local (`http://glpi11local.test/`), plugin `gac` instalado e ativo. Última
-execução: 2026-10-01, durante a implementação (Tarefa 10 do plano) e numa rodada posterior de
-ajustes (tema claro/escuro, tamanho de fonte, correção do relógio e do formato de data), via
-`curl` autenticado (sessão real, não simulada) e um navegador real para os pontos visuais. Conta
-de serviço do Monitor configurada como `tech`/`tech` (conta de demonstração do GLPI) para este
-teste; em produção, usar uma conta dedicada, só leitura de tickets.
+execução: 2026-10-01, durante a implementação (Tarefa 10 do plano), numa rodada posterior de
+ajustes (tema claro/escuro, tamanho de fonte, correção do relógio e do formato de data), e numa
+terceira rodada (escala de fonte do cabeçalho/pílula, níveis de entidade, destaque verde de
+ticket novo), via `curl` autenticado (sessão real, não simulada) e um navegador real (Claude in
+Chrome) para os pontos visuais. Conta de serviço do Monitor configurada como `tech`/`tech` (conta
+de demonstração do GLPI) para este teste; em produção, usar uma conta dedicada, só leitura de
+tickets.
 
 | # | Cenário | Passos | Resultado esperado | Resultado |
 |---|---|---|---|---|
@@ -34,11 +36,13 @@ teste; em produção, usar uma conta dedicada, só leitura de tickets.
 | 23 | Cores de prioridade | Tickets com as 6 prioridades do GLPI (Muito baixa a Crítica), com as cores de produção configuradas em Configurações > Valores padrão > Cores das Prioridades | Cada prioridade aparece como um badge colorido com a cor configurada; o texto do badge fica legível (preto em fundos claros, branco em fundos escuros) em todas as 6 cores | **Passou** |
 | 24 | Anel de contagem regressiva | Deixar a tela aberta um ciclo inteiro; observar o anel | O anel fica parado (sem animar) enquanto a requisição está em andamento — pisca suavemente nesse período —, e só começa a esvaziar de verdade depois que os dados chegam, terminando de esvaziar exatamente quando a próxima requisição é disparada. Verde quando a última requisição teve sucesso, vermelho quando falhou | **Passou** |
 | 25 | Tema claro | Tela com `theme=light`; abrir a exibição (autenticada e pública) | Fundo claro, tabela branca, texto escuro, cabeçalho da página (`public_display.html.twig`) também claro antes mesmo do CSS carregar; badges de prioridade continuam legíveis | **Passou** |
-| 26 | Tamanho da fonte | Tela com `font_size=1` (Pequena); abrir a exibição | Só o texto das linhas da tabela fica menor; o título, o relógio e o cabeçalho das colunas mantêm o tamanho normal | **Passou** |
+| 26 | Tamanho da fonte | Tela de demo (id 1) com `font_size=4`, depois `font_size=1`; abrir a exibição pública (`public.php`) nas duas | Comparando os dois screenshots: com `font_size=1` o cabeçalho das colunas e a pílula de prioridade (caixa e texto) ficam visivelmente menores que com `font_size=4`, crescendo junto com o texto das linhas; título e relógio não mudam de tamanho | **Passou** (2026-10-01, navegador real via Claude in Chrome) |
 | 27 | Formato de data da coluna Abertura | Tela com a coluna "Abertura"; comparar exibição autenticada e pública lado a lado, com o formato de data configurado em GLPI como dd-mm-aaaa (`glpidate_format=1`) | Os dois caminhos mostram a mesma data no mesmo formato (`25-09-2026 20:41:36`), não um formato cru/ISO (`2026-09-25...`) | **Passou** (achado um bug nessa checagem, ver abaixo) |
 | 28 | Reinstalação com schema novo | Rodar `plugin:install --force gac` numa instalação que já tinha a tabela `glpi_plugin_gac_monitorscreens` de antes das colunas `theme`/`font_size` existirem | As duas colunas novas aparecem via `ALTER TABLE`, sem apagar os dados existentes (telas e tokens antigos continuam lá) | **Passou** |
 | 29 | Tema/fonte aplicados sem recarregar | Deixar a exibição aberta (autenticada); mudar `theme` e `font_size` da Tela direto no banco, sem tocar na página | No ciclo de polling seguinte (até `poll_interval_seconds`), o tema e o tamanho da fonte da tabela mudam sozinhos, sem reload manual | **Passou** |
 | 30 | Intervalo de atualização aplicado sem recarregar | Deixar a exibição aberta com `poll_interval_seconds=10`; mudar para `30` direto no banco, sem tocar na página; medir os instantes reais das requisições via `performance.getEntriesByType('resource')` | O ciclo em andamento (agendado com o valor antigo) completa normalmente; a partir dele, os ciclos seguintes passam a respeitar ~30s, não mais ~10s — confirmado com os instantes `502ms, 11431ms, 42434ms, 73431ms` | **Passou** |
+| 31 | Níveis de entidade exibidos | `plugin:install --force gac` + `cache:clear` para aplicar a coluna nova; Tela de demo (id 1, entidade raiz > Fimca, 2 níveis de profundidade); testar `entity_levels=3` (completename inteiro) e depois `entity_levels=1` | Com `entity_levels=3` a coluna "Entidade" mostra `Entidade raiz > Fimca - Porto Velho`; com `entity_levels=1` mostra só `Fimca - Porto Velho`, sem o prefixo "Entidade raiz >" | **Passou** (2026-10-01, navegador real; árvore de teste só tem 2 níveis, então `entity_levels=2` e `3` ficam idênticos nesse GLPI — a distinção em 3 níveis já está coberta pela suíte unitária, `EntityLevelsTest`) |
+| 32 | Destaque de ticket novo | Deixar a exibição aberta; criar um ticket que bate no critério direto no banco depois da carga inicial, esperar o próximo ciclo | A linha do ticket novo pisca em verde (`#27ae60`, texto branco) e depois volta a transparente, tanto no tema escuro quanto no claro; a primeira carga da página não pisca nenhuma linha | **Passou** (2026-10-01, navegador real — capturado pausando a `Animation` da linha via `getAnimations()`/`currentTime` em vez de tentar acertar o timing de um screenshot num flash de 2s; confirma que a cor certa está sendo aplicada de fato, não só lida do CSS-fonte) |
 
 ## Achados registrados durante a implementação (não são bugs abertos — já corrigidos)
 
@@ -67,6 +71,24 @@ teste; em produção, usar uma conta dedicada, só leitura de tickets.
   `Html::convDateTime()` sempre caía no formato padrão embutido do GLPI (`Y-m-d`), ignorando o
   formato configurado (`glpidate_format`). A exibição autenticada não tinha esse problema (nunca
   faz logout no meio da função). Corrigido movendo a montagem das linhas para antes do logout.
+- (2026-10-02) A aba **Histórico** de uma Tela mostrava o valor cru salvo (`3`, `light`) em vez do
+  rótulo (`Grande (recomendado)`, `Claro`) para `sort_mode`/`theme`/`font_size`/`entity_levels`.
+  Causa raiz: `Log::getHistoryData()` chama `CommonDBTM::getValueToDisplay($searchopt, $valor)`,
+  que resolve a classe de um campo `datatype => 'specific'` via `getItemTypeForTable($tabela)` —
+  **não** via `$searchopt['itemtype']` (que `rawSearchOptions()` já preenche certo, mas que esse
+  caminho específico ignora). `getItemTypeForTable('glpi_plugin_gac_monitorscreens')` deriva
+  `GlpiPlugin\Gac\Monitorscreen`, que não existe (a classe real tem um nível de sub-namespace a
+  mais, `...\Monitor\MonitorScreen`); `class_exists()` falha, a função devolve `null`, e
+  `getValueToDisplay()` cai no valor cru em vez de chamar `getSpecificValueToDisplay()`.
+  Corrigido sobrescrevendo `MonitorScreen::getValueToDisplay()` para interceptar esse caso
+  específico e chamar `self::getSpecificValueToDisplay()` diretamente, antes de delegar ao `parent`
+  para todo o resto. Verificado ao vivo: as 19 linhas de histórico já existentes da Tela de demo
+  passaram a mostrar o rótulo certo **retroativamente** (o valor cru fica salvo em `glpi_logs`; só
+  a formatação na tela é recalculada a cada exibição, então o conserto vale também para o
+  histórico antigo, sem precisar de migração de dados). **Risco não verificado**: o mesmo padrão
+  (`'datatype' => 'specific'` num cadastro de sub-namespace) existe em `RepairProtocol` (PRE) e em
+  `Ltbp` (LTBP) para seus próprios campos de status/destinação — não foram checados nesta sessão,
+  mas é provável que tenham o mesmo bug na própria aba Histórico.
 
 ## Pendências conhecidas
 
@@ -77,3 +99,8 @@ teste; em produção, usar uma conta dedicada, só leitura de tickets.
 - Testado com a conta de demonstração `tech`/`tech` como conta de serviço. Antes de usar em
   produção, criar uma conta dedicada, com direito de leitura de ticket apenas (sem direitos
   administrativos), nas entidades que as Telas públicas vão efetivamente usar.
+- Quatro melhorias pedidas pelo dono em 2026-10-01 (linhas 26, 31 e 32) foram implementadas e
+  validadas num navegador real nesse mesmo dia: escala do cabeçalho/pílula de prioridade junto
+  com `font_size`, a nova coluna `entity_levels`, e o destaque de ticket novo trocado de amarelo
+  para verde. Falta só o manual do usuário do módulo — ver memória de sessão
+  `monitor-ui-followups-2026-10-01`.

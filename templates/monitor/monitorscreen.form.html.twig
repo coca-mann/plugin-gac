@@ -17,6 +17,7 @@
 
     {{ fields.dropdownArrayField('theme', item.fields['theme']|default('dark'), theme_choices, __('Tema da tela', 'gac')) }}
     {{ fields.dropdownArrayField('font_size', item.fields['font_size']|default(3), font_size_choices, __('Tamanho da fonte (só a tabela)', 'gac')) }}
+    {{ fields.dropdownArrayField('entity_levels', item.fields['entity_levels']|default(3), entity_levels_choices, __('Níveis de entidade exibidos', 'gac')) }}
 
     {{ fields.numberField('poll_interval_seconds', item.fields['poll_interval_seconds'], __('Intervalo de atualização (segundos)', 'gac'), {
         min: 5,

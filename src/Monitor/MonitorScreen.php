@@ -133,6 +133,11 @@ class MonitorScreen extends CommonDBTM
             $input['font_size'] = BoardAppearance::isValidFontSize($size) ? $size : BoardAppearance::DEFAULT_FONT_SIZE;
         }
 
+        if (array_key_exists('entity_levels', $input)) {
+            $levels = is_numeric($input['entity_levels']) ? (int) $input['entity_levels'] : EntityLevels::DEFAULT_LEVELS;
+            $input['entity_levels'] = EntityLevels::sanitize($levels);
+        }
+
         foreach (['is_recursive', 'is_public', 'alert_enabled', 'is_active'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $input[$flag] = ((string) $input[$flag]) === '1' ? 1 : 0;
@@ -239,6 +244,11 @@ class MonitorScreen extends CommonDBTM
             $fontSizeChoices[$size] = MonitorLabels::fontSize($size);
         }
 
+        $entityLevelsChoices = [];
+        foreach (range(EntityLevels::MIN_LEVELS, EntityLevels::MAX_LEVELS) as $levels) {
+            $entityLevelsChoices[$levels] = MonitorLabels::entityLevels($levels);
+        }
+
         // Chosen columns first, in their saved order, then the rest of the catalog: the admin
         // sees the current configuration already in place and only has to drag unchecked rows
         // in, not hunt for them.
@@ -254,6 +264,7 @@ class MonitorScreen extends CommonDBTM
             'sort_mode_choices' => $sortModeChoices,
             'theme_choices'     => $themeChoices,
             'font_size_choices' => $fontSizeChoices,
+            'entity_levels_choices' => $entityLevelsChoices,
             'saved_searches'    => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
             // Absolute (scheme + host), not root_doc (path only): this URL is meant to be
             // opened on another device (a TV), not just fetched from the current page.
@@ -298,6 +309,10 @@ class MonitorScreen extends CommonDBTM
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
+                'id' => 10, 'table' => $t, 'field' => 'entity_levels', 'name' => __('Níveis de entidade exibidos', 'gac'),
+                'datatype' => 'specific', 'massiveaction' => false,
+            ],
+            [
                 'id' => 80, 'table' => 'glpi_entities', 'field' => 'completename',
                 'name' => Entity::getTypeName(1), 'datatype' => 'dropdown', 'massiveaction' => false,
             ],
@@ -314,11 +329,41 @@ class MonitorScreen extends CommonDBTM
     }
 
     /**
-     * Translates the raw stored value of sort_mode/theme/font_size (search options 7-9) into
-     * their pt-BR label — same convention CommonITILObject uses for Ticket's own enum fields
-     * (status, urgency, ...). Without this, GLPI's generic history log (Log::getHistoryData(),
-     * which calls this for any search option whose table matches the item's own table) shows the
-     * raw internal code ('priority', 'dark', '3') instead of the label the form itself shows.
+     * Log::getHistoryData() renders a changed 'specific' field by calling
+     * CommonDBTM::getValueToDisplay($searchopt, $value), which resolves the target class via
+     * getItemTypeForTable($searchopt['table']) instead of using the search option's own
+     * 'itemtype' (set to self::class by rawSearchOptions() above, precisely for this sub-namespace
+     * problem). That table-name guesser turns 'glpi_plugin_gac_monitorscreens' into
+     * 'GlpiPlugin\Gac\Monitorscreen', which does not exist (the real class sits one level deeper,
+     * in the Monitor sub-namespace) — class_exists() fails, getItemTypeForTable() returns null,
+     * and getValueToDisplay() silently falls back to the raw stored value instead of ever calling
+     * getSpecificValueToDisplay() below. Short-circuiting here for our own 'specific' fields (the
+     * only case Log.php exercises, always passing the full search option array) fixes the history
+     * tab without touching GLPI core.
+     */
+    public function getValueToDisplay($field_id_or_search_options, $values, $options = [])
+    {
+        if (
+            is_array($field_id_or_search_options)
+            && ($field_id_or_search_options['datatype'] ?? null) === 'specific'
+            && ($field_id_or_search_options['table'] ?? null) === self::getTable()
+        ) {
+            $field   = $field_id_or_search_options['field'];
+            $rawval  = is_array($values) ? ($values[$field] ?? null) : $values;
+            $specific = self::getSpecificValueToDisplay($field, [$field => $rawval], $options);
+            if ($specific !== '') {
+                return $specific;
+            }
+        }
+        return parent::getValueToDisplay($field_id_or_search_options, $values, $options);
+    }
+
+    /**
+     * Translates the raw stored value of sort_mode/theme/font_size/entity_levels (search options
+     * 7-10) into their pt-BR label — same convention CommonITILObject uses for Ticket's own enum
+     * fields (status, urgency, ...). Called directly by getValueToDisplay() above for the item's
+     * own history tab, and by GLPI core wherever getSpecificValueToDisplay() is reachable normally
+     * (e.g. search results).
      */
     public static function getSpecificValueToDisplay($field, $values, array $options = [])
     {
@@ -329,6 +374,7 @@ class MonitorScreen extends CommonDBTM
             'sort_mode' => htmlescape(MonitorLabels::sortMode((string) $values[$field])),
             'theme'     => htmlescape(MonitorLabels::theme((string) $values[$field])),
             'font_size' => htmlescape(MonitorLabels::fontSize((int) $values[$field])),
+            'entity_levels' => htmlescape(MonitorLabels::entityLevels((int) $values[$field])),
             default     => parent::getSpecificValueToDisplay($field, $values, $options),
         };
     }
