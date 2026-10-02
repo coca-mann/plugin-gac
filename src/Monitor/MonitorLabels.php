@@ -83,4 +83,14 @@ final class MonitorLabels
             default => (string) $size,
         };
     }
+
+    public static function entityLevels(int $levels): string
+    {
+        return match ($levels) {
+            1       => __('Somente a entidade do ticket', 'gac'),
+            2       => __('Entidade + 1 nível acima', 'gac'),
+            3       => __('Entidade + até 2 níveis acima (recomendado)', 'gac'),
+            default => (string) $levels,
+        };
+    }
 }

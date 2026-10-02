@@ -137,6 +137,13 @@ final class ScreenQuery
                             : ElapsedTimeLabel::format($openedParts[0], new \DateTimeImmutable());
                         continue;
                     }
+                    if ($key === 'entity') {
+                        $out[$key] = EntityLevels::truncate(
+                            self::columnValue($row, $key),
+                            (int) ($screen->fields['entity_levels'] ?? EntityLevels::DEFAULT_LEVELS)
+                        );
+                        continue;
+                    }
                     $out[$key] = self::columnValue($row, $key);
                 }
                 $entries[] = [

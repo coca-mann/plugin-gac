@@ -133,6 +133,11 @@ class MonitorScreen extends CommonDBTM
             $input['font_size'] = BoardAppearance::isValidFontSize($size) ? $size : BoardAppearance::DEFAULT_FONT_SIZE;
         }
 
+        if (array_key_exists('entity_levels', $input)) {
+            $levels = is_numeric($input['entity_levels']) ? (int) $input['entity_levels'] : EntityLevels::DEFAULT_LEVELS;
+            $input['entity_levels'] = EntityLevels::sanitize($levels);
+        }
+
         foreach (['is_recursive', 'is_public', 'alert_enabled', 'is_active'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $input[$flag] = ((string) $input[$flag]) === '1' ? 1 : 0;
@@ -239,6 +244,11 @@ class MonitorScreen extends CommonDBTM
             $fontSizeChoices[$size] = MonitorLabels::fontSize($size);
         }
 
+        $entityLevelsChoices = [];
+        foreach (range(EntityLevels::MIN_LEVELS, EntityLevels::MAX_LEVELS) as $levels) {
+            $entityLevelsChoices[$levels] = MonitorLabels::entityLevels($levels);
+        }
+
         // Chosen columns first, in their saved order, then the rest of the catalog: the admin
         // sees the current configuration already in place and only has to drag unchecked rows
         // in, not hunt for them.
@@ -254,6 +264,7 @@ class MonitorScreen extends CommonDBTM
             'sort_mode_choices' => $sortModeChoices,
             'theme_choices'     => $themeChoices,
             'font_size_choices' => $fontSizeChoices,
+            'entity_levels_choices' => $entityLevelsChoices,
             'saved_searches'    => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
             // Absolute (scheme + host), not root_doc (path only): this URL is meant to be
             // opened on another device (a TV), not just fetched from the current page.
@@ -298,6 +309,10 @@ class MonitorScreen extends CommonDBTM
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
+                'id' => 10, 'table' => $t, 'field' => 'entity_levels', 'name' => __('Níveis de entidade exibidos', 'gac'),
+                'datatype' => 'specific', 'massiveaction' => false,
+            ],
+            [
                 'id' => 80, 'table' => 'glpi_entities', 'field' => 'completename',
                 'name' => Entity::getTypeName(1), 'datatype' => 'dropdown', 'massiveaction' => false,
             ],
@@ -329,6 +344,7 @@ class MonitorScreen extends CommonDBTM
             'sort_mode' => htmlescape(MonitorLabels::sortMode((string) $values[$field])),
             'theme'     => htmlescape(MonitorLabels::theme((string) $values[$field])),
             'font_size' => htmlescape(MonitorLabels::fontSize((int) $values[$field])),
+            'entity_levels' => htmlescape(MonitorLabels::entityLevels((int) $values[$field])),
             default     => parent::getSpecificValueToDisplay($field, $values, $options),
         };
     }
