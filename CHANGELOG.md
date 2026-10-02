@@ -10,6 +10,20 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Added
+
+- [f864b8f](https://github.com/coca-mann/plugin-gac/commit/f864b8f) - Tela de Monitoramento ganhou um controle de quantos níveis da hierarquia de entidades aparecem na coluna "Entidade" (de 1 a 3, contados a partir da mais específica), para não precisar mostrar a árvore inteira numa tela de TV.
+
+### Changed
+
+- [f864b8f](https://github.com/coca-mann/plugin-gac/commit/f864b8f) - Na Tela de Monitoramento, o cabeçalho das colunas e a pílula de prioridade agora acompanham o tamanho de fonte escolhido, em vez de ficarem sempre do mesmo tamanho; e o destaque de ticket novo passou de amarelo para verde.
+
+### Fixed
+
+- [7baa2bc](https://github.com/coca-mann/plugin-gac/commit/7baa2bc) - A aba Histórico de uma Tela de Monitoramento mostrava o valor interno salvo (ex. "3", "light") em vez do nome (ex. "Grande (recomendado)", "Claro") para tema, tamanho de fonte, ordenação e níveis de entidade; agora mostra o nome, inclusive nas mudanças já registradas antes desta correção.
+
 ## [0.5.0] - 2026-10-01
 
 ### Added
