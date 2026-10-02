@@ -71,6 +71,24 @@ tickets.
   `Html::convDateTime()` sempre caía no formato padrão embutido do GLPI (`Y-m-d`), ignorando o
   formato configurado (`glpidate_format`). A exibição autenticada não tinha esse problema (nunca
   faz logout no meio da função). Corrigido movendo a montagem das linhas para antes do logout.
+- (2026-10-02) A aba **Histórico** de uma Tela mostrava o valor cru salvo (`3`, `light`) em vez do
+  rótulo (`Grande (recomendado)`, `Claro`) para `sort_mode`/`theme`/`font_size`/`entity_levels`.
+  Causa raiz: `Log::getHistoryData()` chama `CommonDBTM::getValueToDisplay($searchopt, $valor)`,
+  que resolve a classe de um campo `datatype => 'specific'` via `getItemTypeForTable($tabela)` —
+  **não** via `$searchopt['itemtype']` (que `rawSearchOptions()` já preenche certo, mas que esse
+  caminho específico ignora). `getItemTypeForTable('glpi_plugin_gac_monitorscreens')` deriva
+  `GlpiPlugin\Gac\Monitorscreen`, que não existe (a classe real tem um nível de sub-namespace a
+  mais, `...\Monitor\MonitorScreen`); `class_exists()` falha, a função devolve `null`, e
+  `getValueToDisplay()` cai no valor cru em vez de chamar `getSpecificValueToDisplay()`.
+  Corrigido sobrescrevendo `MonitorScreen::getValueToDisplay()` para interceptar esse caso
+  específico e chamar `self::getSpecificValueToDisplay()` diretamente, antes de delegar ao `parent`
+  para todo o resto. Verificado ao vivo: as 19 linhas de histórico já existentes da Tela de demo
+  passaram a mostrar o rótulo certo **retroativamente** (o valor cru fica salvo em `glpi_logs`; só
+  a formatação na tela é recalculada a cada exibição, então o conserto vale também para o
+  histórico antigo, sem precisar de migração de dados). **Risco não verificado**: o mesmo padrão
+  (`'datatype' => 'specific'` num cadastro de sub-namespace) existe em `RepairProtocol` (PRE) e em
+  `Ltbp` (LTBP) para seus próprios campos de status/destinação — não foram checados nesta sessão,
+  mas é provável que tenham o mesmo bug na própria aba Histórico.
 
 ## Pendências conhecidas
 

@@ -329,11 +329,41 @@ class MonitorScreen extends CommonDBTM
     }
 
     /**
-     * Translates the raw stored value of sort_mode/theme/font_size (search options 7-9) into
-     * their pt-BR label — same convention CommonITILObject uses for Ticket's own enum fields
-     * (status, urgency, ...). Without this, GLPI's generic history log (Log::getHistoryData(),
-     * which calls this for any search option whose table matches the item's own table) shows the
-     * raw internal code ('priority', 'dark', '3') instead of the label the form itself shows.
+     * Log::getHistoryData() renders a changed 'specific' field by calling
+     * CommonDBTM::getValueToDisplay($searchopt, $value), which resolves the target class via
+     * getItemTypeForTable($searchopt['table']) instead of using the search option's own
+     * 'itemtype' (set to self::class by rawSearchOptions() above, precisely for this sub-namespace
+     * problem). That table-name guesser turns 'glpi_plugin_gac_monitorscreens' into
+     * 'GlpiPlugin\Gac\Monitorscreen', which does not exist (the real class sits one level deeper,
+     * in the Monitor sub-namespace) — class_exists() fails, getItemTypeForTable() returns null,
+     * and getValueToDisplay() silently falls back to the raw stored value instead of ever calling
+     * getSpecificValueToDisplay() below. Short-circuiting here for our own 'specific' fields (the
+     * only case Log.php exercises, always passing the full search option array) fixes the history
+     * tab without touching GLPI core.
+     */
+    public function getValueToDisplay($field_id_or_search_options, $values, $options = [])
+    {
+        if (
+            is_array($field_id_or_search_options)
+            && ($field_id_or_search_options['datatype'] ?? null) === 'specific'
+            && ($field_id_or_search_options['table'] ?? null) === self::getTable()
+        ) {
+            $field   = $field_id_or_search_options['field'];
+            $rawval  = is_array($values) ? ($values[$field] ?? null) : $values;
+            $specific = self::getSpecificValueToDisplay($field, [$field => $rawval], $options);
+            if ($specific !== '') {
+                return $specific;
+            }
+        }
+        return parent::getValueToDisplay($field_id_or_search_options, $values, $options);
+    }
+
+    /**
+     * Translates the raw stored value of sort_mode/theme/font_size/entity_levels (search options
+     * 7-10) into their pt-BR label — same convention CommonITILObject uses for Ticket's own enum
+     * fields (status, urgency, ...). Called directly by getValueToDisplay() above for the item's
+     * own history tab, and by GLPI core wherever getSpecificValueToDisplay() is reachable normally
+     * (e.g. search results).
      */
     public static function getSpecificValueToDisplay($field, $values, array $options = [])
     {
