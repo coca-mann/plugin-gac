@@ -101,13 +101,61 @@ final class SsoConfigSection implements ConfigSection
             . $this->row(__('E-mails do piloto (um por linha)', 'gac'), $this->textarea('sso_pilot_emails', (string) $s['sso_pilot_emails'], 3))
             . $this->row(__('Dias de retenção dos eventos', 'gac'), Html::input('sso_event_retention_days', ['type' => 'number', 'min' => 7, 'value' => SsoSettings::eventRetentionDays($s)]));
 
-        return $this->block('ti-brand-google', __('Geral', 'gac'), $general)
-            . $this->block('ti-key', __('Cliente OAuth', 'gac'), $oauth)
-            . $this->block('ti-building', __('Workspaces do Google', 'gac'), $this->workspacesBlock($s))
-            . $this->block('ti-server', __('Conta de serviço', 'gac'), $service)
-            . $this->block('ti-route', __('Regras e bloqueios', 'gac'), $rules)
-            . $this->block('ti-flask', __('Piloto e retenção', 'gac'), $pilot)
-            . $this->dryRunBlock();
+        return $this->tabs([
+            ['general', 'ti-brand-google', __('Geral', 'gac'),
+                $this->block('ti-brand-google', __('Botão e formulário de login', 'gac'), $general)
+                . $this->block('ti-flask', __('Piloto e retenção', 'gac'), $pilot)],
+            ['google', 'ti-key', __('Google', 'gac'),
+                $this->block('ti-key', __('Cliente OAuth', 'gac'), $oauth)
+                . $this->block('ti-server', __('Conta de serviço', 'gac'), $service)],
+            ['workspaces', 'ti-building', __('Workspaces', 'gac'), $this->workspacesBlock($s)],
+            ['rules', 'ti-route', __('Regras e bloqueios', 'gac'), $rules],
+            ['dryrun', 'ti-player-play', __('Teste a seco', 'gac'), $this->dryRunBody()],
+        ]);
+    }
+
+    /**
+     * The sections as Bootstrap tabs inside the one form: every pane is submitted together by the
+     * single Save button. The active tab is remembered in the browser; without storage the first
+     * one is shown.
+     *
+     * @param list<array{0: string, 1: string, 2: string, 3: string}> $tabs key, icon, title, content
+     */
+    private function tabs(array $tabs): string
+    {
+        $nav  = "<ul class='nav nav-tabs mb-4' role='tablist' id='gac-sso-tabs'>";
+        $body = "<div class='tab-content'>";
+        foreach ($tabs as $i => [$key, $icon, $title, $content]) {
+            $id     = 'gac-sso-pane-' . $key;
+            $active = $i === 0;
+            $nav   .= "<li class='nav-item' role='presentation'>"
+                . "<a class='nav-link" . ($active ? ' active' : '') . "' href='#" . $id . "' data-bs-toggle='tab' role='tab'"
+                . " data-gac-tab='" . htmlescape($key) . "' aria-controls='" . $id . "' aria-selected='" . ($active ? 'true' : 'false') . "'>"
+                . "<i class='ti " . htmlescape($icon) . " me-1'></i>" . htmlescape($title) . '</a></li>';
+            $body  .= "<div class='tab-pane fade" . ($active ? ' show active' : '') . "' id='" . $id . "' role='tabpanel'>" . $content . '</div>';
+        }
+
+        $script = <<<'HTML'
+<script>
+(function () {
+    var nav = document.getElementById('gac-sso-tabs');
+    if (!nav) { return; }
+    var storeKey = 'gac_sso_tab';
+    try {
+        var saved = window.localStorage.getItem(storeKey);
+        var link = saved ? nav.querySelector('[data-gac-tab="' + saved + '"]') : null;
+        if (link) { link.click(); }
+    } catch (e) {
+        // storage unavailable: stay on the first tab
+    }
+    nav.addEventListener('shown.bs.tab', function (event) {
+        try { window.localStorage.setItem(storeKey, event.target.dataset.gacTab); } catch (e) { /* not remembered */ }
+    });
+})();
+</script>
+HTML;
+
+        return $nav . '</ul>' . $body . '</div>' . $script;
     }
 
     /** The list of Google workspaces (spec S24): name, domains, admin to impersonate, active. */
@@ -175,7 +223,7 @@ HTML;
             . '</tr>';
     }
 
-    private function dryRunBlock(): string
+    private function dryRunBody(): string
     {
         global $CFG_GLPI;
 
@@ -223,7 +271,7 @@ HTML;
 </script>
 HTML;
 
-        return $this->block('ti-player-play', __('Teste a seco', 'gac'), $body);
+        return $body;
     }
 
     public function handlePost(array $post): void
