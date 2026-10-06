@@ -31,6 +31,7 @@
  * -------------------------------------------------------------------------
  */
 
+use Glpi\Http\Firewall;
 use Glpi\Http\SessionManager;
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Gac\GacMenu;
@@ -38,7 +39,7 @@ use GlpiPlugin\Gac\Ltbp\AssetUpdateGuard;
 use GlpiPlugin\Gac\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.6.0');
+define('PLUGIN_GAC_VERSION', '0.7.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
@@ -86,7 +87,19 @@ function plugin_init_gac(): void
 
         // The Monitor service account's password (glpi_configs, plugin:gac) is encrypted at
         // rest with GLPI's own key, same mechanism as the native SMTP secret.
-        $PLUGIN_HOOKS[Hooks::SECURED_CONFIGS]['gac'] = ['monitor_service_password'];
+        $PLUGIN_HOOKS[Hooks::SECURED_CONFIGS]['gac'] = ['monitor_service_password', 'sso_client_secret', 'sso_sa_private_key'];
+
+        // SSO Google (spec S4): the plugin adds a criterion to the native authorization rules.
+        // The value is an array of rule types, not "true".
+        $PLUGIN_HOOKS[Hooks::USE_RULES]['gac'] = [RuleRight::class];
+
+        // SSO Google: the start and callback scripts are reached before any login, but they need
+        // a real session (OAuth state, then the login itself), unlike the Monitor's stateless
+        // public page. Same strategy GLPI gives its own front/login.php.
+        Firewall::addPluginStrategyForLegacyScripts('gac', '#^/front/sso/(start|callback)\.php$#', Firewall::STRATEGY_NO_CHECK);
+
+        // Button and error box on the login page.
+        $PLUGIN_HOOKS[Hooks::DISPLAY_LOGIN]['gac'] = 'plugin_gac_display_login';
     }
 }
 

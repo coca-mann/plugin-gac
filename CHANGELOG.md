@@ -10,6 +10,16 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [0.7.0] - 2026-10-05
+
+### Added
+
+- [8b5d6e6](https://github.com/coca-mann/plugin-gac/commit/8b5d6e6), [fa6bed7](https://github.com/coca-mann/plugin-gac/commit/fa6bed7), [cf93c47](https://github.com/coca-mann/plugin-gac/commit/cf93c47), [6cbd44e](https://github.com/coca-mann/plugin-gac/commit/6cbd44e), [7f84e92](https://github.com/coca-mann/plugin-gac/commit/7f84e92), [199857a](https://github.com/coca-mann/plugin-gac/commit/199857a), [ade951a](https://github.com/coca-mann/plugin-gac/commit/ade951a), [7ff67df](https://github.com/coca-mann/plugin-gac/commit/7ff67df), [fdf6e69](https://github.com/coca-mann/plugin-gac/commit/fdf6e69), [824c81c](https://github.com/coca-mann/plugin-gac/commit/824c81c), [730c50f](https://github.com/coca-mann/plugin-gac/commit/730c50f), [7f47141](https://github.com/coca-mann/plugin-gac/commit/7f47141), [7530319](https://github.com/coca-mann/plugin-gac/commit/7530319), [be7c76d](https://github.com/coca-mann/plugin-gac/commit/be7c76d), [e15ea25](https://github.com/coca-mann/plugin-gac/commit/e15ea25), [6f1dea4](https://github.com/coca-mann/plugin-gac/commit/6f1dea4), [70013d2](https://github.com/coca-mann/plugin-gac/commit/70013d2), [cfac327](https://github.com/coca-mann/plugin-gac/commit/cfac327), [af9ee82](https://github.com/coca-mann/plugin-gac/commit/af9ee82), [f97ea4f](https://github.com/coca-mann/plugin-gac/commit/f97ea4f), [4cc7a3f](https://github.com/coca-mann/plugin-gac/commit/4cc7a3f), [fb31155](https://github.com/coca-mann/plugin-gac/commit/fb31155), [a6bd51d](https://github.com/coca-mann/plugin-gac/commit/a6bd51d), [2cc6381](https://github.com/coca-mann/plugin-gac/commit/2cc6381), [59d1740](https://github.com/coca-mann/plugin-gac/commit/59d1740), [2301e1e](https://github.com/coca-mann/plugin-gac/commit/2301e1e), [29c6446](https://github.com/coca-mann/plugin-gac/commit/29c6446) - Novo módulo **Login com Google**: botão "Entrar com Google" na tela de login, no padrão visual do Google, com o formulário de usuário e senha podendo ficar escondido atrás do botão "Entrar com usuário e senha". O acesso é liberado aos domínios de um ou mais workspaces do Google cadastrados, e a unidade organizacional (OU) do usuário no Google define a entidade e o perfil dele pelas regras de autorização do próprio GLPI, por meio do novo critério "OU do Google Workspace". Usuários novos são criados no primeiro login; usuários já existentes (por exemplo, vindos do AD) são vinculados pelo e-mail e a conversão pode ser desfeita. Também há lista de OUs sempre bloqueadas (para os docentes), modo piloto por e-mail, retirada automática do acesso de quem passa a ser bloqueado, teste a seco na configuração, telas de identidades, eventos e OUs pendentes, e um código de evento mostrado ao usuário quando o login falha.
+
+### Fixed
+
+- [6327183](https://github.com/coca-mann/plugin-gac/commit/6327183) - Na tela de configurações, os cabeçalhos das seções de Protocolo de Reparo, Laudo Técnico e Painel de Monitoramento ficavam em cinza claro quando o tema escuro estava ativo; agora acompanham o tema.
+
 ## [0.6.0] - 2026-10-01
 
 ### Added
