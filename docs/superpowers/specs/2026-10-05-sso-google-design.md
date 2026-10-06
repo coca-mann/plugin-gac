@@ -197,6 +197,23 @@ Fatos do ambiente que moldam o desenho:
   a ser avaliado pelas regras LDAP, que regravam as autorizações dinâmicas; o próximo login
   Google as regrava de volta. Risco aceito, com a recomendação operacional de desativar as
   regras LDAP de uma unidade quando todas as pessoas dela tiverem migrado.
+- **S24. Vários workspaces do Google.** *(Decidida em 05/10/2026, depois de um teste real em que
+  `dti.juliano@metropolitana-ro.com.br` passou na lista de domínios e a Directory API respondeu
+  403: um domínio de outro workspace não tem OU legível pela conta de serviço de outro.)* A
+  configuração tem uma **lista de workspaces**; cada um tem nome, domínios, o **administrador
+  representado** daquele workspace e um indicador de ativo. A **conta de serviço é única e
+  compartilhada**: a delegação em todo o domínio é concedida em cada Admin Console pelo ID dela,
+  então uma só chave atende a todos. No login, o workspace é achado pelo **domínio do e-mail** e a
+  OU é lida com o administrador dele. A lista de domínios aceitos é a **união dos domínios dos
+  workspaces ativos**; um domínio só pode pertencer a um workspace (a tela recusa duplicados) e, se
+  nenhum workspace ativo o tem, o login é negado com `domain_denied`. O cliente OAuth é único e, com
+  workspaces de organizações diferentes, a tela de consentimento precisa ser **Externa e publicada**
+  (os escopos `openid`, `email` e `profile` não exigem verificação [Likely]); quem barra contas
+  indevidas continua sendo o plugin. Fora do escopo: uma chave de conta de serviço por workspace
+  (só faria falta se o Google recusasse a delegação cruzada por política, ou para um workspace de
+  terceiros); a estrutura aceita acrescentá-la depois. A configuração antiga de um workspace só
+  (`sso_allowed_domains` e `sso_sa_admin_subject`) é migrada para um workspace "Principal" na
+  instalação.
 
 ## 5. Modelo de dados
 
@@ -220,9 +237,9 @@ configurável.
 
 ### 5.3 Configuração (`glpi_configs`, contexto `plugin:gac`, chaves `sso_*`)
 
-`sso_enabled`, `sso_client_id`, `sso_client_secret` (protegido), `sso_allowed_domains`,
-`sso_sa_client_email`, `sso_sa_private_key` (protegido), `sso_sa_admin_subject`,
-`sso_blocked_ou_paths`, `sso_auto_create` (padrão sim), `sso_hide_local_form` (padrão sim),
+`sso_enabled`, `sso_client_id`, `sso_client_secret` (protegido), `sso_workspaces` (JSON: lista de
+`{name, domains, admin_subject, is_active}`, ver S24), `sso_sa_client_email`, `sso_sa_private_key`
+(protegido), `sso_blocked_ou_paths`, `sso_auto_create` (padrão sim), `sso_hide_local_form` (padrão sim),
 `sso_domain_segment` (vazio = desligado), `sso_pilot_only` (padrão não), `sso_pilot_emails`,
 `sso_revoke_on_deny` (padrão sim), `sso_event_retention_days`, `sso_button_label`,
 `sso_redirect_uri` (opcional; vazio usa a `url_base` do GLPI, e a tela mostra o URI calculado para
