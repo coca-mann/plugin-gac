@@ -38,6 +38,7 @@ use GlpiPlugin\Gac\Monitor\MonitorScreen;
 use GlpiPlugin\Gac\Monitor\MonitorSettings;
 use GlpiPlugin\Gac\Pre\PreSettings;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
+use GlpiPlugin\Gac\Sso\RuleHooks;
 use GlpiPlugin\Gac\Sso\SsoEvent;
 use GlpiPlugin\Gac\Sso\SsoIdentity;
 use GlpiPlugin\Gac\Sso\SsoSettings;
@@ -585,4 +586,26 @@ function plugin_gac_uninstall(): bool
     ));
 
     return true;
+}
+
+/**
+ * Hook "getRuleCriteria": adds the "OU do Google Workspace" criterion to RuleRight (SSO, spec S4).
+ *
+ * @param array<string, mixed> $params
+ * @return array<string, array<string, mixed>>
+ */
+function plugin_gac_getRuleCriteria(array $params): array
+{
+    return RuleHooks::criteria($params);
+}
+
+/**
+ * Hook "ruleCollectionPrepareInputDataForProcess": hands the OU ancestors to the rules engine.
+ *
+ * @param array<string, mixed> $params
+ * @return array<string, mixed>
+ */
+function plugin_gac_ruleCollectionPrepareInputDataForProcess(array $params): array
+{
+    return RuleHooks::inputData($params);
 }
