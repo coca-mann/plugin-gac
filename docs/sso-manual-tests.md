@@ -49,10 +49,11 @@ Resultados de 05/10/2026 vêm de uma rodada **sem credenciais do Google**: scrip
 | 28 | Rota sem login | `start.php` com o navegador deslogado | Redireciona ao Google (302), sem exigir login do GLPI | 05/10/2026 OK (curl) |
 
 | 29 | Conta de um segundo workspace (antes de S24) | Domínio de outro workspace na lista de domínios | Negado: a Directory API do primeiro workspace responde 403; o plugin falha fechado | 05/10/2026 OK (navegador, conta real de outro workspace: evento `api_error`, `Directory API returned HTTP 403 (forbidden Not Authorized...)`, nenhum usuário criado). Foi o que motivou a decisão S24 |
-| 30 | Dois workspaces | Cadastrar o segundo workspace (domínios e administrador dele) e entrar com uma conta dele | Entra: a OU é lida com o administrador do workspace dele; o teste a seco mostra o nome do workspace | — (a lógica de achar o workspace pelo domínio está coberta por teste unitário; falta o login real) |
+| 30 | Dois workspaces | Cadastrar o segundo workspace (domínios e administrador dele) e entrar com uma conta dele | Entra: a OU é lida com o administrador do workspace dele; o teste a seco mostra o nome do workspace | 05/10/2026 OK (navegador, conta real do segundo workspace, `metropolitana-ro.com.br`: evento 50 `ok / created`, OU `/pvh/dti` lida com o administrador desse workspace; usuário criado com a entidade e o perfil da regra). Confirma que **a mesma conta de serviço** recebe a delegação nos dois Admin Consoles |
 | 31 | Domínio em dois workspaces | Repetir o mesmo domínio em dois workspaces e salvar | Nada é salvo e aparece a mensagem com o domínio duplicado | 05/10/2026 OK (script, simulando o POST da tela) |
 | 32 | Migração da configuração antiga | Instalação com `sso_allowed_domains` e `sso_sa_admin_subject` preenchidos | Viram um workspace "Principal"; as chaves antigas somem; rodar de novo não duplica | 05/10/2026 OK (script, com a configuração real do ambiente local) |
 | 33 | Workspace incompleto | Salvar um workspace ativo sem domínio ou sem administrador | Aviso na tela e o workspace não é usado | — (parte "não é usado" coberta por teste unitário; falta ver o aviso na tela) |
+| 34 | Uma regra para OUs de dois workspaces | Regra com operador OU e dois critérios "OU do Google Workspace", um de cada workspace | A regra casa com uma conta de qualquer um dos dois | 05/10/2026 OK (navegador: regra 121 com `/grupoapariciocarvalho` e `/pvh/dti`; o login de uma conta da OU do segundo workspace casou) |
 
 ## Verificações pendentes da spec (seção 12)
 
@@ -66,3 +67,4 @@ Em aberto: V3 (as dinâmicas do AD são substituídas, comportamento aceito), V6
 
 - O usuário novo é criado antes de a sessão abrir. Se a abertura da sessão falhar, o usuário já existe e o evento `created` não é gravado (o login seguinte aparece como `login`). Inofensivo, mas o log perde o "criado".
 - Uma regra de autorização com perfil alto (por exemplo Super-Admin) para uma OU vale para toda pessoa nessa OU e abaixo dela. Em produção, usar perfil mínimo na regra da OU e as exceções de TI em regras por e-mail.
+- Os caminhos de OU de workspaces diferentes dividem o mesmo espaço de nomes: as regras de autorização e o bloqueio de OUs só enxergam o caminho, não o workspace. Se dois workspaces tiverem uma OU com o mesmo caminho (por exemplo `/dti`), uma regra ou um bloqueio para um vale para o outro. Hoje os caminhos não colidem. Antes de abrir para os usuários, o bloqueio de OUs sempre bloqueadas precisa ter a OU de docentes de **cada** workspace.
