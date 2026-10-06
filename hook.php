@@ -288,6 +288,8 @@ function plugin_gac_install(): bool
             `font_size` TINYINT UNSIGNED NOT NULL DEFAULT '3',
             `entity_levels` TINYINT UNSIGNED NOT NULL DEFAULT '3',
             `poll_interval_seconds` INT UNSIGNED DEFAULT NULL,
+            `rotation_seconds` INT UNSIGNED DEFAULT NULL,
+            `row_color_mode` VARCHAR(10) NOT NULL DEFAULT 'priority',
             `is_public` TINYINT NOT NULL DEFAULT '0',
             `public_token` VARCHAR(64) DEFAULT NULL,
             `alert_enabled` TINYINT NOT NULL DEFAULT '1',
@@ -312,6 +314,45 @@ function plugin_gac_install(): bool
     }
     if (!$DB->fieldExists($monitorScreens, 'entity_levels')) {
         $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `entity_levels` TINYINT UNSIGNED NOT NULL DEFAULT '3' AFTER `font_size`");
+    }
+
+    if (!$DB->fieldExists($monitorScreens, 'rotation_seconds')) {
+        $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `rotation_seconds` INT UNSIGNED DEFAULT NULL AFTER `poll_interval_seconds`");
+    }
+    if (!$DB->fieldExists($monitorScreens, 'row_color_mode')) {
+        $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `row_color_mode` VARCHAR(10) NOT NULL DEFAULT 'priority' AFTER `sort_mode`");
+    }
+
+    // Pages of a Tela (spec M11). The Tela's own savedsearches_id/display_columns columns stay in
+    // the table but are no longer read; they are dropped in a later version.
+    $monitorPages     = 'glpi_plugin_gac_monitorpages';
+    $pagesJustCreated = false;
+    if (!$DB->tableExists($monitorPages)) {
+        $DB->doQuery("CREATE TABLE `$monitorPages` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `plugin_gac_monitorscreens_id` INT {$sign} NOT NULL DEFAULT '0',
+            `savedsearches_id` INT {$sign} NOT NULL DEFAULT '0',
+            `title` VARCHAR(255) NOT NULL DEFAULT '',
+            `display_columns` TEXT DEFAULT NULL,
+            `position` INT UNSIGNED NOT NULL DEFAULT '1',
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `plugin_gac_monitorscreens_id` (`plugin_gac_monitorscreens_id`),
+            KEY `savedsearches_id` (`savedsearches_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+        $pagesJustCreated = true;
+    }
+
+    // Only on the run that creates the pages table: every existing Tela gets its page 1 from its
+    // old single saved search + columns. Not repeated afterwards, so deleting all of a Tela's
+    // pages is never undone by a later install run.
+    if ($pagesJustCreated) {
+        $DB->doQuery("INSERT INTO `$monitorPages`
+            (`plugin_gac_monitorscreens_id`, `savedsearches_id`, `title`, `display_columns`, `position`, `date_creation`, `date_mod`)
+            SELECT `id`, `savedsearches_id`, '', `display_columns`, 1, NOW(), NOW()
+            FROM `$monitorScreens`
+            WHERE `savedsearches_id` > 0");
     }
 
     // Default configuration: only keys that do not exist yet, so an update never overwrites
@@ -582,6 +623,7 @@ function plugin_gac_uninstall(): bool
         'glpi_plugin_gac_ltbpreasons',
         'glpi_plugin_gac_ltbpsequences',
         'glpi_plugin_gac_monitorscreens',
+        'glpi_plugin_gac_monitorpages',
         'glpi_plugin_gac_ssoidentities',
         'glpi_plugin_gac_ssoevents',
     ] as $table) {

@@ -63,6 +63,17 @@ final class MonitorLabels
         };
     }
 
+    public static function rowColorMode(string $mode): string
+    {
+        return match ($mode) {
+            RowTone::MODE_NONE     => __('Sem cor', 'gac'),
+            RowTone::MODE_STATUS   => __('Status do chamado', 'gac'),
+            RowTone::MODE_PRIORITY => __('Prioridade do chamado (recomendado)', 'gac'),
+            RowTone::MODE_SLA      => __('Prazo do SLA (vencido, perto de vencer, no prazo)', 'gac'),
+            default                => $mode,
+        };
+    }
+
     public static function theme(string $theme): string
     {
         return match ($theme) {

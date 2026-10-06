@@ -1,0 +1,20 @@
+{% extends 'generic_show_form.html.twig' %}
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+{% block form_fields %}
+    <input type="hidden" name="plugin_gac_monitorscreens_id" value="{{ screen_id }}">
+
+    {{ fields.dropdownArrayField('savedsearches_id', item.fields['savedsearches_id'], saved_searches, __('Pesquisa salva (Ticket, compartilhada)', 'gac'), {
+        required: true,
+    }) }}
+
+    {{ fields.textField('title', item.fields['title'], __('Título da página (opcional)', 'gac'), {
+        placeholder: __('Em branco usa o nome da pesquisa salva', 'gac'),
+    }) }}
+
+    {{ fields.numberField('position', item.fields['position']|default(next_position), __('Posição no rodízio', 'gac'), {
+        min: 1,
+    }) }}
+
+    {% include '@gac/monitor/_column_picker.html.twig' %}
+{% endblock %}

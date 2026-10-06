@@ -2,7 +2,9 @@
     background: #0b1220;
     color: #e6edf3;
     font-family: Arial, 'Helvetica Neue', Helvetica, 'Segoe UI', system-ui, sans-serif;
-    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     padding: 1.25rem 1.75rem;
     box-sizing: border-box;
 }
@@ -190,4 +192,120 @@
 
 .gac-theme-light tbody tr:hover {
     background: #eef2f8;
+}
+
+/* Embedded in the GLPI chrome (authenticated display): leave room for the menu/breadcrumb. */
+.gac-monitor-embedded {
+    height: calc(100vh - 7rem);
+}
+
+.gac-monitor-board [hidden] {
+    display: none !important;
+}
+
+/* The table area never scrolls (spec M14): a TV has nobody to scroll it. */
+.gac-monitor-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.gac-monitor-empty {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #8fa3bf;
+    font-size: 1.3rem;
+}
+
+.gac-monitor-pager {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+}
+
+.gac-pager-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35em 0.9em;
+    border-radius: 999px;
+    background: #141f3d;
+    color: #8fa3bf;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.gac-pager-active {
+    background: #2b5fd9;
+    color: #fff;
+}
+
+.gac-pager-count {
+    padding: 0.05em 0.55em;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    font-variant-numeric: tabular-nums;
+}
+
+.gac-pager-flash {
+    animation: gac-pager-blink 1s ease-in-out infinite;
+}
+
+@keyframes gac-pager-blink {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+    50%      { box-shadow: 0 0 0 4px rgba(46, 204, 113, 0.9); }
+}
+
+.gac-monitor-overflow {
+    flex: 0 0 auto;
+    margin-top: 0.5rem;
+    padding: 0.55em 1em;
+    border-radius: 8px;
+    background: #141f3d;
+    color: #ffd166;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+/* Row colour (spec M15/M16): tinted background + strong left border. Priority rows set the two
+   variables inline (the colours come from GLPI's own settings); the other tones are fixed here. */
+.gac-monitor-board tbody tr.gac-row-toned {
+    background: var(--gac-row-tint);
+}
+
+.gac-tone-status-new        { --gac-row-accent: #3498db; --gac-row-tint: rgba(52, 152, 219, 0.22); }
+.gac-tone-status-processing { --gac-row-accent: #2ecc71; --gac-row-tint: rgba(46, 204, 113, 0.22); }
+.gac-tone-status-planned    { --gac-row-accent: #1abc9c; --gac-row-tint: rgba(26, 188, 156, 0.22); }
+.gac-tone-status-pending    { --gac-row-accent: #f39c12; --gac-row-tint: rgba(243, 156, 18, 0.22); }
+.gac-tone-status-solved     { --gac-row-accent: #9b59b6; --gac-row-tint: rgba(155, 89, 182, 0.22); }
+.gac-tone-status-approval   { --gac-row-accent: #e67e22; --gac-row-tint: rgba(230, 126, 34, 0.22); }
+
+.gac-tone-sla-late    { --gac-row-accent: #e74c3c; --gac-row-tint: rgba(231, 76, 60, 0.30); }
+.gac-tone-sla-warning { --gac-row-accent: #f39c12; --gac-row-tint: rgba(243, 156, 18, 0.26); }
+.gac-tone-sla-ok      { --gac-row-accent: #2ecc71; --gac-row-tint: rgba(46, 204, 113, 0.18); }
+.gac-tone-sla-paused  { --gac-row-accent: #5dade2; --gac-row-tint: rgba(93, 173, 226, 0.20); }
+.gac-tone-sla-none    { --gac-row-accent: #7f8c8d; --gac-row-tint: rgba(127, 140, 141, 0.18); }
+
+/* Light theme */
+.gac-theme-light .gac-pager-pill {
+    background: #e3e9f5;
+    color: #4a5a78;
+}
+
+.gac-theme-light .gac-pager-active {
+    background: #2b5fd9;
+    color: #fff;
+}
+
+.gac-theme-light .gac-monitor-overflow {
+    background: #fff3d6;
+    color: #8a5a00;
+}
+
+.gac-theme-light .gac-monitor-empty {
+    color: #4a5a78;
 }

@@ -1,4 +1,4 @@
-<div class="gac-monitor-board{{ theme == 'light' ? ' gac-theme-light' : '' }}"
+<div class="gac-monitor-board{{ theme == 'light' ? ' gac-theme-light' : '' }}{{ embedded|default(false) ? ' gac-monitor-embedded' : '' }}"
      style="--gac-table-font-size: {{ font_size_rem }};"
      data-gac-monitor
      data-ajax-url="{{ ajax_url }}"
@@ -16,9 +16,14 @@
             </div>
         </div>
     </div>
-    <table>
-        <thead><tr data-gac-monitor-head></tr></thead>
-        <tbody data-gac-monitor-body></tbody>
-    </table>
+    <div class="gac-monitor-pager" data-gac-monitor-pager hidden></div>
+    <div class="gac-monitor-viewport" data-gac-monitor-viewport>
+        <table>
+            <thead><tr data-gac-monitor-head></tr></thead>
+            <tbody data-gac-monitor-body></tbody>
+        </table>
+        <div class="gac-monitor-empty" data-gac-monitor-empty hidden>{{ __('Nenhuma página configurada para esta tela.', 'gac') }}</div>
+    </div>
+    <div class="gac-monitor-overflow" data-gac-monitor-overflow hidden></div>
     <audio data-gac-monitor-audio src="{{ alert_sound_url }}" preload="auto"></audio>
 </div>

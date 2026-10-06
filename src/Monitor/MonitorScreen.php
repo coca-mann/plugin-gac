@@ -34,11 +34,9 @@
 namespace GlpiPlugin\Gac\Monitor;
 
 use CommonDBTM;
-use Dropdown;
 use Entity;
 use GlpiPlugin\Gac\Features;
 use Glpi\Application\View\TemplateRenderer;
-use SavedSearch;
 use Session;
 
 class MonitorScreen extends CommonDBTM
@@ -98,29 +96,14 @@ class MonitorScreen extends CommonDBTM
      */
     private function prepareCommonInput(array $input)
     {
-        if (array_key_exists('savedsearches_id', $input)) {
-            $id = (int) $input['savedsearches_id'];
-            if ($id <= 0 || !self::isSharedTicketSavedSearch($id)) {
-                Session::addMessageAfterRedirect(
-                    __('Escolha uma Pesquisa Salva de Ticket compartilhada.', 'gac'),
-                    false,
-                    ERROR
-                );
-                return false;
-            }
-        }
-
-        if (array_key_exists('display_columns', $input)) {
-            $raw = $input['display_columns'];
-            $input['display_columns'] = json_encode(
-                ColumnCatalog::sanitize(is_array($raw) ? $raw : []),
-                JSON_THROW_ON_ERROR
-            );
-        }
-
         if (array_key_exists('sort_mode', $input)) {
             $mode = (string) $input['sort_mode'];
             $input['sort_mode'] = TicketSortOrder::isValidMode($mode) ? $mode : TicketSortOrder::DEFAULT_MODE;
+        }
+
+        if (array_key_exists('row_color_mode', $input)) {
+            $mode = (string) $input['row_color_mode'];
+            $input['row_color_mode'] = RowTone::isValidMode($mode) ? $mode : RowTone::DEFAULT_MODE;
         }
 
         if (array_key_exists('theme', $input)) {
@@ -145,10 +128,19 @@ class MonitorScreen extends CommonDBTM
         }
 
         if (array_key_exists('poll_interval_seconds', $input)) {
-            $seconds = ($input['poll_interval_seconds'] !== '' && is_numeric($input['poll_interval_seconds']))
+            // Empty or 0 (GLPI's number field renders NULL as 0) means "use the global default".
+            $seconds = (is_numeric($input['poll_interval_seconds']) && (int) $input['poll_interval_seconds'] > 0)
                 ? (int) $input['poll_interval_seconds']
                 : null;
             $input['poll_interval_seconds'] = MonitorSettings::clampPollInterval($seconds);
+        }
+
+        if (array_key_exists('rotation_seconds', $input)) {
+            // Empty or 0 (GLPI's number field renders NULL as 0) means "use the global default".
+            $seconds = (is_numeric($input['rotation_seconds']) && (int) $input['rotation_seconds'] > 0)
+                ? (int) $input['rotation_seconds']
+                : null;
+            $input['rotation_seconds'] = PageRotation::clampRotation($seconds);
         }
 
         // The public token is never set from the form directly: it is generated the first time
@@ -163,30 +155,12 @@ class MonitorScreen extends CommonDBTM
         return $input;
     }
 
-    private static function isSharedTicketSavedSearch(int $id): bool
-    {
-        $saved = new SavedSearch();
-        if (!$saved->getFromDB($id)) {
-            return false;
-        }
-        return $saved->fields['itemtype'] === 'Ticket'
-            && (int) $saved->fields['is_private'] === 0
-            && (int) $saved->fields['type'] === SavedSearch::SEARCH;
-    }
-
     /** Explicit, separate action: invalidates the current public URL. Never implicit on save. */
     public function regenerateToken(): void
     {
         global $DB;
         $DB->update(self::getTable(), ['public_token' => PublicToken::generate()], ['id' => $this->getID()]);
         $this->getFromDB($this->getID());
-    }
-
-    /** @return list<string> */
-    public function displayColumns(): array
-    {
-        $decoded = json_decode((string) ($this->fields['display_columns'] ?? '[]'), true);
-        return ColumnCatalog::sanitize(is_array($decoded) ? $decoded : []);
     }
 
     /** @param array<string, string> $settings MonitorSettings-normalized global settings */
@@ -196,38 +170,54 @@ class MonitorScreen extends CommonDBTM
         return $own > 0 ? $own : MonitorSettings::defaultPollIntervalSeconds($settings);
     }
 
-    /** @return array<int, string> id => name, Ticket SavedSearches shared (not private) */
-    public static function sharedTicketSavedSearches(): array
+    /** @param array<string, string> $settings MonitorSettings-normalized global settings */
+    public function rotationSeconds(array $settings): int
+    {
+        $own = (int) ($this->fields['rotation_seconds'] ?? 0);
+        return $own > 0 ? $own : MonitorSettings::defaultRotationSeconds($settings);
+    }
+
+    public function rowColorMode(): string
+    {
+        $mode = (string) ($this->fields['row_color_mode'] ?? '');
+        return RowTone::isValidMode($mode) ? $mode : RowTone::DEFAULT_MODE;
+    }
+
+    /** @return list<MonitorPage> the Tela's pages in rotation order */
+    public function pages(): array
     {
         global $DB;
-        $options = [];
+        $pages = [];
         foreach ($DB->request([
-            'FROM'  => SavedSearch::getTable(),
-            'WHERE' => ['itemtype' => 'Ticket', 'is_private' => 0, 'type' => SavedSearch::SEARCH],
-            'ORDER' => ['name ASC'],
+            'FROM'  => MonitorPage::getTable(),
+            'WHERE' => [MonitorPage::$items_id => $this->getID()],
+            'ORDER' => ['position ASC', 'id ASC'],
         ]) as $row) {
-            $options[(int) $row['id']] = (string) $row['name'];
+            $page         = new MonitorPage();
+            $page->fields = $row;
+            $pages[]      = $page;
         }
-        return $options;
+        return $pages;
     }
 
     public function defineTabs($options = [])
     {
         $tabs = [];
         $this->addDefaultFormTab($tabs);
+        $this->addStandardTab(MonitorPage::class, $tabs, $options);
         $this->addStandardTab('Log', $tabs, $options);
         return $tabs;
+    }
+
+    public function cleanDBonPurge()
+    {
+        $this->deleteChildrenAndRelationsFromDb([MonitorPage::class]);
     }
 
     public function showForm($ID, array $options = [])
     {
         $this->initForm($ID, $options);
         global $CFG_GLPI;
-
-        $columnChoices = [];
-        foreach (ColumnCatalog::allKeys() as $key) {
-            $columnChoices[$key] = MonitorLabels::column($key);
-        }
 
         $sortModeChoices = [];
         foreach (TicketSortOrder::MODES as $mode) {
@@ -249,23 +239,19 @@ class MonitorScreen extends CommonDBTM
             $entityLevelsChoices[$levels] = MonitorLabels::entityLevels($levels);
         }
 
-        // Chosen columns first, in their saved order, then the rest of the catalog: the admin
-        // sees the current configuration already in place and only has to drag unchecked rows
-        // in, not hunt for them.
-        $chosen         = $this->isNewItem() ? ColumnCatalog::DEFAULT_COLUMNS : $this->displayColumns();
-        $orderedColumns = array_values(array_unique([...$chosen, ...ColumnCatalog::allKeys()]));
+        $rowColorChoices = [];
+        foreach (RowTone::MODES as $mode) {
+            $rowColorChoices[$mode] = MonitorLabels::rowColorMode($mode);
+        }
 
         TemplateRenderer::getInstance()->display('@gac/monitor/monitorscreen.form.html.twig', [
             'item'              => $this,
             'params'            => $options,
-            'columns_ordered'   => $orderedColumns,
-            'chosen'            => $chosen,
-            'column_choices'    => $columnChoices,
             'sort_mode_choices' => $sortModeChoices,
             'theme_choices'     => $themeChoices,
             'font_size_choices' => $fontSizeChoices,
             'entity_levels_choices' => $entityLevelsChoices,
-            'saved_searches'    => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
+            'row_color_choices' => $rowColorChoices,
             // Absolute (scheme + host), not root_doc (path only): this URL is meant to be
             // opened on another device (a TV), not just fetched from the current page.
             'public_url'     => empty($this->fields['public_token'] ?? null)
@@ -286,10 +272,6 @@ class MonitorScreen extends CommonDBTM
                 'datatype' => 'itemlink', 'itemtype' => self::class, 'massiveaction' => false, 'autocomplete' => true,
             ],
             ['id' => 2, 'table' => $t, 'field' => 'id', 'name' => __('ID'), 'datatype' => 'number', 'massiveaction' => false],
-            [
-                'id' => 3, 'table' => SavedSearch::getTable(), 'field' => 'name', 'linkfield' => 'savedsearches_id',
-                'name' => SavedSearch::getTypeName(1), 'datatype' => 'dropdown', 'massiveaction' => false,
-            ],
             ['id' => 4, 'table' => $t, 'field' => 'is_public', 'name' => __('Pública', 'gac'), 'datatype' => 'bool', 'massiveaction' => false],
             ['id' => 5, 'table' => $t, 'field' => 'is_active', 'name' => __('Ativa', 'gac'), 'datatype' => 'bool', 'massiveaction' => false],
             [
@@ -310,6 +292,14 @@ class MonitorScreen extends CommonDBTM
             ],
             [
                 'id' => 10, 'table' => $t, 'field' => 'entity_levels', 'name' => __('Níveis de entidade exibidos', 'gac'),
+                'datatype' => 'specific', 'massiveaction' => false,
+            ],
+            [
+                'id' => 11, 'table' => $t, 'field' => 'rotation_seconds', 'name' => __('Tempo de cada página (s)', 'gac'),
+                'datatype' => 'number', 'massiveaction' => false,
+            ],
+            [
+                'id' => 12, 'table' => $t, 'field' => 'row_color_mode', 'name' => __('Cor das linhas', 'gac'),
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
@@ -375,6 +365,7 @@ class MonitorScreen extends CommonDBTM
             'theme'     => htmlescape(MonitorLabels::theme((string) $values[$field])),
             'font_size' => htmlescape(MonitorLabels::fontSize((int) $values[$field])),
             'entity_levels' => htmlescape(MonitorLabels::entityLevels((int) $values[$field])),
+            'row_color_mode' => htmlescape(MonitorLabels::rowColorMode((string) $values[$field])),
             default     => parent::getSpecificValueToDisplay($field, $values, $options),
         };
     }

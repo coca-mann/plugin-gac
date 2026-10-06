@@ -37,6 +37,16 @@
         return luminance > 0.6 ? '#111' : '#fff';
     }
 
+    // No color-mix(): TV browsers are often old, so the row tint is a plain rgba().
+    function hexToRgba(hex, alpha) {
+        const match = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+        if (!match) {
+            return null;
+        }
+        const n = parseInt(match[1], 16);
+        return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+    }
+
     function renderHeader(root, columns) {
         const headRow = root.querySelector('[data-gac-monitor-head]');
         headRow.innerHTML = '';
@@ -47,32 +57,44 @@
         });
     }
 
-    function renderRows(root, columns, rows, priorityColors) {
-        const body = root.querySelector('[data-gac-monitor-body]');
-        const previousIds = Array.prototype.slice.call(body.children).map(function (tr) {
-            return tr.dataset.ticketId;
-        });
+    // Row colour (spec M15/M16): the server sends a tone (a meaning, never a colour). "priority-N"
+    // takes the GLPI-configured priority colour; every other tone is a CSS class that defines its
+    // own --gac-row-accent/--gac-row-tint.
+    function applyTone(tr, tone, priorityColors) {
+        if (!tone) {
+            return;
+        }
+        if (tone.indexOf('priority-') === 0) {
+            const color = priorityColors && priorityColors[tone.slice('priority-'.length)];
+            const tint = hexToRgba(color, 0.22);
+            if (color && tint) {
+                tr.classList.add('gac-row-toned');
+                tr.style.setProperty('--gac-row-accent', color);
+                tr.style.setProperty('--gac-row-tint', tint);
+            }
+            return;
+        }
+        tr.classList.add('gac-row-toned', 'gac-tone-' + tone);
+    }
 
+    function renderRows(root, page, newIds, priorityColors) {
+        const body = root.querySelector('[data-gac-monitor-body]');
         body.innerHTML = '';
-        let hasNew = false;
-        rows.forEach(function (row) {
+        page.rows.forEach(function (row) {
             const tr = document.createElement('tr');
             tr.dataset.ticketId = row.id;
-            const color = priorityColors && priorityColors[row.priority_raw];
-            if (color) {
-                tr.style.setProperty('--gac-row-accent', color);
-            }
-            if (previousIds.length > 0 && previousIds.indexOf(row.id) === -1) {
+            applyTone(tr, row.row_tone, priorityColors);
+            if (newIds && newIds.has(String(row.id))) {
                 tr.classList.add('gac-monitor-row-new');
-                hasNew = true;
             }
-            columns.forEach(function (col) {
+            const badgeColor = priorityColors && priorityColors[row.priority_raw];
+            page.columns.forEach(function (col) {
                 const td = document.createElement('td');
-                if (col.key === 'priority' && color) {
+                if (col.key === 'priority' && badgeColor) {
                     const badge = document.createElement('span');
                     badge.className = 'gac-priority-badge';
-                    badge.style.backgroundColor = color;
-                    badge.style.color = readableTextColor(color);
+                    badge.style.backgroundColor = badgeColor;
+                    badge.style.color = readableTextColor(badgeColor);
                     badge.textContent = row[col.key] || '';
                     td.appendChild(badge);
                 } else {
@@ -82,7 +104,63 @@
             });
             body.appendChild(tr);
         });
-        return hasNew;
+    }
+
+    // Overflow bar (spec M14): counts the rows whose bottom edge passes the visible area (a row cut
+    // in half counts as hidden). The bar sits outside the viewport, so showing it shrinks the
+    // viewport: measure once without it, and again with it when there is overflow.
+    function countHiddenRows(root) {
+        const viewport = root.querySelector('[data-gac-monitor-viewport]');
+        const limit = viewport.getBoundingClientRect().bottom;
+        let hidden = 0;
+        root.querySelectorAll('[data-gac-monitor-body] tr').forEach(function (tr) {
+            if (tr.getBoundingClientRect().bottom > limit + 1) {
+                hidden += 1;
+            }
+        });
+        return hidden;
+    }
+
+    function updateOverflow(root) {
+        const bar = root.querySelector('[data-gac-monitor-overflow]');
+        if (!bar) {
+            return;
+        }
+        bar.hidden = true;
+        if (countHiddenRows(root) === 0) {
+            return;
+        }
+        bar.hidden = false;
+        const hidden = countHiddenRows(root);
+        if (hidden === 0) {
+            bar.hidden = true;
+            return;
+        }
+        bar.textContent = '▼ ' + hidden + (hidden === 1 ? ' ticket abaixo' : ' tickets abaixo');
+    }
+
+    function renderPager(root, pages, activeId, flashing) {
+        const pager = root.querySelector('[data-gac-monitor-pager]');
+        pager.innerHTML = '';
+        if (pages.length <= 1) {
+            pager.hidden = true;
+            return;
+        }
+        pager.hidden = false;
+        pages.forEach(function (page) {
+            const pill = document.createElement('span');
+            pill.className = 'gac-pager-pill'
+                + (String(page.id) === activeId ? ' gac-pager-active' : '')
+                + (flashing[String(page.id)] ? ' gac-pager-flash' : '');
+            const title = document.createElement('span');
+            title.textContent = page.title;
+            const count = document.createElement('span');
+            count.className = 'gac-pager-count';
+            count.textContent = String(page.rows.length);
+            pill.appendChild(title);
+            pill.appendChild(count);
+            pager.appendChild(pill);
+        });
     }
 
     // Applied on every poll (not just the initial page render), so a theme/font-size change made
@@ -141,9 +219,10 @@
 
     function boot(root) {
         const url = root.dataset.ajaxUrl;
-        // Mutable: a poll_interval_seconds change on the Tela (see applyAppearance's sibling
-        // update in tick()) takes effect from the next cycle on, same as theme/font size.
+        // Mutable: a poll_interval_seconds/rotation_seconds change on the Tela takes effect from
+        // the next cycle on, same as theme/font size.
         let interval = Math.max(5, parseInt(root.dataset.pollInterval, 10) || 15) * 1000;
+        let rotationMs = 20000;
         const alertEnabled = root.dataset.alertEnabled === '1';
 
         let clockOffsetMs = 0;
@@ -151,7 +230,107 @@
 
         let lastSuccess = null;
         let fetching = false;
-        let firstLoad = true;
+
+        // Per-page state (spec M13): the diff of "new ticket" is per page, kept in memory.
+        let pages = [];
+        let priorityColors = {};
+        let activeId = null;
+        let rotationTimer = null;
+        let rotationKey = '';
+        const previousIds = {}; // page id => Set of ticket ids seen at the last poll
+        const newIds = {};      // page id => Set of ids that appeared at the last poll
+        const flashing = {};    // page id => true while a hidden page's pill blinks
+
+        // Returns true when any page got a ticket it did not have at the previous poll. The first
+        // load of each page never counts (no previous set yet).
+        function diffPages(payloadPages) {
+            let anyNew = false;
+            const live = {};
+            payloadPages.forEach(function (page) {
+                const pid = String(page.id);
+                live[pid] = true;
+                const ids = page.rows.map(function (row) { return String(row.id); });
+                const fresh = new Set();
+                if (previousIds[pid]) {
+                    ids.forEach(function (id) {
+                        if (!previousIds[pid].has(id)) {
+                            fresh.add(id);
+                        }
+                    });
+                }
+                previousIds[pid] = new Set(ids);
+                newIds[pid] = fresh;
+                if (fresh.size > 0) {
+                    anyNew = true;
+                    if (pid !== activeId) {
+                        flashing[pid] = true;
+                    }
+                }
+            });
+            Object.keys(previousIds).forEach(function (pid) {
+                if (!live[pid]) {
+                    delete previousIds[pid];
+                    delete newIds[pid];
+                    delete flashing[pid];
+                }
+            });
+            return anyNew;
+        }
+
+        function activePage() {
+            for (let i = 0; i < pages.length; i += 1) {
+                if (String(pages[i].id) === activeId) {
+                    return pages[i];
+                }
+            }
+            return null;
+        }
+
+        function showActive() {
+            const table = root.querySelector('[data-gac-monitor-viewport] table');
+            const empty = root.querySelector('[data-gac-monitor-empty]');
+            if (pages.length === 0) {
+                activeId = null;
+                table.hidden = true;
+                empty.hidden = false;
+                renderPager(root, pages, activeId, flashing);
+                updateOverflow(root);
+                return;
+            }
+            if (activePage() === null) {
+                activeId = String(pages[0].id);
+            }
+            const page = activePage();
+            delete flashing[activeId];
+            table.hidden = false;
+            empty.hidden = true;
+            renderHeader(root, page.columns);
+            renderRows(root, page, newIds[activeId], priorityColors);
+            renderPager(root, pages, activeId, flashing);
+            updateOverflow(root);
+        }
+
+        function rotate() {
+            if (pages.length > 1) {
+                let index = 0;
+                for (let i = 0; i < pages.length; i += 1) {
+                    if (String(pages[i].id) === activeId) {
+                        index = i;
+                    }
+                }
+                activeId = String(pages[(index + 1) % pages.length].id);
+                showActive();
+            }
+            scheduleRotation();
+        }
+
+        function scheduleRotation() {
+            clearTimeout(rotationTimer);
+            rotationTimer = null;
+            if (pages.length > 1) {
+                rotationTimer = setTimeout(rotate, rotationMs);
+            }
+        }
 
         // The ring represents idle wait time, not "time since the request was sent": it only
         // starts draining once a response actually comes back (see the finally block below),
@@ -179,16 +358,28 @@
                 if (!Number.isNaN(pollSeconds) && pollSeconds > 0) {
                     interval = Math.max(5, pollSeconds) * 1000;
                 }
+                const rotationSeconds = parseInt(payload.rotation_seconds, 10);
+                if (!Number.isNaN(rotationSeconds) && rotationSeconds > 0) {
+                    rotationMs = Math.max(5, rotationSeconds) * 1000;
+                }
                 applyAppearance(root, payload.theme, payload.font_size_rem);
-                renderHeader(root, payload.columns);
-                // Um alerta por ciclo, não um por ticket novo (plan, "Decisões de implementação" item 8).
-                const hasNew = renderRows(root, payload.columns, payload.rows, payload.priority_colors);
+                priorityColors = payload.priority_colors || {};
+                pages = payload.pages || [];
+                // One alert per cycle, not one per new ticket (plan "Decisões de implementação" item 8).
+                const hasNew = diffPages(pages);
+                showActive();
+                // Restart the rotation timer only when its parameters change: restarting it on
+                // every poll would postpone the rotation forever whenever polling is faster.
+                const key = rotationMs + '|' + pages.length;
+                if (key !== rotationKey) {
+                    rotationKey = key;
+                    scheduleRotation();
+                }
                 lastSuccess = new Date();
                 setConnectionState(root, true, lastSuccess);
-                if (hasNew && alertEnabled && !firstLoad) {
+                if (hasNew && alertEnabled) {
                     playAlert(root);
                 }
-                firstLoad = false;
             } catch (e) {
                 setConnectionState(root, false, lastSuccess || new Date());
             } finally {
@@ -198,6 +389,8 @@
                 setTimeout(tick, interval);
             }
         }
+
+        window.addEventListener('resize', function () { updateOverflow(root); });
 
         tick();
     }

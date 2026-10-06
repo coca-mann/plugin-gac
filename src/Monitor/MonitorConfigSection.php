@@ -68,6 +68,22 @@ final class MonitorConfigSection implements ConfigSection
             ])
         );
         $body .= $this->row(
+            __('Tempo padrão de cada página no rodízio (segundos)', 'gac'),
+            Html::input('monitor_default_rotation_seconds', [
+                'type'  => 'number',
+                'min'   => 5,
+                'value' => MonitorSettings::defaultRotationSeconds($s),
+            ])
+        );
+        $body .= $this->row(
+            __('Janela de alerta do SLA (minutos antes de vencer)', 'gac'),
+            Html::input('monitor_sla_warning_minutes', [
+                'type'  => 'number',
+                'min'   => 1,
+                'value' => MonitorSettings::slaWarningMinutes($s),
+            ])
+        );
+        $body .= $this->row(
             __('URL do som de alerta (opcional; em branco o alerta fica só visual)', 'gac'),
             Html::input('monitor_alert_sound_url', [
                 'type'  => 'url',
@@ -121,6 +137,8 @@ final class MonitorConfigSection implements ConfigSection
         }
         $raw = MonitorConfig::load();
         $raw['monitor_default_poll_interval_seconds'] = (string) (int) ($post['monitor_default_poll_interval_seconds'] ?? 15);
+        $raw['monitor_default_rotation_seconds'] = (string) (int) ($post['monitor_default_rotation_seconds'] ?? 20);
+        $raw['monitor_sla_warning_minutes'] = (string) (int) ($post['monitor_sla_warning_minutes'] ?? 60);
         $raw['monitor_alert_sound_url'] = trim((string) ($post['monitor_alert_sound_url'] ?? ''));
         $raw['monitor_service_username'] = trim((string) ($post['monitor_service_username'] ?? ''));
         // Blank password on submit means "keep the current one" — the field is never

@@ -1,0 +1,36 @@
+<div class="m-3">
+    <p class="text-muted">
+        {{ __('Cada página tem a sua pesquisa salva e as suas colunas. Com mais de uma página, a tela alterna entre elas no tempo configurado.', 'gac') }}
+    </p>
+
+    {% if pages is empty %}
+        <div class="alert alert-warning">{{ __('Esta Tela ainda não tem páginas: ela não mostra tickets até que você adicione pelo menos uma.', 'gac') }}</div>
+    {% else %}
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>{{ __('Posição', 'gac') }}</th>
+                    <th>{{ __('Título', 'gac') }}</th>
+                    <th>{{ __('Pesquisa salva', 'gac') }}</th>
+                    <th>{{ __('Colunas', 'gac') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for page in pages %}
+                    <tr>
+                        <td>{{ page.position }}</td>
+                        <td><a href="{{ page.url }}">{{ page.title|default(__('(sem título)', 'gac')) }}</a></td>
+                        <td>{{ page.saved_search }}</td>
+                        <td>{{ page.columns_count }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if can_add %}
+        <a class="btn btn-primary" href="{{ add_url }}"><i class="ti ti-plus"></i> {{ __('Adicionar página', 'gac') }}</a>
+    {% elseif is_full %}
+        <div class="text-muted small">{{ __('Limite de %d páginas por Tela atingido.', 'gac')|format(max) }}</div>
+    {% endif %}
+</div>
