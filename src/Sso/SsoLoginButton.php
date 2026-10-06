@@ -77,19 +77,46 @@ final class SsoLoginButton
 
         if ($hide) {
             $localUrl = '?' . http_build_query(array_merge(array_diff_key($_GET, ['sso_error' => 1]), ['local' => 1]));
-            $html .= "<div class='mt-3'><a class='btn btn-ghost-secondary btn-sm' href='" . htmlescape($localUrl) . "'>"
+            $html .= "<div class='mt-3' id='gac-sso-local-toggle'><a class='btn btn-ghost-secondary btn-sm' href='" . htmlescape($localUrl) . "'>"
                 . "<i class='ti ti-key me-1'></i>"
                 . htmlescape(__('Entrar com usuário e senha', 'gac')) . '</a></div>';
         }
         $html .= '</div>';
 
         if ($hide) {
-            // The login fields sit in the sibling column; hide it. Without this script (or with
-            // JS off) the normal form simply stays visible.
-            $html .= '<script>(function () {'
+            // The login fields sit in the sibling column. Move it under the Google button, folded,
+            // and unfold it with a slide when the "usuário e senha" button is clicked. Without this
+            // script (or with JS off) the normal form simply stays visible and the link still
+            // reloads the page with ?local=1; if any piece is missing nothing is hidden.
+            $html .= '<style>'
+                . '.gac-sso-local{max-height:0;opacity:0;overflow:hidden;visibility:hidden;text-align:left;'
+                . 'transition:max-height .45s ease,opacity .35s ease .1s,visibility 0s linear .45s}'
+                . '.gac-sso-local.is-open{opacity:1;visibility:visible;'
+                . 'transition:max-height .45s ease,opacity .35s ease .1s,visibility 0s}'
+                . '.gac-sso-local .select2-container{width:100%!important}'
+                . '</style>'
+                . '<script>(function () {'
                 . "var field = document.getElementById('login_name');"
                 . "var column = field ? field.closest('.col-md-5') : null;"
-                . "if (column) { column.style.display = 'none'; }"
+                . "var toggle = document.getElementById('gac-sso-local-toggle');"
+                . "var panel = document.querySelector('.gac-sso-login');"
+                . 'if (!column || !toggle || !panel) { return; }'
+                . "column.classList.remove('col-md-5');"
+                . "column.classList.add('gac-sso-local');"
+                . 'panel.appendChild(column);'
+                . "toggle.addEventListener('click', function (event) {"
+                . 'event.preventDefault();'
+                . "column.style.maxHeight = column.scrollHeight + 'px';"
+                . "column.classList.add('is-open');"
+                . "toggle.style.display = 'none';"
+                . "column.addEventListener('transitionend', function done(e) {"
+                . "if (e.propertyName !== 'max-height') { return; }"
+                . "column.removeEventListener('transitionend', done);"
+                . "column.style.maxHeight = 'none';"
+                . "column.scrollIntoView({behavior: 'smooth', block: 'nearest'});"
+                . 'field.focus();'
+                . '});'
+                . '});'
                 . '})();</script>';
         }
 
