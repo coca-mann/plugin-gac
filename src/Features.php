@@ -36,6 +36,7 @@ namespace GlpiPlugin\Gac;
 use GlpiPlugin\Gac\Ltbp\Ltbp;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
+use GlpiPlugin\Gac\Sso\SsoIdentity;
 use Session;
 
 /**
@@ -66,6 +67,11 @@ final class Features
                 'itemtype' => MonitorScreen::class,
                 'label'    => MonitorScreen::getTypeName(2),
                 'field'    => MonitorScreen::$rightname,
+            ],
+            [
+                'itemtype' => SsoIdentity::class,
+                'label'    => __('Login com Google', 'gac'),
+                'field'    => SsoIdentity::$rightname,
             ],
         ];
     }

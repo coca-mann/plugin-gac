@@ -38,6 +38,9 @@ use GlpiPlugin\Gac\Monitor\MonitorScreen;
 use GlpiPlugin\Gac\Monitor\MonitorSettings;
 use GlpiPlugin\Gac\Pre\PreSettings;
 use GlpiPlugin\Gac\Pre\RepairProtocol;
+use GlpiPlugin\Gac\Sso\SsoEvent;
+use GlpiPlugin\Gac\Sso\SsoIdentity;
+use GlpiPlugin\Gac\Sso\SsoSettings;
 
 /**
  * Plugin install process. Same function runs for install and update, so every step checks
@@ -312,7 +315,7 @@ function plugin_gac_install(): bool
     // what an administrator already configured.
     $current = Config::getConfigurationValues('plugin:gac');
     $missing = array_diff_key(
-        PreSettings::defaults() + LtbpSettings::defaults() + MonitorSettings::defaults(),
+        PreSettings::defaults() + LtbpSettings::defaults() + MonitorSettings::defaults() + SsoSettings::defaults(),
         $current
     );
     if ($missing !== []) {
@@ -464,6 +467,76 @@ function plugin_gac_install(): bool
         ]);
     }
 
+    // SSO Google (spec seção 5): identities and the audit log. The rules themselves are native
+    // RuleRight rules, so there are no mapping tables.
+    $ssoIdentities = 'glpi_plugin_gac_ssoidentities';
+    if (!$DB->tableExists($ssoIdentities)) {
+        $DB->doQuery("CREATE TABLE `$ssoIdentities` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `users_id` INT {$sign} NOT NULL DEFAULT '0',
+            `google_sub` VARCHAR(255) NOT NULL DEFAULT '',
+            `email_at_link` VARCHAR(255) NOT NULL DEFAULT '',
+            `prev_authtype` TINYINT NOT NULL DEFAULT '0',
+            `prev_auths_id` INT {$sign} NOT NULL DEFAULT '0',
+            `removed_authorizations` MEDIUMTEXT DEFAULT NULL,
+            `linked_at` TIMESTAMP NULL DEFAULT NULL,
+            `last_login_at` TIMESTAMP NULL DEFAULT NULL,
+            `last_ou_path` VARCHAR(500) NOT NULL DEFAULT '',
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `users_id` (`users_id`),
+            UNIQUE KEY `google_sub` (`google_sub`)
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    $ssoEvents = 'glpi_plugin_gac_ssoevents';
+    if (!$DB->tableExists($ssoEvents)) {
+        $DB->doQuery("CREATE TABLE `$ssoEvents` (
+            `id` INT {$sign} NOT NULL AUTO_INCREMENT,
+            `date` TIMESTAMP NULL DEFAULT NULL,
+            `email` VARCHAR(255) NOT NULL DEFAULT '',
+            `users_id` INT {$sign} NOT NULL DEFAULT '0',
+            `ou_path` VARCHAR(500) NOT NULL DEFAULT '',
+            `outcome` VARCHAR(40) NOT NULL DEFAULT '',
+            `detail` VARCHAR(1000) NOT NULL DEFAULT '',
+            PRIMARY KEY (`id`),
+            KEY `date` (`date`),
+            KEY `outcome` (`outcome`),
+            KEY `ou_path` (`ou_path`(191))
+        ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    // SSO right: profiles that can UPDATE the native 'config' right get "Ler" + "Configurar";
+    // every other profile starts without access.
+    $ssoRight = SsoIdentity::$rightname;
+    if (countElementsInTable(ProfileRight::getTable(), ['name' => $ssoRight]) === 0) {
+        ProfileRight::addProfileRights([$ssoRight]);
+
+        $sso_admin_profiles = array_column(
+            iterator_to_array($DB->request([
+                'SELECT' => 'profiles_id',
+                'FROM'   => ProfileRight::getTable(),
+                'WHERE'  => ['name' => 'config', 'rights' => ['&', UPDATE]],
+            ])),
+            'profiles_id'
+        );
+        if ($sso_admin_profiles !== []) {
+            $DB->update(
+                ProfileRight::getTable(),
+                ['rights' => READ | SsoIdentity::RIGHT_CONFIG],
+                ['name' => $ssoRight, 'profiles_id' => $sso_admin_profiles]
+            );
+        }
+    }
+
+    // Automatic action that purges old events (retention is a setting).
+    if (countElementsInTable('glpi_crontasks', ['itemtype' => SsoEvent::class, 'name' => 'SsoPurge']) === 0) {
+        CronTask::register(SsoEvent::class, 'SsoPurge', DAY_TIMESTAMP, [
+            'comment' => 'Expurgar eventos antigos do login com Google',
+            'mode'    => CronTask::MODE_EXTERNAL,
+            'state'   => CronTask::STATE_WAITING,
+        ]);
+    }
+
     $migration->executeMigration();
 
     return true;
@@ -487,6 +560,8 @@ function plugin_gac_uninstall(): bool
         'glpi_plugin_gac_ltbpreasons',
         'glpi_plugin_gac_ltbpsequences',
         'glpi_plugin_gac_monitorscreens',
+        'glpi_plugin_gac_ssoidentities',
+        'glpi_plugin_gac_ssoevents',
     ] as $table) {
         if ($DB->tableExists($table)) {
             $DB->doQuery("DROP TABLE `$table`");
@@ -499,10 +574,13 @@ function plugin_gac_uninstall(): bool
     $DB->delete('glpi_displaypreferences', ['itemtype' => [Ltbp::class, LtbpReason::class]]);
     $DB->delete(ProfileRight::getTable(), ['name' => MonitorScreen::$rightname]);
     $DB->delete('glpi_displaypreferences', ['itemtype' => MonitorScreen::class]);
+    $DB->delete(ProfileRight::getTable(), ['name' => SsoIdentity::$rightname]);
+    $DB->delete('glpi_crontasks', ['itemtype' => SsoEvent::class]);
     Config::deleteConfigurationValues('plugin:gac', array_merge(
         array_keys(PreSettings::defaults()),
         array_keys(LtbpSettings::defaults()),
         array_keys(MonitorSettings::defaults()),
+        array_keys(SsoSettings::defaults()),
         ['pre_config_right_migrated']
     ));
 

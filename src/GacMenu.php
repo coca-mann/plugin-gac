@@ -36,6 +36,7 @@ namespace GlpiPlugin\Gac;
 use GlpiPlugin\Gac\Ltbp\LtbpMenu;
 use GlpiPlugin\Gac\Monitor\MonitorMenu;
 use GlpiPlugin\Gac\Pre\PreMenu;
+use GlpiPlugin\Gac\Sso\SsoMenu;
 use Plugin;
 
 /**
@@ -51,6 +52,7 @@ class GacMenu
     public const ITEM_PRE = 'pre';
     public const ITEM_LTBP = 'ltbp';
     public const ITEM_MONITOR = 'monitor';
+    public const ITEM_SSO = 'sso';
     public const ITEM_CONFIG = 'config';
 
     /** Single source of the plugin name: the "name" field of plugin_version_gac(). */
@@ -83,6 +85,10 @@ class GacMenu
         $monitor = MonitorMenu::getMenuContent();
         if ($monitor !== []) {
             $entries[self::ITEM_MONITOR] = $monitor;
+        }
+        $sso = SsoMenu::getMenuContent();
+        if ($sso !== []) {
+            $entries[self::ITEM_SSO] = $sso;
         }
         $config = ConfigMenu::getMenuContent();
         if ($config !== []) {

@@ -86,7 +86,7 @@ function plugin_init_gac(): void
 
         // The Monitor service account's password (glpi_configs, plugin:gac) is encrypted at
         // rest with GLPI's own key, same mechanism as the native SMTP secret.
-        $PLUGIN_HOOKS[Hooks::SECURED_CONFIGS]['gac'] = ['monitor_service_password'];
+        $PLUGIN_HOOKS[Hooks::SECURED_CONFIGS]['gac'] = ['monitor_service_password', 'sso_client_secret', 'sso_sa_private_key'];
     }
 }
 
