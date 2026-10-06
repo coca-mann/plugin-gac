@@ -2828,7 +2828,7 @@ Se `critério registrado: false`, confira que a linha `$PLUGIN_HOOKS[Hooks::USE_
 
 - [ ] **Step 6: Verificar a tela de regras no navegador**
 
-Em `http://glpi11local.test/front/rule.right.php` (Administração > Regras > Regras de autorização), crie uma regra de teste com **"Adicionar um critério"** e confirme que a lista de critérios inclui **"OU do Google Workspace"** e que o campo de valor aceita texto livre. Salve a regra e apague-a em seguida.
+Em `http://glpi11local.test/front/ruleright.php` (Administração > Regras > Regras de autorização), crie uma regra de teste com **"Adicionar um critério"** e confirme que a lista de critérios inclui **"OU do Google Workspace"** e que o campo de valor aceita texto livre. Salve a regra e apague-a em seguida.
 Expected: critério visível e utilizável (verificação V13 da spec). Se o campo de valor não aparecer, registre o comportamento e pare: o desenho do critério precisa de ajuste (por exemplo `'type' => 'text'`) antes de seguir.
 
 - [ ] **Step 7: Checkpoint (sem commit)**
@@ -4469,7 +4469,7 @@ final class SsoPages
     {
         global $CFG_GLPI;
 
-        $ruleUrl = $CFG_GLPI['root_doc'] . '/front/rule.right.php';
+        $ruleUrl = $CFG_GLPI['root_doc'] . '/front/ruleright.php';
         $html    = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
             . htmlescape(__('OUs em que alguém tentou entrar e nenhuma regra de autorização concedeu acesso. Para liberar, crie uma regra com o critério "OU do Google Workspace" igual ao caminho abaixo (condição "é").', 'gac'))
             . " <a href='" . htmlescape($ruleUrl) . "'>" . htmlescape(__('Abrir as regras de autorização', 'gac')) . '</a></div>';
