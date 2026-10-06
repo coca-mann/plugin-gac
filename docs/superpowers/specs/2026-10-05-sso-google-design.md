@@ -147,7 +147,9 @@ Fatos do ambiente que moldam o desenho:
   usuário do GLPI com o mesmo e-mail nega o login (`email_ambiguous`), nunca escolhe.
 - **S11. Conversão no primeiro login de cada pessoa, com reversão.** O usuário existente passa a
   `authtype = Auth::EXTERNAL`, `auths_id = 0` (V6). Antes disso o plugin grava `authtype`,
-  `auths_id` e as autorizações dinâmicas removidas na tabela de identidades. "Desfazer conversão"
+  `auths_id`, a **entidade padrão** e as autorizações dinâmicas removidas na tabela de identidades
+  (a regra redefine a entidade padrão a cada login, então sem guardá-la o desfazer deixaria o
+  usuário apontando para uma entidade a que não tem acesso). "Desfazer conversão"
   restaura esse estado. Enquanto o login por LDAP estiver ativo a conversão é **suave**: um login
   bem-sucedido pelo AD regrava `authtype = LDAP`; o próximo login pelo Google reafirma a
   conversão (a identidade, por `sub`, não se perde). **Contas locais** (`authtype` banco) nunca
@@ -204,7 +206,7 @@ mapeamento de OU e as exceções por e-mail **não** têm tabela: são regras na
 ### 5.1 `ssoidentities`
 
 `users_id` (único), `google_sub` (único), `email_at_link`, `prev_authtype`, `prev_auths_id`,
-`removed_authorizations` (JSON), `linked_at`, `last_login_at`, `last_ou_path`.
+`prev_entities_id`, `removed_authorizations` (JSON), `linked_at`, `last_login_at`, `last_ou_path`.
 
 ### 5.2 `ssoevents`
 
