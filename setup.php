@@ -31,6 +31,7 @@
  * -------------------------------------------------------------------------
  */
 
+use Glpi\Http\Firewall;
 use Glpi\Http\SessionManager;
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Gac\GacMenu;
@@ -91,6 +92,14 @@ function plugin_init_gac(): void
         // SSO Google (spec S4): the plugin adds a criterion to the native authorization rules.
         // The value is an array of rule types, not "true".
         $PLUGIN_HOOKS[Hooks::USE_RULES]['gac'] = [RuleRight::class];
+
+        // SSO Google: the start and callback scripts are reached before any login, but they need
+        // a real session (OAuth state, then the login itself), unlike the Monitor's stateless
+        // public page. Same strategy GLPI gives its own front/login.php.
+        Firewall::addPluginStrategyForLegacyScripts('gac', '#^/front/sso/(start|callback)\.php$#', Firewall::STRATEGY_NO_CHECK);
+
+        // Button and error box on the login page.
+        $PLUGIN_HOOKS[Hooks::DISPLAY_LOGIN]['gac'] = 'plugin_gac_display_login';
     }
 }
 

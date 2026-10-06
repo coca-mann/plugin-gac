@@ -41,6 +41,7 @@ use GlpiPlugin\Gac\Pre\RepairProtocol;
 use GlpiPlugin\Gac\Sso\RuleHooks;
 use GlpiPlugin\Gac\Sso\SsoEvent;
 use GlpiPlugin\Gac\Sso\SsoIdentity;
+use GlpiPlugin\Gac\Sso\SsoLoginButton;
 use GlpiPlugin\Gac\Sso\SsoSettings;
 
 /**
@@ -608,4 +609,15 @@ function plugin_gac_getRuleCriteria(array $params): array
 function plugin_gac_ruleCollectionPrepareInputDataForProcess(array $params): array
 {
     return RuleHooks::inputData($params);
+}
+
+/**
+ * Hook "display_login": prints the Google login button beside the login form (SSO, spec S16).
+ * GLPI calls hooks with one argument and expects the hook to echo its HTML.
+ *
+ * @param mixed $params
+ */
+function plugin_gac_display_login($params = null): void
+{
+    echo SsoLoginButton::render();
 }
