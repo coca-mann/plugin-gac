@@ -12,6 +12,9 @@ dois está errado e deve ser corrigido. Segue o formato das specs do PRE
 - **Decidido**: confirmado pelo dono do projeto. Seções 1 a 10.
 - **Rascunho**: seções 11 (estrutura de código) e 12 (erros e testes), sem revisão do dono.
 - **Pendente**: ver seção 13.
+- **Adendo 2026-10-06 (M11 a M16, seções 5.1b e 6.6 a 6.8, R-6 a R-9)**: rodízio de várias
+  Pesquisas Salvas, barra de overflow e cor de linha. Decidido com o dono em brainstorming,
+  implementado e testado conforme `docs/monitor-manual-tests.md` (cenários 33 a 50).
 
 ## 1. Contexto e objetivo
 
@@ -79,6 +82,12 @@ Fora da v1 (decidido):
 | M8 | Som/alerta de ticket novo é **configurável por URL** na configuração global (`monitor_alert_sound_url`, vazio por padrão — sem arquivo embutido no plugin), ligado/desligado por Tela (`alert_enabled`), **sem condição extra**: qualquer linha nova no resultado já filtrado dispara o alerta. Sem URL configurada, o alerta fica só visual (linha piscando), sem som | Decisão do dono (som entra em escopo). O próprio critério da Pesquisa Salva já define "o que conta" para aquela Tela; uma camada extra de condição de alerta seria redundante. Embutir um arquivo de áudio no plugin não é necessário: a mesma URL configurável que o Django já usava resolve, sem exigir um binário versionado no repositório |
 | M9 | Dashboard de KPIs, projetos e controle remoto de tela ficam **fora da v1** | Decisão do dono: focar só na lista de tickets, que é o que falta para descontinuar o Django |
 | M10 | A ordem das linhas é **configurável por Tela** (`sort_mode`, `priority` ou `id`), calculada em PHP depois de buscar os dados — nunca delegada ao sort nativo do GLPI (que só ordena por uma coluna se ela estiver entre as exibidas, e não suporta a prioridade customizada de status abaixo). O modo `priority` reproduz a regra que o Django já usava (`get_panel_data()`): urgência decrescente, depois status numa prioridade própria (Novo → Em atendimento → Em atendimento planejado → Pendente → Aprovação → Solucionado → qualquer outro), depois data de abertura decrescente. `priority` é o padrão de uma Tela nova | Achado tardio: o dono perguntou sobre ordenação depois da v1 já implementada e lembrou que o Django já resolvia isso; a v1 original não tinha decidido nada aqui e caía no `ORDER BY id` crescente do GLPI por acidente, não por escolha — ruim para uma tela de monitoramento (ticket novo entra no fim da lista). Configurável por Tela (não fixo) a pedido do dono, para o caso de uma Tela específica preferir a ordem padrão do GLPI |
+| M11 | Uma Tela tem **1 a 8 páginas** (`glpi_plugin_gac_monitorpages`, tabela filha), cada uma com a sua Pesquisa Salva, título opcional, colunas exibidas e posição. A Tela mantém entidade, ordenação, alerta, tema, fonte, polling e cor de linha. A migração cria a página 1 de cada Tela existente a partir do seu `savedsearches_id`/`display_columns`; essas duas colunas da Tela deixam de ser lidas mas **não são removidas** nesta versão (drop não tem volta; sai numa versão futura). Uma Tela com uma única página se comporta como antes, sem rodízio | Pedido do gestor (2026-10-06): acompanhar mais de um filtro numa tela só (ex.: "abertos não solucionados" e "somente novos"). Escolhida pelo dono a granularidade "pesquisa + colunas" por página: cada filtro conta uma história diferente (novos pedem solicitante, em andamento pedem técnico). Tabela filha em vez de JSON na Tela porque o seletor de colunas ordenável repetido N vezes num formulário que já é grande vira um repeater aninhado frágil; limite de 8 é um palpite de carga (N buscas por ciclo), a validar na implementação |
+| M12 | O **rodízio** troca a página exibida a cada `rotation_seconds` (campo da Tela, nulo usa `monitor_default_rotation_seconds`, padrão 20, mínimo 5). O mesmo tempo vale para todas as páginas. O timer de rodízio é **independente** do de polling. Um seletor de páginas (um pill por página, com título e contagem, a ativa destacada) fica abaixo do título | Decisão do dono: um tempo por Tela ("de tempo em tempo", como o gestor descreveu); tempo por página fica fora (YAGNI), pode vir depois |
+| M13 | O polling consulta **todas as páginas a cada ciclo**, inclusive as fora da tela, e o diff de "ticket novo" (M7) passa a ser **por página** (a primeira carga de cada página não alerta). Ticket novo numa página oculta toca o alerta e faz o pill dela piscar; o rodízio **não** salta para a página afetada | Decisão do dono: consultar só a página visível perderia ticket novo que chega enquanto a página está oculta (e é justamente na página "Novos" que ele importa). Não forçar a troca preserva o tempo de leitura da página atual |
+| M14 | **Barra de overflow**: a área da tabela não rola; o JS conta as linhas cuja borda inferior passa da área visível (linha cortada pela metade conta como escondida) e, se houver, mostra uma barra fixa embaixo com "▼ N tickets abaixo". Sem escondidas, a barra some. Recalculada a cada render e a cada resize. Vale para toda Tela, tenha uma ou várias páginas | Pedido do gestor. Sem scroll por ser TV: a barra só **informa** que existem tickets invisíveis, não os mostra. No modo `priority` o que fica escondido é o menos urgente (ameniza); no modo `id` é o mais novo (pior caso) — ver R-6 |
+| M15 | **Cor de linha** escolhida por Tela (`row_color_mode`: `none`, `status`, `priority` ou `sla`; padrão `priority`, que preserva a lógica de cores que já existia na borda esquerda). A linha ganha fundo tingido (transparência da cor do tom) mais a borda esquerda forte; o badge de prioridade continua. Quem calcula o **tom** de cada linha é o servidor (`row_tone` no JSON), o JS só mapeia tom para classe CSS, sem regra de negócio no cliente | Pedido do gestor: texto monocolor + badge não bastam para mostrar a importância do chamado numa TV. Cálculo no servidor para ser testável em PHPUnit puro e para que o horário usado no SLA seja o do servidor GLPI (a TV pode estar com relógio errado, mesmo problema que o relógio da topbar já resolve) |
+| M16 | O modo **`sla`** pinta pelo prazo, não pelo tempo decorrido: usa `time_to_resolve` (search option 18) e, **apenas enquanto o ticket está em "Novo"**, também `time_to_own` (155), valendo o **prazo mais próximo**. Tons: `late` (vencido), `warning` (vence em até `monitor_sla_warning_minutes`, padrão 60, global), `ok` (dentro do prazo), `paused` (ticket em Pendente: o SLA está parado, o prazo gravado não vale e não pinta de vencido) e `none` (**sem SLA associado**: cor neutra e distinta de `ok`, de propósito, para não parecer saudável o que na verdade não tem prazo). Os modos `status` (paleta fixa no código, por status do GLPI) e `priority` (cores já configuradas e em uso em produção, Configurações > Valores padrão > Cores das Prioridades; nenhuma paleta nova) não têm limiar | Decisão do dono: usar o SLA do GLPI em vez de limiares manuais de tempo decorrido. "Novo" como proxy de "ainda não assumido" (confirmado pelo dono) evita ler outro campo; Pendente para o SLA, daí o tom `paused` (ver R-7) |
 
 ## 5. Modelo de dados
 
@@ -88,21 +97,36 @@ Prefixo `glpi_plugin_gac_`. Tipos exatos ficam para o plano de implementação.
 
 - `id`, `entities_id`, `is_recursive`
 - `name`
-- `savedsearches_id` (FK para `glpi_savedsearches`; validado na gravação: deve ser tipo Ticket e
-  `is_private = 0`)
-- `display_columns` (lista ordenada das chaves do catálogo curado, ex.: `["id", "title",
-  "status", "urgency", "requester", "technician", "elapsed"]`)
+- `savedsearches_id`, `display_columns`: **legado**, não mais lidos desde a M11 (agora vivem em
+  cada página, seção 5.1b); mantidos na tabela até uma versão futura que os remova
 - `sort_mode` (`priority` ou `id`; ver M10 — padrão `priority`)
 - `poll_interval_seconds` (nullable; vazio usa o padrão global)
+- `rotation_seconds` (nullable; vazio usa o padrão global; só tem efeito com 2+ páginas, M12)
+- `row_color_mode` (`none`, `status`, `priority` ou `sla`; padrão `priority`, M15)
 - `is_public` (bool), `public_token` (string, nullable, único — gerado quando `is_public` é
   ligado pela primeira vez; pode ser regenerado, invalidando URLs antigas)
 - `alert_enabled` (bool)
 - `is_active` (bool)
 - `date_creation`, `date_mod`
 
+### 5.1b `monitorpages` (a Página de uma Tela, M11)
+
+- `id`, `plugin_gac_monitorscreens_id` (FK para a Tela; apagar a Tela apaga as páginas)
+- `savedsearches_id` (FK para `glpi_savedsearches`; validado na gravação: deve ser tipo Ticket e
+  `is_private = 0`)
+- `title` (opcional; vazio usa o nome da Pesquisa Salva)
+- `display_columns` (lista ordenada das chaves do catálogo curado, ex.: `["id", "title",
+  "status", "urgency", "requester", "technician", "elapsed"]`)
+- `position` (ordem no rodízio e no seletor de páginas)
+
+Uma Tela precisa de pelo menos 1 página para ser exibida (sem páginas, a exibição mostra a
+mensagem genérica de Tela sem conteúdo) e aceita no máximo 8.
+
 ### 5.2 Configuração global (`MonitorSettings`, contexto `plugin:gac`)
 
 - `monitor_default_poll_interval_seconds` (padrão sugerido: 15)
+- `monitor_default_rotation_seconds` (padrão 20, mínimo 5; M12)
+- `monitor_sla_warning_minutes` (padrão 60; janela do tom `warning` no modo `sla`, M16)
 - `monitor_alert_sound_url` (padrão: vazio — sem URL configurada, o alerta fica só visual)
 - `monitor_service_username`, `monitor_service_password` (achado da Tarefa 8, ver M6/R-1): a
   conta de serviço usada internamente pela exibição pública. A senha é criptografada em repouso
@@ -152,13 +176,43 @@ registro de rota. Ambos rodam `Search::getDatas('Ticket', $params)` com:
 - critérios vindos da Pesquisa Salva referenciada;
 - `forcedisplay` com as search options correspondentes às `display_columns` da Tela.
 
-Devolve JSON `{ columns: [...], rows: [...] }`. O JS consome no intervalo configurado
-(`poll_interval_seconds` da Tela, senão o padrão global).
+Com páginas (M11/M13), o serviço roda essa busca **uma vez por página** (o login da conta de
+serviço continua um só por requisição, não por página) e devolve JSON
+`{ pages: [{ id, title, columns, rows }], priority_colors, theme, font_size_rem,
+poll_interval_seconds, rotation_seconds, row_color_mode, generated_at }`; cada linha leva também
+`row_tone` (M15/M16). O JS consome no intervalo configurado (`poll_interval_seconds` da Tela,
+senão o padrão global).
 
 ### 6.5 Alerta
 
-Ver M7/M8: o JS compara o conjunto de IDs de `rows` do poll atual com o do poll anterior; IDs
-novos disparam o som (se `alert_enabled`) e um destaque visual breve na linha.
+Ver M7/M8/M13: o JS compara, **por página**, o conjunto de IDs de `rows` do poll atual com o do
+poll anterior; IDs novos disparam o som (se `alert_enabled`) e um destaque visual breve na
+linha. Se a página do ticket novo está oculta, o som toca e o pill dela pisca; o rodízio não
+salta. A primeira carga de cada página não alerta.
+
+### 6.6 Rodízio e seletor de páginas (M12)
+
+Com 2+ páginas, um timer (separado do de polling) troca a página ativa a cada `rotation_seconds`;
+só a tabela da página ativa é renderizada, as demais ficam em memória até a vez delas. O seletor
+(pills) fica abaixo do título e mostra título e contagem de cada página. Com 1 página não há
+seletor nem timer. Se uma página some entre dois polls (o admin a removeu), o rodízio reajusta o
+índice sem reiniciar a tela.
+
+### 6.7 Barra de overflow (M14)
+
+Layout em coluna: título, seletor de páginas, área da tabela (`flex: 1`, `overflow: hidden`) e a
+barra inferior. Depois de cada render (e a cada resize da janela) o JS mede as linhas cuja borda
+inferior excede a área e, se houver, mostra "▼ N tickets abaixo". Sem scroll nem rolagem
+automática.
+
+### 6.8 Cor de linha (M15/M16)
+
+`RowTone` (pura) recebe o modo e os dados do ticket (status, prioridade, prazos, agora, janela
+de alerta) e devolve o tom da linha. `status` usa uma paleta fixa por status do GLPI;
+`priority` usa as cores de prioridade já configuradas no GLPI; `sla` usa o prazo mais próximo
+entre `time_to_resolve` e (só em "Novo") `time_to_own`, com os tons `late`, `warning`, `ok`, `paused` (Pendente) e
+`none` (sem SLA, neutro e distinto de `ok`). O servidor manda `row_tone`; o JS mapeia para uma
+classe CSS (fundo tingido + borda esquerda forte, ajustados ao tema claro/escuro).
 
 ## 7. Autenticação e rotas sem sessão
 
@@ -200,6 +254,12 @@ Segue o layout do PRE/LTBP. Regras puras, sem GLPI, em `src/Monitor/` (testes em
 - `PublicToken`: geração e formato do token opaco (sem acesso a banco).
 - `ElapsedTimeLabel`: formata a coluna computada "tempo decorrido" a partir de uma data de
   abertura e do momento atual.
+- `RowTone` (M15/M16): modo + dados do ticket → tom da linha, incluindo a classificação do prazo
+  do SLA. `PageRotation` (M11/M12): limites de páginas e do tempo de rodízio, normalização da
+  lista de páginas.
+
+Classes ligadas ao GLPI novas: `MonitorPage` (`CommonDBChild`, tabela filha, aba "Páginas" na
+Tela) e a extensão de `ScreenQuery` para rodar uma busca por página.
 
 Classes ligadas ao GLPI ao lado: `MonitorScreen` (`CommonDBTM`), o serviço que monta e roda a
 busca (`Search::getDatas` com entidade forçada + `forcedisplay`), e os controladores de
@@ -218,7 +278,8 @@ em `front/monitor/`. Twig em `templates/monitor/`, JS em `public/js/monitor.js`,
 - Falha em `Search::getDatas` (ou na conexão): o endpoint de dados devolve um JSON de erro;
   o JS mostra um indicador de "dados desatualizados" (comparando o timestamp do último poll
   bem-sucedido) sem derrubar a tela — ela continua tentando no próximo intervalo.
-- Testes: unitários para `ColumnCatalog`, `PublicToken` e `ElapsedTimeLabel` (pure, mesma suíte
+- Testes: unitários para `ColumnCatalog`, `PublicToken`, `ElapsedTimeLabel`, `RowTone` e
+  `PageRotation` (pure, mesma suíte
   `phpunit.unit.xml`). O restante (exibição pública e autenticada, polling, alerta, bloqueio de
   Pesquisa Salva privada) é validado por um roteiro manual
   (`docs/monitor-manual-tests.md`, a criar).
@@ -263,3 +324,18 @@ em `front/monitor/`. Twig em `templates/monitor/`, JS em `public/js/monitor.js`,
 - **R-5**: a migração dos dados do app Django (nenhuma Tela hoje tem equivalente 1:1 no Django,
   já que lá o filtro é global) fica a cargo de quem configurar as Telas na v1 — não há dado do
   Django para migrar, só recriar manualmente as visões que hoje existem informalmente.
+- **R-6 (aceito pelo dono)**: sem scroll (M14), um ticket abaixo da borda não é visto enquanto a
+  lista passar do tamanho da tela; a barra só informa a quantidade. Aceito de propósito: as Telas
+  ficam em televisões sem ninguém interagindo, então rolar não é uma opção de uso. No modo
+  `priority` o que fica escondido é o menos urgente; no modo `id`, o mais novo.
+- **R-7 (parcialmente resolvido pelo dono)**: confirmado que "Novo" é um bom proxy de "ainda não
+  assumido" para o `time_to_own`, e que ao mudar para Pendente o SLA para no ticket. Segue valendo
+  validar com um probe contra o GLPI local que a busca devolve `time_to_resolve`/`time_to_own`
+  como datas. Como o SLA para em Pendente, o prazo gravado fica velho e a linha pareceria
+  vencida sem estar: por isso o modo `sla` tem um tom `paused` para tickets Pendentes (M16).
+- **R-8**: N páginas = N `Search::getDatas` por ciclo de polling por Tela aberta; o limite de 8
+  páginas e `LIST_LIMIT` de 200 linhas por página não foi medido com carga. Medir na
+  implementação (há muitos `NB-LOAD-*` tickets no GLPI local para isso).
+- **R-9**: o alerta de ticket novo em páginas ocultas depende de o áudio ter sido liberado por um gesto
+  do usuário (autoplay do navegador, já conhecido em M8); numa TV sem interação o som pode não
+  tocar, só o pill piscando.
