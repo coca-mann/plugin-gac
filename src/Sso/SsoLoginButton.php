@@ -80,8 +80,31 @@ final class SsoLoginButton
             $html .= "<div class='mt-3' id='gac-sso-local-toggle'><a class='btn btn-ghost-secondary btn-sm' href='" . htmlescape($localUrl) . "'>"
                 . "<i class='ti ti-key me-1'></i>"
                 . htmlescape(__('Entrar com usuário e senha', 'gac')) . '</a></div>';
+        } else {
+            $html .= "<div class='gac-sso-or'><span>" . htmlescape(__('ou', 'gac')) . '</span></div>';
         }
         $html .= '</div>';
+
+        if (!$hide) {
+            // Form visible: stack it under the Google button (same layout as the unfolded form of
+            // the hidden mode) instead of leaving the two side by side. Without the script, or if a
+            // piece is missing, the original two columns stay as they are.
+            $html .= '<style>'
+                . '.gac-sso-stacked{text-align:left}'
+                . '.gac-sso-stacked .select2-container{width:100%!important}'
+                . '.gac-sso-or{display:flex;align-items:center;gap:12px;margin:20px 0 4px;color:#8a94a6;font-size:13px}'
+                . ".gac-sso-or::before,.gac-sso-or::after{content:'';flex:1;border-top:1px solid #dadce0}"
+                . '</style>'
+                . '<script>(function () {'
+                . "var field = document.getElementById('login_name');"
+                . "var column = field ? field.closest('.col-md-5') : null;"
+                . "var panel = document.querySelector('.gac-sso-login');"
+                . 'if (!column || !panel) { return; }'
+                . "column.classList.remove('col-md-5');"
+                . "column.classList.add('gac-sso-stacked');"
+                . 'panel.appendChild(column);'
+                . '})();</script>';
+        }
 
         if ($hide) {
             // The login fields sit in the sibling column. Move it under the Google button, folded,
