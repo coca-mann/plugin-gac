@@ -48,6 +48,8 @@ final class MonitorSettings
     {
         return [
             'monitor_default_poll_interval_seconds' => '15',
+            'monitor_default_rotation_seconds'      => (string) PageRotation::DEFAULT_ROTATION_SECONDS,
+            'monitor_sla_warning_minutes'             => '60',
             'monitor_alert_sound_url'                 => '',
             'monitor_service_username'                => '',
             'monitor_service_password'                => '',
@@ -69,6 +71,18 @@ final class MonitorSettings
                 ? (int) $raw['monitor_default_poll_interval_seconds']
                 : self::MIN_POLL_INTERVAL_SECONDS;
             $out['monitor_default_poll_interval_seconds'] = (string) max(self::MIN_POLL_INTERVAL_SECONDS, $seconds);
+        }
+
+        if (array_key_exists('monitor_default_rotation_seconds', $raw)) {
+            $seconds = is_numeric($raw['monitor_default_rotation_seconds'])
+                ? (int) $raw['monitor_default_rotation_seconds']
+                : PageRotation::DEFAULT_ROTATION_SECONDS;
+            $out['monitor_default_rotation_seconds'] = (string) max(PageRotation::MIN_ROTATION_SECONDS, $seconds);
+        }
+
+        if (array_key_exists('monitor_sla_warning_minutes', $raw)) {
+            $minutes = is_numeric($raw['monitor_sla_warning_minutes']) ? (int) $raw['monitor_sla_warning_minutes'] : 60;
+            $out['monitor_sla_warning_minutes'] = (string) max(1, $minutes);
         }
 
         if (array_key_exists('monitor_alert_sound_url', $raw)) {
@@ -93,6 +107,18 @@ final class MonitorSettings
     public static function defaultPollIntervalSeconds(array $s): int
     {
         return (int) ($s['monitor_default_poll_interval_seconds'] ?? 15);
+    }
+
+    /** @param array<string, string> $s */
+    public static function defaultRotationSeconds(array $s): int
+    {
+        return (int) ($s['monitor_default_rotation_seconds'] ?? PageRotation::DEFAULT_ROTATION_SECONDS);
+    }
+
+    /** @param array<string, string> $s */
+    public static function slaWarningMinutes(array $s): int
+    {
+        return (int) ($s['monitor_sla_warning_minutes'] ?? 60);
     }
 
     /** @param array<string, string> $s */

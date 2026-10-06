@@ -44,6 +44,8 @@ final class MonitorSettingsTest extends TestCase
     {
         $s = MonitorSettings::normalize([]);
         $this->assertSame(15, MonitorSettings::defaultPollIntervalSeconds($s));
+        $this->assertSame(20, MonitorSettings::defaultRotationSeconds($s));
+        $this->assertSame(60, MonitorSettings::slaWarningMinutes($s));
         $this->assertSame('', MonitorSettings::alertSoundUrl($s));
         $this->assertSame('', MonitorSettings::serviceUsername($s));
         $this->assertSame('', MonitorSettings::servicePassword($s));
@@ -69,6 +71,30 @@ final class MonitorSettingsTest extends TestCase
         $this->assertFalse(MonitorSettings::hasServiceAccount(
             MonitorSettings::normalize(['monitor_service_password' => 'secret'])
         ));
+    }
+
+    public function testRotationAndSlaWindowAreCoerced(): void
+    {
+        $s = MonitorSettings::normalize([
+            'monitor_default_rotation_seconds' => '1',
+            'monitor_sla_warning_minutes'      => '0',
+        ]);
+        $this->assertSame(5, MonitorSettings::defaultRotationSeconds($s));
+        $this->assertSame(1, MonitorSettings::slaWarningMinutes($s));
+
+        $s = MonitorSettings::normalize([
+            'monitor_default_rotation_seconds' => 'abc',
+            'monitor_sla_warning_minutes'      => 'abc',
+        ]);
+        $this->assertSame(20, MonitorSettings::defaultRotationSeconds($s));
+        $this->assertSame(60, MonitorSettings::slaWarningMinutes($s));
+
+        $s = MonitorSettings::normalize([
+            'monitor_default_rotation_seconds' => '30',
+            'monitor_sla_warning_minutes'      => '90',
+        ]);
+        $this->assertSame(30, MonitorSettings::defaultRotationSeconds($s));
+        $this->assertSame(90, MonitorSettings::slaWarningMinutes($s));
     }
 
     public function testEveryDefaultKeyIsPrefixed(): void
