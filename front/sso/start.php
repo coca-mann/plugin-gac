@@ -39,7 +39,7 @@ global $CFG_GLPI;
 
 $settings = SsoConfig::load();
 if (!SsoSettings::isConfigured($settings)) {
-    Html::redirect($CFG_GLPI['root_doc'] . '/front/login.php');
+    Html::redirect($CFG_GLPI['root_doc'] . '/');
 }
 
 $client = new GoogleClient($settings, SsoSettings::redirectUri($settings, (string) $CFG_GLPI['url_base']));

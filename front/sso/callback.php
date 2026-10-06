@@ -59,4 +59,6 @@ if ($result->ok) {
     Auth::redirectIfAuthenticated($result->data['redirect'] !== '' ? $result->data['redirect'] : null);
 }
 
-Html::redirect($CFG_GLPI['root_doc'] . '/front/login.php?sso_error=' . (int) ($result->data['event_id'] ?? 0));
+// Back to the login page itself ("/"), not front/login.php: that one is the form's POST endpoint
+// and answers a bare GET with "Login ou senha vazios".
+Html::redirect($CFG_GLPI['root_doc'] . '/?sso_error=' . (int) ($result->data['event_id'] ?? 0));

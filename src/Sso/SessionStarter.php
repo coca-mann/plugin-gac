@@ -60,7 +60,7 @@ final class SessionStarter
         }
 
         $ip = getenv('HTTP_X_FORWARDED_FOR') ?: getenv('REMOTE_ADDR');
-        \Event::log(0, 'system', 3, 'login', sprintf(
+        \Glpi\Event::log(0, 'system', 3, 'login', sprintf(
             __('%1$s log in from IP %2$s'),
             $user->fields['name'],
             $ip
