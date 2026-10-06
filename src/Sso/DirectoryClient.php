@@ -72,7 +72,7 @@ final class DirectoryClient
             throw new SsoException('Directory user not found');
         }
         if ($status !== 200 || !is_array($body)) {
-            throw new SsoException('Directory API returned HTTP ' . $status);
+            throw new SsoException('Directory API returned HTTP ' . $status . self::errorDetail($body));
         }
         if (!empty($body['suspended'])) {
             throw new SsoException('Directory user is suspended');
@@ -84,6 +84,25 @@ final class DirectoryClient
         }
 
         return $path;
+    }
+
+    /**
+     * The reason and message Google puts in an error body (for example "forbidden: Not Authorized
+     * to access this resource/api" or "accessNotConfigured"). They never carry tokens or keys, and
+     * they are what tells a missing admin privilege from a disabled API.
+     */
+    private static function errorDetail(mixed $body): string
+    {
+        $error = is_array($body) ? ($body['error'] ?? null) : null;
+        if (!is_array($error)) {
+            return '';
+        }
+
+        $reason  = is_array($error['errors'][0] ?? null) ? (string) ($error['errors'][0]['reason'] ?? '') : '';
+        $message = (string) ($error['message'] ?? '');
+        $detail  = trim($reason . ' ' . $message);
+
+        return $detail === '' ? '' : ' (' . mb_substr($detail, 0, 200) . ')';
     }
 
     /** @throws SsoException */
