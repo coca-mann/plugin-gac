@@ -31,26 +31,38 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\Features;
+declare(strict_types=1);
+
+namespace GlpiPlugin\Gac\Tests\Unit;
+
 use GlpiPlugin\Gac\Sso\IdentityOrigin;
-use GlpiPlugin\Gac\Sso\SsoIdentity;
-use GlpiPlugin\Gac\Sso\UserProvisioner;
+use PHPUnit\Framework\TestCase;
 
-if (!Features::canConfigure(SsoIdentity::$rightname)) {
-    Html::displayRightError();
+final class IdentityOriginTest extends TestCase
+{
+    public function testExternalBeforeTheLinkMeansCreatedByGoogle(): void
+    {
+        self::assertSame(IdentityOrigin::CREATED, IdentityOrigin::of(4));
+        self::assertFalse(IdentityOrigin::isConversion(IdentityOrigin::CREATED));
+    }
+
+    public function testLdapBeforeTheLinkMeansAnAdUserConverted(): void
+    {
+        self::assertSame(IdentityOrigin::LDAP, IdentityOrigin::of(3));
+        self::assertTrue(IdentityOrigin::isConversion(IdentityOrigin::LDAP));
+    }
+
+    public function testAnyOtherMethodIsAConversion(): void
+    {
+        self::assertSame(IdentityOrigin::CONVERTED, IdentityOrigin::of(2));
+        self::assertSame(IdentityOrigin::CONVERTED, IdentityOrigin::of(1));
+        self::assertTrue(IdentityOrigin::isConversion(IdentityOrigin::CONVERTED));
+    }
+
+    public function testSplitsTheFormattedDateTime(): void
+    {
+        self::assertSame(['05-10-2026', '22:33'], IdentityOrigin::splitDateTime('05-10-2026 22:33'));
+        self::assertSame(['05-10-2026', ''], IdentityOrigin::splitDateTime('05-10-2026'));
+        self::assertSame(['', ''], IdentityOrigin::splitDateTime(''));
+    }
 }
-
-if (isset($_POST['undo'])) {
-    $identity   = SsoIdentity::findById((int) ($_POST['id'] ?? 0));
-    $conversion = $identity === null || IdentityOrigin::isConversion(IdentityOrigin::of((int) $identity['prev_authtype']));
-    $ok         = UserProvisioner::undo((int) ($_POST['id'] ?? 0));
-    Session::addMessageAfterRedirect(
-        $ok
-            ? ($conversion ? __('Conversão desfeita.', 'gac') : __('Vínculo desfeito.', 'gac'))
-            : __('Não foi possível desfazer.', 'gac'),
-        false,
-        $ok ? INFO : ERROR
-    );
-}
-
-Html::back();

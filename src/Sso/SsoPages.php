@@ -70,54 +70,96 @@ final class SsoPages
         global $DB, $CFG_GLPI;
 
         $canUndo = Features::canConfigure(SsoIdentity::$rightname);
-        $rows    = $DB->request([
+        $rows    = iterator_to_array($DB->request([
             'SELECT'    => [
                 'glpi_plugin_gac_ssoidentities.id', 'glpi_plugin_gac_ssoidentities.users_id',
                 'glpi_plugin_gac_ssoidentities.email_at_link', 'glpi_plugin_gac_ssoidentities.linked_at',
                 'glpi_plugin_gac_ssoidentities.last_login_at', 'glpi_plugin_gac_ssoidentities.last_ou_path',
                 'glpi_plugin_gac_ssoidentities.prev_authtype', 'glpi_users.name AS login',
+                'glpi_users.is_active', 'glpi_users.is_deleted',
             ],
             'FROM'      => 'glpi_plugin_gac_ssoidentities',
             'LEFT JOIN' => ['glpi_users' => ['ON' => ['glpi_plugin_gac_ssoidentities' => 'users_id', 'glpi_users' => 'id']]],
             'ORDER'     => ['glpi_plugin_gac_ssoidentities.last_login_at DESC'],
             'LIMIT'     => 300,
-        ]);
+        ]), false);
 
-        $html = "<div class='table-responsive'><table class='table table-hover'><thead><tr>"
-            . '<th>' . htmlescape(__('Usuário', 'gac')) . '</th><th>' . htmlescape(__('E-mail na vinculação', 'gac')) . '</th>'
+        $head = "<div class='card-header'><h3 class='card-title'><i class='ti ti-users me-2'></i>"
+            . htmlescape(__('Identidades Google', 'gac'))
+            . " <span class='badge bg-blue-lt ms-2'>" . count($rows) . '</span></h3></div>'
+            . "<div class='card-body border-bottom py-3 text-muted'>"
+            . htmlescape(__('Usuários do GLPI vinculados a uma conta Google. Desfazer devolve o usuário ao método de login que ele tinha antes.', 'gac'))
+            . '</div>';
+
+        if ($rows === []) {
+            return "<div class='card'>" . $head . "<div class='card-body text-center text-muted py-5'>"
+                . "<i class='ti ti-users fs-1 d-block mb-2'></i>"
+                . htmlescape(__('Nenhuma identidade vinculada ainda.', 'gac')) . '</div></div>';
+        }
+
+        $html = "<div class='card'>" . $head . "<div class='table-responsive'><table class='table table-vcenter card-table table-hover'><thead><tr>"
+            . '<th>' . htmlescape(__('Usuário', 'gac')) . '</th><th>' . htmlescape(__('Origem', 'gac')) . '</th>'
             . '<th>' . htmlescape(__('Vinculado em', 'gac')) . '</th><th>' . htmlescape(__('Último login', 'gac')) . '</th>'
             . '<th>' . htmlescape(__('Última OU', 'gac')) . '</th>' . ($canUndo ? '<th></th>' : '') . '</tr></thead><tbody>';
 
-        $count = 0;
         foreach ($rows as $row) {
-            ++$count;
+            $login   = (string) $row['login'];
+            $email   = (string) $row['email_at_link'];
+            $origin  = IdentityOrigin::of((int) $row['prev_authtype']);
             $userUrl = $CFG_GLPI['root_doc'] . '/front/user.form.php?id=' . (int) $row['users_id'];
-            $html .= '<tr><td><a href="' . htmlescape($userUrl) . '">' . htmlescape((string) $row['login']) . '</a></td>'
-                . '<td>' . htmlescape((string) $row['email_at_link']) . '</td>'
-                . '<td>' . htmlescape((string) Html::convDateTime((string) $row['linked_at'])) . '</td>'
-                . '<td>' . htmlescape((string) Html::convDateTime((string) $row['last_login_at'])) . '</td>'
-                . '<td><code>' . htmlescape((string) $row['last_ou_path']) . '</code></td>';
+
+            $user = '<a class="fw-bold" href="' . htmlescape($userUrl) . '">' . htmlescape($login) . '</a>';
+            if (mb_strtolower($email) !== mb_strtolower($login)) {
+                $user .= "<div class='small text-muted'>" . htmlescape($email) . '</div>';
+            }
+
+            $badge = match ($origin) {
+                IdentityOrigin::CREATED => "<span class='badge bg-green-lt'>" . htmlescape(__('Criado pelo Google', 'gac')) . '</span>',
+                IdentityOrigin::LDAP    => "<span class='badge bg-azure-lt'>" . htmlescape(__('Convertido do AD', 'gac')) . '</span>',
+                default                 => "<span class='badge bg-azure-lt'>" . htmlescape(__('Convertido', 'gac')) . '</span>',
+            };
+            if (!$row['is_active'] || $row['is_deleted']) {
+                $badge .= " <span class='badge bg-red-lt'>" . htmlescape(__('Inativo', 'gac')) . '</span>';
+            }
+
+            $html .= '<tr><td>' . $user . '</td><td>' . $badge . '</td>'
+                . '<td>' . self::dateCell((string) $row['linked_at']) . '</td>'
+                . '<td>' . self::dateCell((string) $row['last_login_at']) . '</td>'
+                . '<td>' . ($row['last_ou_path'] === '' || $row['last_ou_path'] === null
+                    ? "<span class='text-muted'>-</span>"
+                    : "<span class='badge bg-secondary-lt font-monospace'>" . htmlescape((string) $row['last_ou_path']) . '</span>') . '</td>';
             if ($canUndo) {
-                $html .= '<td>' . self::undoForm((int) $row['id']) . '</td>';
+                $html .= "<td class='text-end'>" . self::undoForm((int) $row['id'], IdentityOrigin::isConversion($origin)) . '</td>';
             }
             $html .= '</tr>';
         }
-        if ($count === 0) {
-            $html .= "<tr><td colspan='6' class='text-center text-muted'>" . htmlescape(__('Nenhuma identidade vinculada ainda.', 'gac')) . '</td></tr>';
-        }
 
-        return $html . '</tbody></table></div>';
+        return $html . '</tbody></table></div></div>';
     }
 
-    private static function undoForm(int $id): string
+    /** The date on top and the time, muted, below. */
+    private static function dateCell(string $dbValue): string
     {
-        $confirm = htmlescape(__('Desfazer a conversão? O usuário volta ao método de autenticação anterior e às autorizações dinâmicas que tinha.', 'gac'));
+        [$date, $time] = IdentityOrigin::splitDateTime((string) Html::convDateTime($dbValue));
+        if ($date === '') {
+            return "<span class='text-muted'>-</span>";
+        }
+
+        return htmlescape($date) . ($time !== '' ? "<div class='small text-muted'>" . htmlescape($time) . '</div>' : '');
+    }
+
+    private static function undoForm(int $id, bool $conversion): string
+    {
+        $confirm = htmlescape($conversion
+            ? __('Desfazer a conversão? O usuário volta ao método de autenticação anterior e às autorizações dinâmicas que tinha.', 'gac')
+            : __('Desfazer o vínculo? O usuário continua existindo no GLPI, mas perde as autorizações dinâmicas e o vínculo com a conta Google; no próximo login pelo Google ele é vinculado de novo.', 'gac'));
+        $label = $conversion ? __('Desfazer conversão', 'gac') : __('Desfazer vínculo', 'gac');
 
         return "<form method='post' action='" . htmlescape(self::base() . '/undo.php') . "' class='d-inline'"
             . " onsubmit=\"return confirm('" . $confirm . "');\">"
             . "<input type='hidden' name='id' value='" . $id . "'>"
-            . "<button type='submit' class='btn btn-sm btn-outline-danger' name='undo' value='1'>"
-            . htmlescape(__('Desfazer conversão', 'gac')) . '</button>'
+            . "<button type='submit' class='btn btn-sm btn-ghost-danger' name='undo' value='1'>"
+            . "<i class='ti ti-arrow-back-up me-1'></i>" . htmlescape($label) . '</button>'
             . Html::closeForm(false);
     }
 

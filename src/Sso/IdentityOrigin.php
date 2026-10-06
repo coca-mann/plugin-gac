@@ -31,26 +31,43 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\Features;
-use GlpiPlugin\Gac\Sso\IdentityOrigin;
-use GlpiPlugin\Gac\Sso\SsoIdentity;
-use GlpiPlugin\Gac\Sso\UserProvisioner;
+declare(strict_types=1);
 
-if (!Features::canConfigure(SsoIdentity::$rightname)) {
-    Html::displayRightError();
+namespace GlpiPlugin\Gac\Sso;
+
+/**
+ * Where a linked user came from, read from the authentication method the user had before the
+ * link: external (created by the Google login itself), LDAP (an AD user converted) or any other
+ * method (converted).
+ */
+final class IdentityOrigin
+{
+    public const CREATED   = 'created';
+    public const CONVERTED = 'converted';
+    public const LDAP      = 'ldap';
+
+    private const AUTH_LDAP     = 3;
+    private const AUTH_EXTERNAL = 4;
+
+    public static function of(int $prevAuthtype): string
+    {
+        return match ($prevAuthtype) {
+            self::AUTH_EXTERNAL => self::CREATED,
+            self::AUTH_LDAP     => self::LDAP,
+            default             => self::CONVERTED,
+        };
+    }
+
+    public static function isConversion(string $origin): bool
+    {
+        return $origin !== self::CREATED;
+    }
+
+    /** "05-10-2026 22:33" into ["05-10-2026", "22:33"]; a value without a time keeps an empty time. */
+    public static function splitDateTime(string $formatted): array
+    {
+        $parts = explode(' ', trim($formatted), 2);
+
+        return [$parts[0], $parts[1] ?? ''];
+    }
 }
-
-if (isset($_POST['undo'])) {
-    $identity   = SsoIdentity::findById((int) ($_POST['id'] ?? 0));
-    $conversion = $identity === null || IdentityOrigin::isConversion(IdentityOrigin::of((int) $identity['prev_authtype']));
-    $ok         = UserProvisioner::undo((int) ($_POST['id'] ?? 0));
-    Session::addMessageAfterRedirect(
-        $ok
-            ? ($conversion ? __('Conversão desfeita.', 'gac') : __('Vínculo desfeito.', 'gac'))
-            : __('Não foi possível desfazer.', 'gac'),
-        false,
-        $ok ? INFO : ERROR
-    );
-}
-
-Html::back();
