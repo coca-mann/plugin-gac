@@ -95,7 +95,7 @@ final class SsoSettingsTest extends TestCase
     public function testListGettersParseTheTextareas(): void
     {
         $s = SsoSettings::normalize([
-            'sso_allowed_domains'  => "@Fimca.com.br\ngrupoaparicio.com.br",
+            'sso_workspaces'       => [['name' => 'Fimca', 'domains' => "@Fimca.com.br\ngrupoaparicio.com.br", 'admin_subject' => 'a@fimca.com.br']],
             'sso_pilot_emails'     => 'TI@fimca.com.br, ana@fimca.com.br',
             'sso_blocked_ou_paths' => "/FIMCA/x/Professores\n# comentario\n",
         ]);
@@ -109,8 +109,8 @@ final class SsoSettingsTest extends TestCase
     {
         $full = [
             'sso_enabled' => '1', 'sso_client_id' => 'id', 'sso_client_secret' => 'secret',
-            'sso_allowed_domains' => 'fimca.com.br', 'sso_sa_client_email' => 'sa@p.iam.gserviceaccount.com',
-            'sso_sa_private_key' => 'KEY', 'sso_sa_admin_subject' => 'admin@fimca.com.br',
+            'sso_workspaces' => '[{"name":"Fimca","domains":["fimca.com.br"],"admin_subject":"admin@fimca.com.br","is_active":true}]',
+            'sso_sa_client_email' => 'sa@p.iam.gserviceaccount.com', 'sso_sa_private_key' => 'KEY',
         ];
         $this->assertTrue(SsoSettings::isConfigured(SsoSettings::normalize($full)));
 
@@ -119,6 +119,42 @@ final class SsoSettingsTest extends TestCase
             unset($partial[$missing]);
             $this->assertFalse(SsoSettings::isConfigured(SsoSettings::normalize($partial)), "missing $missing");
         }
+    }
+
+    public function testWorkspacesAreKeptAsCanonicalJsonAndAnIncompleteOneIsNotConfigured(): void
+    {
+        $base = [
+            'sso_enabled' => '1', 'sso_client_id' => 'id', 'sso_client_secret' => 'secret',
+            'sso_sa_client_email' => 'sa@p.iam.gserviceaccount.com', 'sso_sa_private_key' => 'KEY',
+        ];
+        // A workspace with no admin to impersonate cannot read org units, so it is not usable.
+        $s = SsoSettings::normalize($base + ['sso_workspaces' => [['name' => 'A', 'domains' => 'a.com', 'admin_subject' => '']]]);
+
+        $this->assertFalse(SsoSettings::isConfigured($s));
+        $this->assertSame([], SsoSettings::allowedDomains($s));
+        $this->assertSame('[]', SsoSettings::defaults()['sso_workspaces']);
+        $this->assertSame(
+            '[{"name":"A","domains":["a.com"],"admin_subject":"","is_active":true}]',
+            $s['sso_workspaces']
+        );
+    }
+
+    public function testTwoWorkspacesGiveTheUnionOfDomainsAndTheRightAdminPerEmail(): void
+    {
+        $s = SsoSettings::normalize(['sso_workspaces' => [
+            ['name' => 'Fimca', 'domains' => 'fimca.com.br', 'admin_subject' => 'a@fimca.com.br'],
+            ['name' => 'Metro', 'domains' => 'metropolitana-ro.com.br', 'admin_subject' => 'a@metropolitana-ro.com.br'],
+        ]]);
+
+        $this->assertSame(['fimca.com.br', 'metropolitana-ro.com.br'], SsoSettings::allowedDomains($s));
+        $this->assertSame('a@metropolitana-ro.com.br', SsoSettings::workspaces($s)->forEmail('x@metropolitana-ro.com.br')?->adminSubject);
+    }
+
+    public function testTheLegacyKeysAreNoLongerSettings(): void
+    {
+        $this->assertArrayNotHasKey('sso_allowed_domains', SsoSettings::defaults());
+        $this->assertArrayNotHasKey('sso_sa_admin_subject', SsoSettings::defaults());
+        $this->assertSame(['sso_allowed_domains', 'sso_sa_admin_subject'], SsoSettings::LEGACY_KEYS);
     }
 
     public function testRedirectUriUsesTheOverrideOrTheUrlBase(): void

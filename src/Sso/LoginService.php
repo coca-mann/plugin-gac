@@ -106,9 +106,15 @@ final class LoginService
                 return $fail($denied);
             }
 
-            // 4. The user's OU, then the hard block and the optional domain x OU check.
+            // 4. The workspace that owns the e-mail's domain (spec S24), then the user's OU read
+            // there, then the hard block and the optional domain x OU check.
+            $workspace = SsoSettings::workspaces($settings)->forEmail($email);
+            if ($workspace === null) {
+                return $fail(Outcome::DOMAIN_DENIED, 'no active workspace owns this domain');
+            }
+
             try {
-                $ou = OuPath::normalize((new DirectoryClient($settings))->orgUnitPath($email));
+                $ou = OuPath::normalize((new DirectoryClient($settings, $workspace->adminSubject))->orgUnitPath($email));
             } catch (SsoException $e) {
                 return $fail(Outcome::API_ERROR, $e->getMessage());
             }

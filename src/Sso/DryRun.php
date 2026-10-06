@@ -43,7 +43,7 @@ namespace GlpiPlugin\Gac\Sso;
 final class DryRun
 {
     /**
-     * @return array{email: string, ou: string, ancestors: list<string>, outcome: string, message: string,
+     * @return array{email: string, workspace: string, ou: string, ancestors: list<string>, outcome: string, message: string,
      *               grants: list<array{entity: string, profile: string, is_recursive: bool}>, default_entity: ?string}
      */
     public static function run(string $email): array
@@ -51,7 +51,7 @@ final class DryRun
         $email    = mb_strtolower(trim($email));
         $settings = SsoConfig::load();
         $report   = [
-            'email' => $email, 'ou' => '', 'ancestors' => [], 'outcome' => Outcome::OK,
+            'email' => $email, 'workspace' => '', 'ou' => '', 'ancestors' => [], 'outcome' => Outcome::OK,
             'message' => '', 'grants' => [], 'default_entity' => null,
         ];
 
@@ -79,8 +79,14 @@ final class DryRun
             return $finish($denied);
         }
 
+        $workspace = SsoSettings::workspaces($settings)->forEmail($email);
+        if ($workspace === null) {
+            return $finish(Outcome::DOMAIN_DENIED);
+        }
+        $report['workspace'] = $workspace->name;
+
         try {
-            $ou = OuPath::normalize((new DirectoryClient($settings))->orgUnitPath($email));
+            $ou = OuPath::normalize((new DirectoryClient($settings, $workspace->adminSubject))->orgUnitPath($email));
         } catch (SsoException $e) {
             return $finish(Outcome::API_ERROR, '(' . $e->getMessage() . ')');
         }

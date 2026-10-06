@@ -43,6 +43,7 @@ use GlpiPlugin\Gac\Sso\SsoEvent;
 use GlpiPlugin\Gac\Sso\SsoIdentity;
 use GlpiPlugin\Gac\Sso\SsoLoginButton;
 use GlpiPlugin\Gac\Sso\SsoSettings;
+use GlpiPlugin\Gac\Sso\WorkspaceRegistry;
 
 /**
  * Plugin install process. Same function runs for install and update, so every step checks
@@ -324,6 +325,18 @@ function plugin_gac_install(): bool
         Config::setConfigurationValues('plugin:gac', $missing);
     }
 
+    // SSO: the first version kept one workspace in sso_allowed_domains / sso_sa_admin_subject
+    // (spec S24). Move it to the workspaces list once, then drop the old keys.
+    $ssoRaw = Config::getConfigurationValues('plugin:gac');
+    $legacy = WorkspaceRegistry::fromLegacy($ssoRaw);
+    if ($legacy !== null && WorkspaceRegistry::fromJson((string) ($ssoRaw['sso_workspaces'] ?? '[]'))->all() === []) {
+        Config::setConfigurationValues('plugin:gac', ['sso_workspaces' => $legacy->toJson()]);
+    }
+    $ssoLegacyPresent = array_values(array_intersect(SsoSettings::LEGACY_KEYS, array_keys($ssoRaw)));
+    if ($ssoLegacyPresent !== []) {
+        Config::deleteConfigurationValues('plugin:gac', $ssoLegacyPresent);
+    }
+
     // Profile right. addProfileRights() inserts one row per existing profile, so existence
     // must be checked by counting. Full access only for profiles that already hold the native
     // 'config' right; every other profile starts without access and an administrator grants
@@ -590,6 +603,7 @@ function plugin_gac_uninstall(): bool
         array_keys(LtbpSettings::defaults()),
         array_keys(MonitorSettings::defaults()),
         array_keys(SsoSettings::defaults()),
+        SsoSettings::LEGACY_KEYS,
         ['pre_config_right_migrated']
     ));
 

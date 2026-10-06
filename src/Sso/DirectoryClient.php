@@ -45,8 +45,11 @@ final class DirectoryClient
     private const USERS_URI = 'https://admin.googleapis.com/admin/directory/v1/users/';
     private const SCOPES    = ['https://www.googleapis.com/auth/admin.directory.user.readonly'];
 
-    /** @param array<string, string> $settings SsoConfig::load() */
-    public function __construct(private readonly array $settings) {}
+    /**
+     * @param array<string, string> $settings     SsoConfig::load() (the shared service account)
+     * @param string                $adminSubject the read-only admin of the user's workspace (spec S24)
+     */
+    public function __construct(private readonly array $settings, private readonly string $adminSubject) {}
 
     /** @throws SsoException */
     public function orgUnitPath(string $email): string
@@ -111,7 +114,7 @@ final class DirectoryClient
         $jwt = ServiceAccountJwt::build(
             SsoSettings::saClientEmail($this->settings),
             SsoSettings::saPrivateKey($this->settings),
-            SsoSettings::saAdminSubject($this->settings),
+            $this->adminSubject,
             self::SCOPES,
             time()
         );

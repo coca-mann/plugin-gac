@@ -68,8 +68,7 @@ final class SsoConfigSection implements ConfigSection
 
         $general = $this->row(__('Login com Google habilitado', 'gac'), Dropdown::showYesNo('sso_enabled', SsoSettings::enabled($s) ? 1 : 0, -1, ['display' => false]))
             . $this->row(__('Texto do botão', 'gac'), Html::input('sso_button_label', ['value' => SsoSettings::buttonLabel($s)]))
-            . $this->row(__('Ocultar o formulário de usuário e senha (acessível com ?local=1)', 'gac'), Dropdown::showYesNo('sso_hide_local_form', SsoSettings::hideLocalForm($s) ? 1 : 0, -1, ['display' => false]))
-            . $this->row(__('Domínios permitidos (um por linha)', 'gac'), $this->textarea('sso_allowed_domains', (string) $s['sso_allowed_domains'], 3));
+            . $this->row(__('Ocultar o formulário de usuário e senha (acessível com ?local=1)', 'gac'), Dropdown::showYesNo('sso_hide_local_form', SsoSettings::hideLocalForm($s) ? 1 : 0, -1, ['display' => false]));
 
         $oauth = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
             . htmlescape(__('URI de redirecionamento a cadastrar no cliente OAuth do Google:', 'gac'))
@@ -82,14 +81,13 @@ final class SsoConfigSection implements ConfigSection
             . $this->row(__('URI de redirecionamento (opcional; em branco usa a URL base do GLPI)', 'gac'), Html::input('sso_redirect_uri', ['value' => (string) $s['sso_redirect_uri']]));
 
         $service = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
-            . htmlescape(__('Conta de serviço do Google Cloud com delegação em todo o domínio e somente o escopo admin.directory.user.readonly. O GLPI representa o administrador abaixo apenas para ler a OU do usuário.', 'gac'))
+            . htmlescape(__('Uma única conta de serviço do Google Cloud serve a todos os workspaces: ela precisa ter a delegação em todo o domínio, com somente o escopo admin.directory.user.readonly, autorizada no Admin Console de cada workspace. O administrador representado em cada um é definido no bloco Workspaces.', 'gac'))
             . '</div>'
             . $this->row(__('E-mail da conta de serviço', 'gac'), Html::input('sso_sa_client_email', ['value' => SsoSettings::saClientEmail($s)]))
             . $this->row(
                 SsoSettings::saPrivateKey($s) !== '' ? __('Chave privada (já configurada; deixe em branco para manter)', 'gac') : __('Chave privada (cole o campo private_key do JSON)', 'gac'),
                 $this->textarea('sso_sa_private_key', '', 4)
-            )
-            . $this->row(__('E-mail do administrador representado', 'gac'), Html::input('sso_sa_admin_subject', ['value' => SsoSettings::saAdminSubject($s)]));
+            );
 
         $rules = "<div class='alert alert-warning'><i class='ti ti-alert-triangle me-1'></i>"
             . htmlescape(__('O mapeamento de OU para entidade e perfil é feito em Administração > Regras > Regras de autorização, com o critério "OU do Google Workspace". Use somente a condição "é" nesse critério; a regra vale para a OU e todas as OUs abaixo dela. Regras mais específicas devem ter a ação "Parar o processamento" e ficar acima da regra padrão da unidade.', 'gac'))
@@ -105,10 +103,76 @@ final class SsoConfigSection implements ConfigSection
 
         return $this->block('ti-brand-google', __('Geral', 'gac'), $general)
             . $this->block('ti-key', __('Cliente OAuth', 'gac'), $oauth)
+            . $this->block('ti-building', __('Workspaces do Google', 'gac'), $this->workspacesBlock($s))
             . $this->block('ti-server', __('Conta de serviço', 'gac'), $service)
             . $this->block('ti-route', __('Regras e bloqueios', 'gac'), $rules)
             . $this->block('ti-flask', __('Piloto e retenção', 'gac'), $pilot)
             . $this->dryRunBlock();
+    }
+
+    /** The list of Google workspaces (spec S24): name, domains, admin to impersonate, active. */
+    private function workspacesBlock(array $s): string
+    {
+        $workspaces   = SsoSettings::workspaces($s)->all();
+        $workspaces[] = new Workspace('', [], '', true); // one empty row to add a workspace
+
+        $rows = '';
+        foreach ($workspaces as $workspace) {
+            $rows .= $this->workspaceRow($workspace);
+        }
+
+        $note = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
+            . htmlescape(__('Cada workspace do Google que o GLPI aceita. Os domínios aceitos no login são os dos workspaces ativos, e a OU do usuário é lida com o administrador do workspace dele. Um domínio só pode estar em um workspace. Para remover um, use "Limpar" e salve. Um workspace sem domínio ou sem administrador fica inutilizável.', 'gac'))
+            . '</div>';
+
+        $table = "<div class='table-responsive'><table class='table' id='gac-sso-workspaces'><thead><tr>"
+            . '<th>' . htmlescape(__('Nome', 'gac')) . '</th>'
+            . '<th>' . htmlescape(__('Domínios (um por linha)', 'gac')) . '</th>'
+            . '<th>' . htmlescape(__('Administrador representado (somente leitura)', 'gac')) . '</th>'
+            . '<th>' . htmlescape(__('Ativo', 'gac')) . '</th><th></th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
+            . "<button type='button' class='btn btn-sm btn-outline-secondary' id='gac-sso-add-ws'><i class='ti ti-plus me-1'></i>"
+            . htmlescape(__('Adicionar workspace', 'gac')) . '</button>';
+
+        $script = <<<'HTML'
+<script>
+(function () {
+    var table = document.getElementById('gac-sso-workspaces');
+    var add = document.getElementById('gac-sso-add-ws');
+    if (!table || !add) { return; }
+    function clearRow(row) {
+        row.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+        row.querySelectorAll('select').forEach(function (el) { el.value = '1'; });
+    }
+    table.addEventListener('click', function (event) {
+        var button = event.target.closest('.gac-ws-clear');
+        if (button) { clearRow(button.closest('tr')); }
+    });
+    add.addEventListener('click', function () {
+        var rows = table.querySelectorAll('tbody tr');
+        var copy = rows[rows.length - 1].cloneNode(true);
+        clearRow(copy);
+        table.querySelector('tbody').appendChild(copy);
+    });
+})();
+</script>
+HTML;
+
+        return $note . $table . $script;
+    }
+
+    private function workspaceRow(Workspace $workspace): string
+    {
+        $active = "<select class='form-select' name='ws_active[]'>"
+            . "<option value='1'" . ($workspace->active ? ' selected' : '') . '>' . htmlescape(__('Sim', 'gac')) . '</option>'
+            . "<option value='0'" . ($workspace->active ? '' : ' selected') . '>' . htmlescape(__('Não', 'gac')) . '</option></select>';
+
+        return '<tr>'
+            . "<td><input class='form-control' name='ws_name[]' value='" . htmlescape($workspace->name) . "'></td>"
+            . '<td>' . $this->textarea('ws_domains[]', implode("\n", $workspace->domains), 3) . '</td>'
+            . "<td><input class='form-control' type='email' name='ws_admin[]' value='" . htmlescape($workspace->adminSubject) . "'></td>"
+            . '<td>' . $active . '</td>'
+            . "<td><button type='button' class='btn btn-sm btn-outline-danger gac-ws-clear'>" . htmlescape(__('Limpar', 'gac')) . '</button></td>'
+            . '</tr>';
     }
 
     private function dryRunBlock(): string
@@ -141,6 +205,7 @@ final class SsoConfigSection implements ConfigSection
                 if (d.error) { out.innerHTML = '<div class="alert alert-danger">' + esc(d.error) + '</div>'; return; }
                 var ok = d.outcome === 'ok';
                 var html = '<div class="alert alert-' + (ok ? 'success' : 'danger') + '">' + esc(d.message || (ok ? 'Login permitido.' : d.outcome)) + '</div>';
+                if (d.workspace) { html += '<div><strong>Workspace:</strong> ' + esc(d.workspace) + '</div>'; }
                 if (d.ou) { html += '<div><strong>OU:</strong> <code>' + esc(d.ou) + '</code></div>'; }
                 if (d.grants && d.grants.length) {
                     html += '<table class="table table-sm mt-2"><thead><tr><th>Entidade</th><th>Perfil</th><th>Recursivo</th></tr></thead><tbody>';
@@ -168,9 +233,42 @@ HTML;
         }
 
         $raw = SsoConfig::load();
+        // The workspaces come as parallel arrays, one entry per table row (spec S24).
+        $rows  = [];
+        $names = is_array($post['ws_name'] ?? null) ? array_values($post['ws_name']) : [];
+        foreach ($names as $i => $name) {
+            $rows[] = [
+                'name'          => (string) $name,
+                'domains'       => (string) ($post['ws_domains'][$i] ?? ''),
+                'admin_subject' => (string) ($post['ws_admin'][$i] ?? ''),
+                'is_active'     => ($post['ws_active'][$i] ?? '1') === '1',
+            ];
+        }
+        $registry   = WorkspaceRegistry::fromRows($rows);
+        $duplicated = $registry->duplicatedDomains();
+        if ($duplicated !== []) {
+            Session::addMessageAfterRedirect(
+                sprintf(__('Nada foi salvo: o domínio %s está em mais de um workspace.', 'gac'), implode(', ', $duplicated)),
+                false,
+                ERROR
+            );
+
+            return;
+        }
+        foreach ($registry->all() as $workspace) {
+            if ($workspace->active && !$workspace->isUsable()) {
+                Session::addMessageAfterRedirect(
+                    sprintf(__('O workspace "%s" está sem domínio ou sem administrador e não será usado até ser completado.', 'gac'), $workspace->name),
+                    false,
+                    WARNING
+                );
+            }
+        }
+        $raw['sso_workspaces'] = $registry->toJson();
+
         foreach ([
-            'sso_enabled', 'sso_button_label', 'sso_hide_local_form', 'sso_allowed_domains', 'sso_client_id',
-            'sso_redirect_uri', 'sso_sa_client_email', 'sso_sa_admin_subject', 'sso_blocked_ou_paths',
+            'sso_enabled', 'sso_button_label', 'sso_hide_local_form', 'sso_client_id',
+            'sso_redirect_uri', 'sso_sa_client_email', 'sso_blocked_ou_paths',
             'sso_auto_create', 'sso_revoke_on_deny', 'sso_domain_segment', 'sso_pilot_only',
             'sso_pilot_emails', 'sso_event_retention_days',
         ] as $key) {

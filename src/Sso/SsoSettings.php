@@ -46,6 +46,9 @@ final class SsoSettings
     /** Keys GLPI encrypts at rest (Hooks::SECURED_CONFIGS in setup.php). */
     public const SECURED_KEYS = ['sso_client_secret', 'sso_sa_private_key'];
 
+    /** Keys of the first (single workspace) version, migrated to sso_workspaces on install. */
+    public const LEGACY_KEYS = ['sso_allowed_domains', 'sso_sa_admin_subject'];
+
     private const MIN_RETENTION_DAYS = 7;
     private const DEFAULT_BUTTON     = 'Entrar com Google';
 
@@ -57,10 +60,9 @@ final class SsoSettings
             'sso_client_id'            => '',
             'sso_client_secret'        => '',
             'sso_redirect_uri'         => '',
-            'sso_allowed_domains'      => '',
+            'sso_workspaces'           => '[]',
             'sso_sa_client_email'      => '',
             'sso_sa_private_key'       => '',
-            'sso_sa_admin_subject'     => '',
             'sso_blocked_ou_paths'     => '',
             'sso_auto_create'          => '1',
             'sso_hide_local_form'      => '1',
@@ -101,12 +103,19 @@ final class SsoSettings
         }
 
         foreach ([
-            'sso_client_id', 'sso_redirect_uri', 'sso_allowed_domains', 'sso_sa_client_email',
-            'sso_sa_admin_subject', 'sso_blocked_ou_paths', 'sso_pilot_emails',
+            'sso_client_id', 'sso_redirect_uri', 'sso_sa_client_email', 'sso_blocked_ou_paths', 'sso_pilot_emails',
         ] as $key) {
             if (array_key_exists($key, $raw)) {
                 $out[$key] = trim((string) $raw[$key]);
             }
+        }
+
+        // The workspaces are kept as one canonical JSON string (spec S24); a list given as an
+        // array (a form) is normalized the same way.
+        if (array_key_exists('sso_workspaces', $raw)) {
+            $out['sso_workspaces'] = (is_array($raw['sso_workspaces'])
+                ? WorkspaceRegistry::fromRows($raw['sso_workspaces'])
+                : WorkspaceRegistry::fromJson((string) $raw['sso_workspaces']))->toJson();
         }
 
         if (array_key_exists('sso_button_label', $raw)) {
@@ -153,13 +162,21 @@ final class SsoSettings
         return (string) ($s['sso_client_secret'] ?? '');
     }
 
+    /** @param array<string, string> $s */
+    public static function workspaces(array $s): WorkspaceRegistry
+    {
+        return WorkspaceRegistry::fromJson((string) ($s['sso_workspaces'] ?? '[]'));
+    }
+
     /**
+     * The domains the login accepts: the union of the usable workspaces' domains.
+     *
      * @param array<string, string> $s
      * @return list<string>
      */
     public static function allowedDomains(array $s): array
     {
-        return DomainPolicy::parseDomains((string) ($s['sso_allowed_domains'] ?? ''));
+        return self::workspaces($s)->allowedDomains();
     }
 
     /** @param array<string, string> $s */
@@ -172,12 +189,6 @@ final class SsoSettings
     public static function saPrivateKey(array $s): string
     {
         return (string) ($s['sso_sa_private_key'] ?? '');
-    }
-
-    /** @param array<string, string> $s */
-    public static function saAdminSubject(array $s): string
-    {
-        return (string) ($s['sso_sa_admin_subject'] ?? '');
     }
 
     /** @param array<string, string> $s */
@@ -247,10 +258,9 @@ final class SsoSettings
         return self::enabled($s)
             && self::clientId($s) !== ''
             && self::clientSecret($s) !== ''
-            && self::allowedDomains($s) !== []
+            && self::workspaces($s)->isUsable()
             && self::saClientEmail($s) !== ''
-            && self::saPrivateKey($s) !== ''
-            && self::saAdminSubject($s) !== '';
+            && self::saPrivateKey($s) !== '';
     }
 
     /**
