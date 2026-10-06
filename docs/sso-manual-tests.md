@@ -48,6 +48,12 @@ Resultados de 05/10/2026 vêm de uma rodada **sem credenciais do Google**: scrip
 | 27 | PKCE | `GoogleClient::begin()` | `code_challenge_method=S256` e `code_challenge` = `base64url(sha256(verifier))` | 05/10/2026 OK (script) |
 | 28 | Rota sem login | `start.php` com o navegador deslogado | Redireciona ao Google (302), sem exigir login do GLPI | 05/10/2026 OK (curl) |
 
+| 29 | Conta de um segundo workspace (antes de S24) | Domínio de outro workspace na lista de domínios | Negado: a Directory API do primeiro workspace responde 403; o plugin falha fechado | 05/10/2026 OK (navegador, conta real de outro workspace: evento `api_error`, `Directory API returned HTTP 403 (forbidden Not Authorized...)`, nenhum usuário criado). Foi o que motivou a decisão S24 |
+| 30 | Dois workspaces | Cadastrar o segundo workspace (domínios e administrador dele) e entrar com uma conta dele | Entra: a OU é lida com o administrador do workspace dele; o teste a seco mostra o nome do workspace | — (a lógica de achar o workspace pelo domínio está coberta por teste unitário; falta o login real) |
+| 31 | Domínio em dois workspaces | Repetir o mesmo domínio em dois workspaces e salvar | Nada é salvo e aparece a mensagem com o domínio duplicado | 05/10/2026 OK (script, simulando o POST da tela) |
+| 32 | Migração da configuração antiga | Instalação com `sso_allowed_domains` e `sso_sa_admin_subject` preenchidos | Viram um workspace "Principal"; as chaves antigas somem; rodar de novo não duplica | 05/10/2026 OK (script, com a configuração real do ambiente local) |
+| 33 | Workspace incompleto | Salvar um workspace ativo sem domínio ou sem administrador | Aviso na tela e o workspace não é usado | — (parte "não é usado" coberta por teste unitário; falta ver o aviso na tela) |
+
 ## Verificações pendentes da spec (seção 12)
 
 Resolvidas: V1 (`SECURED_CONFIGS` já usado pelo Monitor; segredo gravado cifrado), V2 (`Session::init()` faz `session_regenerate_id()`), V7 (a assinatura do ID token foi verificada contra os certificados do Google com um token real; o login passou), V9 (`Toolbox::getGuzzleClient()` honra o proxy), V10 (a condição "é" ignora caixa), V13 (critério visível e utilizável na tela de regras), V15 (só a condição "é" funciona com barras).
