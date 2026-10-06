@@ -26,7 +26,7 @@ Resultados de 05/10/2026 vêm de uma rodada **sem credenciais do Google**: scrip
 | 5 | Segundo login | Repetir o 3 ou o 4 | Reusa a identidade (`detail=login`) | 05/10/2026 OK (navegador: 4 logins seguidos, eventos `ok` com `detail=login`, sempre a mesma identidade) |
 | 6 | Domínio não permitido | Conta de domínio fora da lista | Volta ao login com o código; evento `domain_denied` | — (decisão verificada por teste unitário e teste a seco; falta o login real) |
 | 7 | OU sem regra | Conta em OU sem regra | Negado; evento `ou_unmapped`; a OU aparece em "OUs pendentes" | — (listagem em "OUs pendentes" verificada no navegador com eventos semeados) |
-| 8 | OU bloqueada (professores) | Conta na OU do bloqueio duro | Negado; evento `ou_blocked`, mesmo havendo regra `allow` herdada acima | — |
+| 8 | OU bloqueada (professores) | Conta na OU do bloqueio duro | Negado; evento `ou_blocked`, mesmo havendo regra `allow` herdada acima | 05/10/2026 OK (navegador, conta real numa OU de docentes: evento `ou_blocked` com a OU lida do Google, e nenhum usuário foi criado no GLPI). Primeiro o login foi negado por `pilot_blocked`, que o modo piloto avalia antes e dá a mesma mensagem na tela; o `outcome` do evento é o que distingue. **Falta** testar com uma regra `allow` herdada acima da OU (só coberto por teste unitário) |
 | 9 | Regra com negar | Regra com `_deny_login` para a OU | Negado; evento `ou_denied` | — (negação verificada por script contra o motor de regras) |
 | 10 | Modo piloto | Ligar o piloto sem listar o e-mail | Negado; `pilot_blocked`; listando o e-mail, entra | — |
 | 11 | Conta local | Conta com o e-mail de um usuário de banco (ex.: `glpi`) | Negado; `local_account`; o `glpi` continua entrando por senha | — |
