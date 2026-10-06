@@ -115,9 +115,10 @@ class SsoIdentity extends CommonDBTM
 
     /**
      * @param list<array{entities_id: int, profiles_id: int, is_recursive: int}> $removed dynamic authorizations the user had before
+     * @param int $prevEntitiesId the user's default entity before the conversion, restored by "Desfazer conversão"
      * @return int the new identity id
      */
-    public static function link(int $usersId, string $sub, string $email, int $prevAuthtype, int $prevAuthsId, array $removed): int
+    public static function link(int $usersId, string $sub, string $email, int $prevAuthtype, int $prevAuthsId, array $removed, int $prevEntitiesId = 0): int
     {
         global $DB;
 
@@ -127,6 +128,7 @@ class SsoIdentity extends CommonDBTM
             'email_at_link'          => mb_substr($email, 0, 255),
             'prev_authtype'          => $prevAuthtype,
             'prev_auths_id'          => $prevAuthsId,
+            'prev_entities_id'       => $prevEntitiesId,
             'removed_authorizations' => json_encode($removed, JSON_THROW_ON_ERROR),
             'linked_at'              => date('Y-m-d H:i:s'),
             'last_login_at'          => date('Y-m-d H:i:s'),

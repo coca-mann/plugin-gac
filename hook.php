@@ -480,6 +480,7 @@ function plugin_gac_install(): bool
             `email_at_link` VARCHAR(255) NOT NULL DEFAULT '',
             `prev_authtype` TINYINT NOT NULL DEFAULT '0',
             `prev_auths_id` INT {$sign} NOT NULL DEFAULT '0',
+            `prev_entities_id` INT {$sign} NOT NULL DEFAULT '0',
             `removed_authorizations` MEDIUMTEXT DEFAULT NULL,
             `linked_at` TIMESTAMP NULL DEFAULT NULL,
             `last_login_at` TIMESTAMP NULL DEFAULT NULL,
@@ -488,6 +489,12 @@ function plugin_gac_install(): bool
             UNIQUE KEY `users_id` (`users_id`),
             UNIQUE KEY `google_sub` (`google_sub`)
         ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
+    }
+
+    // The default entity was added to the snapshot after the table first shipped (spec S11): the
+    // CREATE TABLE above is skipped once the table exists, so an existing install needs it added.
+    if (!$DB->fieldExists($ssoIdentities, 'prev_entities_id')) {
+        $DB->doQuery("ALTER TABLE `$ssoIdentities` ADD COLUMN `prev_entities_id` INT {$sign} NOT NULL DEFAULT '0' AFTER `prev_auths_id`");
     }
 
     $ssoEvents = 'glpi_plugin_gac_ssoevents';

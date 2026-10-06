@@ -123,7 +123,7 @@ final class UserProvisioner
 
         $DB->update('glpi_users', ['authtype' => \Auth::EXTERNAL, 'auths_id' => 0], ['id' => $id]);
 
-        return SsoIdentity::link($id, $sub, $email, $previous[0], $previous[1], $snapshot);
+        return SsoIdentity::link($id, $sub, $email, $previous[0], $previous[1], $snapshot, (int) $user->fields['entities_id']);
     }
 
     /**
@@ -199,6 +199,8 @@ final class UserProvisioner
         $DB->update('glpi_users', [
             'authtype' => (int) $identity['prev_authtype'],
             'auths_id' => (int) $identity['prev_auths_id'],
+            // The rules set the default entity on login; put back the one the user had before.
+            'entities_id' => (int) ($identity['prev_entities_id'] ?? 0),
         ], ['id' => $usersId]);
 
         self::revokeDynamic($usersId);
