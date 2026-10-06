@@ -77,7 +77,8 @@ final class SsoLoginButton
 
         if ($hide) {
             $localUrl = '?' . http_build_query(array_merge(array_diff_key($_GET, ['sso_error' => 1]), ['local' => 1]));
-            $html .= "<div class='mt-3'><a class='small text-muted' href='" . htmlescape($localUrl) . "'>"
+            $html .= "<div class='mt-3'><a class='btn btn-ghost-secondary btn-sm' href='" . htmlescape($localUrl) . "'>"
+                . "<i class='ti ti-key me-1'></i>"
                 . htmlescape(__('Entrar com usuário e senha', 'gac')) . '</a></div>';
         }
         $html .= '</div>';
