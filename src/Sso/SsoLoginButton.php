@@ -92,8 +92,6 @@ final class SsoLoginButton
             $html .= '<style>'
                 . '.gac-sso-stacked{text-align:left}'
                 . '.gac-sso-stacked .select2-container{width:100%!important}'
-                . '.gac-sso-or{display:flex;align-items:center;gap:12px;margin:20px 0 4px;color:#8a94a6;font-size:13px}'
-                . ".gac-sso-or::before,.gac-sso-or::after{content:'';flex:1;border-top:1px solid #dadce0}"
                 . '</style>'
                 . '<script>(function () {'
                 . "var field = document.getElementById('login_name');"
@@ -126,6 +124,11 @@ final class SsoLoginButton
                 . 'if (!column || !toggle || !panel) { return; }'
                 . "column.classList.remove('col-md-5');"
                 . "column.classList.add('gac-sso-local');"
+                . "var separator = document.createElement('div');"
+                . "separator.className = 'gac-sso-or';"
+                . "separator.innerHTML = '<span></span>';"
+                . "separator.firstChild.textContent = " . json_encode(__('ou', 'gac')) . ';'
+                . 'column.insertBefore(separator, column.firstChild);'
                 . 'panel.appendChild(column);'
                 . "toggle.addEventListener('click', function (event) {"
                 . 'event.preventDefault();'

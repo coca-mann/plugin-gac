@@ -59,6 +59,8 @@ final class GoogleButton
         . '.gac-sso-google:focus-visible{outline:3px solid #4285f4;outline-offset:2px;color:#3c4043}'
         . '.gac-sso-google:active{background:#eef1f4}'
         . '.gac-sso-google-logo{flex:none}'
+        . '.gac-sso-or{display:flex;align-items:center;gap:12px;margin:20px 0 4px;color:#8a94a6;font-size:13px}'
+        . ".gac-sso-or::before,.gac-sso-or::after{content:'';flex:1;border-top:1px solid #dadce0}"
         . '</style>';
 
     public static function render(string $url, string $label): string
