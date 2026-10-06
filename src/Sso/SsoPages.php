@@ -84,17 +84,15 @@ final class SsoPages
             'LIMIT'     => 300,
         ]), false);
 
-        $head = "<div class='card-header'><h3 class='card-title'><i class='ti ti-users me-2'></i>"
-            . htmlescape(__('Identidades Google', 'gac'))
-            . " <span class='badge bg-blue-lt ms-2'>" . count($rows) . '</span></h3></div>'
-            . "<div class='card-body border-bottom py-3 text-muted'>"
-            . htmlescape(__('Usuários do GLPI vinculados a uma conta Google. Desfazer devolve o usuário ao método de login que ele tinha antes.', 'gac'))
-            . '</div>';
+        $head = self::cardHead(
+            'ti-users',
+            __('Identidades Google', 'gac'),
+            (string) count($rows),
+            __('Usuários do GLPI vinculados a uma conta Google. Desfazer devolve o usuário ao método de login que ele tinha antes.', 'gac')
+        );
 
         if ($rows === []) {
-            return "<div class='card'>" . $head . "<div class='card-body text-center text-muted py-5'>"
-                . "<i class='ti ti-users fs-1 d-block mb-2'></i>"
-                . htmlescape(__('Nenhuma identidade vinculada ainda.', 'gac')) . '</div></div>';
+            return "<div class='card'>" . $head . self::emptyState('ti-users', __('Nenhuma identidade vinculada ainda.', 'gac')) . '</div>';
         }
 
         $html = "<div class='card'>" . $head . "<div class='table-responsive'><table class='table table-vcenter card-table table-hover'><thead><tr>"
@@ -145,7 +143,7 @@ final class SsoPages
             return "<span class='text-muted'>-</span>";
         }
 
-        return htmlescape($date) . ($time !== '' ? "<div class='small text-muted'>" . htmlescape($time) . '</div>' : '');
+        return "<div class='text-nowrap'>" . htmlescape($date) . ($time !== '' ? "<div class='small text-muted'>" . htmlescape($time) . '</div>' : '') . '</div>';
     }
 
     private static function undoForm(int $id, bool $conversion): string
@@ -168,6 +166,7 @@ final class SsoPages
     {
         global $DB;
 
+        $limit   = 200;
         $where   = [];
         $outcome = (string) ($filters['outcome'] ?? '');
         if ($outcome !== '' && in_array($outcome, Outcome::all(), true)) {
@@ -183,37 +182,49 @@ final class SsoPages
             $options .= '<option value="' . htmlescape($code) . '"' . ($code === $outcome ? ' selected' : '') . '>'
                 . htmlescape($code) . '</option>';
         }
-        $html = "<form method='get' class='row g-2 mb-3'>"
+        $filter = "<div class='card-body border-bottom py-3'><form method='get' class='row g-2 align-items-center'>"
             . "<div class='col-md-3'><select class='form-select' name='outcome'>" . $options . '</select></div>'
             . "<div class='col-md-4'><input class='form-control' name='email' placeholder='" . htmlescape(__('E-mail contém...', 'gac')) . "' value='" . htmlescape($email) . "'></div>"
-            . "<div class='col-auto'><button class='btn btn-primary' type='submit'>" . htmlescape(__('Filtrar', 'gac')) . '</button></div></form>';
+            . "<div class='col-auto'><button class='btn btn-primary' type='submit'><i class='ti ti-filter me-1'></i>" . htmlescape(__('Filtrar', 'gac')) . '</button></div>'
+            . ($where !== []
+                ? "<div class='col-auto'><a class='btn btn-ghost-secondary' href='" . htmlescape(self::base() . '/events.php') . "'>" . htmlescape(__('Limpar filtro', 'gac')) . '</a></div>'
+                : '')
+            . '</form></div>';
 
-        $rows = $DB->request([
+        $rows = iterator_to_array($DB->request([
             'FROM'  => SsoEvent::getTable(),
             'WHERE' => $where,
             'ORDER' => ['id DESC'],
-            'LIMIT' => 200,
-        ]);
+            'LIMIT' => $limit,
+        ]), false);
 
-        $html .= "<div class='table-responsive'><table class='table table-sm table-hover'><thead><tr>"
+        $head = self::cardHead(
+            'ti-list-details',
+            __('Eventos do login com Google', 'gac'),
+            count($rows) >= $limit ? $limit . '+' : (string) count($rows),
+            __('Cada tentativa de login pelo Google. O número do evento é o código que o usuário vê na tela de erro. Mostra os 200 mais recentes.', 'gac')
+        );
+
+        if ($rows === []) {
+            return "<div class='card'>" . $head . $filter . self::emptyState('ti-list-details', __('Nenhum evento.', 'gac')) . '</div>';
+        }
+
+        $html = "<div class='card'>" . $head . $filter . "<div class='table-responsive'><table class='table table-vcenter card-table table-hover'><thead><tr>"
             . '<th>#</th><th>' . htmlescape(__('Data', 'gac')) . '</th><th>' . htmlescape(__('E-mail', 'gac')) . '</th>'
             . '<th>' . htmlescape(__('OU', 'gac')) . '</th><th>' . htmlescape(__('Resultado', 'gac')) . '</th>'
             . '<th>' . htmlescape(__('Detalhe', 'gac')) . '</th></tr></thead><tbody>';
-        $count = 0;
         foreach ($rows as $row) {
-            ++$count;
-            $ok    = $row['outcome'] === Outcome::OK;
-            $html .= '<tr><td>' . (int) $row['id'] . '</td><td>' . htmlescape((string) Html::convDateTime((string) $row['date'])) . '</td>'
-                . '<td>' . htmlescape((string) $row['email']) . '</td><td><code>' . htmlescape((string) $row['ou_path']) . '</code></td>'
-                . "<td><span class='badge " . ($ok ? 'bg-success' : 'bg-secondary') . "' title='" . htmlescape(OutcomeLabels::of((string) $row['outcome'])) . "'>"
-                . htmlescape((string) $row['outcome']) . '</span></td>'
-                . '<td>' . htmlescape((string) $row['detail']) . '</td></tr>';
-        }
-        if ($count === 0) {
-            $html .= "<tr><td colspan='6' class='text-center text-muted'>" . htmlescape(__('Nenhum evento.', 'gac')) . '</td></tr>';
+            $code = (string) $row['outcome'];
+            $html .= "<tr><td class='text-muted'>" . (int) $row['id'] . '</td>'
+                . '<td>' . self::dateCell((string) $row['date']) . '</td>'
+                . '<td>' . htmlescape((string) $row['email']) . '</td>'
+                . '<td>' . self::ouBadge((string) $row['ou_path']) . '</td>'
+                . "<td><span class='badge bg-" . OutcomeTone::of($code) . "-lt'>" . htmlescape($code) . '</span>'
+                . "<div class='small text-muted'>" . htmlescape(OutcomeLabels::of($code)) . '</div></td>'
+                . "<td class='text-muted'>" . htmlescape((string) $row['detail']) . '</td></tr>';
         }
 
-        return $html . '</tbody></table></div>';
+        return $html . '</tbody></table></div></div>';
     }
 
     public static function pending(): string
@@ -221,22 +232,51 @@ final class SsoPages
         global $CFG_GLPI;
 
         $ruleUrl = $CFG_GLPI['root_doc'] . '/front/ruleright.php';
-        $html    = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
-            . htmlescape(__('OUs em que alguém tentou entrar e nenhuma regra de autorização concedeu acesso. Para liberar, crie uma regra com o critério "OU do Google Workspace" igual ao caminho abaixo (condição "é").', 'gac'))
-            . " <a href='" . htmlescape($ruleUrl) . "'>" . htmlescape(__('Abrir as regras de autorização', 'gac')) . '</a></div>';
+        $pending = SsoEvent::pendingOus();
 
-        $html .= "<div class='table-responsive'><table class='table table-hover'><thead><tr>"
+        $head = self::cardHead(
+            'ti-hourglass',
+            __('OUs pendentes', 'gac'),
+            (string) count($pending),
+            __('OUs em que alguém tentou entrar e nenhuma regra de autorização concedeu acesso. Para liberar, crie uma regra com o critério "OU do Google Workspace" igual ao caminho abaixo (condição "é").', 'gac'),
+            "<a class='btn btn-sm btn-outline-primary ms-auto' href='" . htmlescape($ruleUrl) . "'><i class='ti ti-external-link me-1'></i>"
+                . htmlescape(__('Abrir as regras de autorização', 'gac')) . '</a>'
+        );
+
+        if ($pending === []) {
+            return "<div class='card'>" . $head . self::emptyState('ti-hourglass', __('Nenhuma OU pendente.', 'gac')) . '</div>';
+        }
+
+        $html = "<div class='card'>" . $head . "<div class='table-responsive'><table class='table table-vcenter card-table table-hover'><thead><tr>"
             . '<th>' . htmlescape(__('OU', 'gac')) . '</th><th>' . htmlescape(__('Tentativas', 'gac')) . '</th>'
             . '<th>' . htmlescape(__('Última tentativa', 'gac')) . '</th></tr></thead><tbody>';
-        $pending = SsoEvent::pendingOus();
         foreach ($pending as $row) {
-            $html .= '<tr><td><code>' . htmlescape($row['ou_path']) . '</code></td><td>' . $row['attempts'] . '</td>'
-                . '<td>' . htmlescape((string) Html::convDateTime($row['last_at'])) . '</td></tr>';
-        }
-        if ($pending === []) {
-            $html .= "<tr><td colspan='3' class='text-center text-muted'>" . htmlescape(__('Nenhuma OU pendente.', 'gac')) . '</td></tr>';
+            $html .= '<tr><td>' . self::ouBadge((string) $row['ou_path']) . '</td>'
+                . "<td><span class='badge bg-orange-lt'>" . (int) $row['attempts'] . '</span></td>'
+                . '<td>' . self::dateCell((string) $row['last_at']) . '</td></tr>';
         }
 
-        return $html . '</tbody></table></div>';
+        return $html . '</tbody></table></div></div>';
+    }
+
+    /** The header of every list card: icon, title, counter and a short explanation, plus an optional action. */
+    private static function cardHead(string $icon, string $title, string $count, string $intro, string $action = ''): string
+    {
+        return "<div class='card-header'><h3 class='card-title'><i class='ti " . htmlescape($icon) . " me-2'></i>"
+            . htmlescape($title) . " <span class='badge bg-blue-lt ms-2'>" . htmlescape($count) . '</span></h3>' . $action . '</div>'
+            . "<div class='card-body border-bottom py-3 text-muted'>" . htmlescape($intro) . '</div>';
+    }
+
+    private static function emptyState(string $icon, string $text): string
+    {
+        return "<div class='card-body text-center text-muted py-5'><i class='ti " . htmlescape($icon) . " fs-1 d-block mb-2'></i>"
+            . htmlescape($text) . '</div>';
+    }
+
+    private static function ouBadge(string $ou): string
+    {
+        return $ou === ''
+            ? "<span class='text-muted'>-</span>"
+            : "<span class='badge bg-secondary-lt font-monospace'>" . htmlescape($ou) . '</span>';
     }
 }
