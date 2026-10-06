@@ -1,7 +1,14 @@
-    <hr>
-    <h4>{{ __('Colunas exibidas', 'gac') }}</h4>
     <p class="text-muted small">{{ __('Marque as colunas e arraste para reordenar (arraste pelo ícone à esquerda). A ordem da lista é a ordem de exibição.', 'gac') }}</p>
-    <ul class="list-group mb-3" data-gac-column-list style="max-width: 32rem;">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2" style="max-width: 32rem;">
+        <span class="badge bg-blue-lt" data-gac-column-count></span>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-gac-columns-all>
+            <i class="ti ti-checks"></i> {{ __('Marcar todas', 'gac') }}
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-gac-columns-default>
+            <i class="ti ti-restore"></i> {{ __('Restaurar padrão', 'gac') }}
+        </button>
+    </div>
+    <ul class="list-group mb-3" data-gac-column-list data-default-columns="{{ default_columns|json_encode|e('html_attr') }}" style="max-width: 32rem;">
         {% for key in columns_ordered %}
             <li class="list-group-item d-flex align-items-center" data-column-key="{{ key }}">
                 <i class="ti ti-grip-vertical gac-drag-handle me-2" style="cursor: grab;"></i>
@@ -34,6 +41,43 @@
                 document.addEventListener('DOMContentLoaded', initDrag);
             } else {
                 initDrag();
+            }
+
+            const total = list.querySelectorAll('[data-gac-column-check]').length;
+            const counter = document.querySelector('[data-gac-column-count]');
+            const refreshCount = function () {
+                const chosen = list.querySelectorAll('[data-gac-column-check]:checked').length;
+                if (counter) {
+                    counter.textContent = chosen + ' de ' + total + ' selecionadas';
+                }
+            };
+            list.addEventListener('change', refreshCount);
+            refreshCount();
+
+            const allButton = document.querySelector('[data-gac-columns-all]');
+            if (allButton) {
+                allButton.addEventListener('click', function () {
+                    list.querySelectorAll('[data-gac-column-check]').forEach(function (box) { box.checked = true; });
+                    refreshCount();
+                });
+            }
+            const defaultButton = document.querySelector('[data-gac-columns-default]');
+            if (defaultButton) {
+                defaultButton.addEventListener('click', function () {
+                    let defaults = [];
+                    try { defaults = JSON.parse(list.dataset.defaultColumns || '[]'); } catch (e) { defaults = []; }
+                    const items = Array.prototype.slice.call(list.querySelectorAll('[data-column-key]'));
+                    const rank = function (key) {
+                        const index = defaults.indexOf(key);
+                        return index === -1 ? 999 : index;
+                    };
+                    items.sort(function (a, b) { return rank(a.dataset.columnKey) - rank(b.dataset.columnKey); });
+                    items.forEach(function (li) {
+                        li.querySelector('[data-gac-column-check]').checked = defaults.indexOf(li.dataset.columnKey) !== -1;
+                        list.appendChild(li);
+                    });
+                    refreshCount();
+                });
             }
 
             const form = list.closest('form');

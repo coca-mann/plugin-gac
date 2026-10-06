@@ -31,38 +31,48 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\GacMenu;
 use GlpiPlugin\Gac\Monitor\MonitorPage;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
 
 $item = new MonitorPage();
 
+// The form itself is rendered inside the Tela's "Páginas" tab (MonitorPage::displayTabContentForItem),
+// which keeps the Tela's side menu and GLPI's standard form footer. This script only handles the
+// actions and, for a plain GET, hands over to that tab.
 if (isset($_POST['add'])) {
     $item->check(-1, CREATE, $_POST);
-    if ($item->add($_POST)) {
-        Html::redirect(MonitorScreen::getFormURLWithID((int) $_POST[MonitorPage::$items_id]));
+    $screenId = (int) $_POST[MonitorPage::$items_id];
+    if (!$item->add($_POST)) {
+        MonitorPage::requestForm(-1, $screenId);
     }
-    Html::back();
+    Html::redirect(MonitorPage::tabUrl($screenId));
 } elseif (isset($_POST['update'])) {
     $item->check($_POST['id'], UPDATE);
-    $item->update($_POST);
-    Html::redirect(MonitorScreen::getFormURLWithID((int) $item->fields[MonitorPage::$items_id]));
+    $screenId = (int) $item->fields[MonitorPage::$items_id];
+    if (!$item->update($_POST)) {
+        MonitorPage::requestForm((int) $_POST['id'], $screenId);
+    }
+    Html::redirect(MonitorPage::tabUrl($screenId));
 } elseif (isset($_POST['purge'])) {
     $item->check($_POST['id'], PURGE);
     $screenId = (int) $item->fields[MonitorPage::$items_id];
     $item->delete($_POST, 1);
-    Html::redirect(MonitorScreen::getFormURLWithID($screenId));
+    Html::redirect(MonitorPage::tabUrl($screenId));
 } else {
-    Html::header(
-        MonitorPage::getTypeName(1),
-        $_SERVER['PHP_SELF'],
-        GacMenu::SECTOR,
-        GacMenu::ITEM_MONITOR
-    );
-    // showForm() directly, not display(): this page is reached from the Tela's "Páginas" tab, so
-    // it needs no tab strip of its own (plan decision 7).
-    $item->showForm((int) ($_GET['id'] ?? -1), [
-        MonitorPage::$items_id => (int) ($_GET[MonitorPage::$items_id] ?? 0),
-    ]);
-    Html::footer();
+    $id       = (int) ($_GET['id'] ?? -1);
+    $screenId = (int) ($_GET[MonitorPage::$items_id] ?? 0);
+    if ($id > 0) {
+        if (!$item->getFromDB($id)) {
+            Html::displayNotFoundError();
+        }
+        $screenId = (int) $item->fields[MonitorPage::$items_id];
+    }
+    if ($screenId <= 0) {
+        Html::displayNotFoundError();
+    }
+    if (!MonitorScreen::canView()) {
+        Html::displayRightError();
+    }
+    MonitorPage::requestForm($id > 0 ? $id : -1, $screenId);
+    Html::redirect(MonitorPage::tabUrl($screenId));
 }

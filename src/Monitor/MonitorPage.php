@@ -48,6 +48,12 @@ class MonitorPage extends CommonDBChild
     public static $rightname = 'plugin_gac_monitor';
     public $dohistory        = false;
 
+    /**
+     * The page form is rendered inside the Tela's "Páginas" tab (like any GLPI child form), not on
+     * a page of its own: monitorpage.form.php stores what to open here and redirects to the tab.
+     */
+    private const SESSION_KEY = 'gac_monitor_page_form';
+
     /** Explicit: the class sits in a sub-namespace, GLPI's derived name would be wrong. */
     public static function getTable($classname = null)
     {
@@ -88,8 +94,42 @@ class MonitorPage extends CommonDBChild
         if (!$item instanceof MonitorScreen) {
             return false;
         }
+        $requested = self::takeRequest((int) $item->getID());
+        if ($requested !== null) {
+            $page = new self();
+            $ok   = $requested <= 0
+                || ($page->getFromDB($requested) && (int) $page->fields[self::$items_id] === (int) $item->getID());
+            if ($ok) {
+                $page->showForm($requested, [self::$items_id => (int) $item->getID()]);
+                return true;
+            }
+        }
+
         self::showForScreen($item);
         return true;
+    }
+
+    /** Remembers which form (a page id, or -1 for a new one) the Tela's tab must open next. */
+    public static function requestForm(int $id, int $screenId): void
+    {
+        $_SESSION[self::SESSION_KEY] = ['id' => $id, 'screen' => $screenId];
+    }
+
+    /** The page id (or -1) requested for this Tela, consumed on read; null when none. */
+    private static function takeRequest(int $screenId): ?int
+    {
+        $request = $_SESSION[self::SESSION_KEY] ?? null;
+        unset($_SESSION[self::SESSION_KEY]);
+        if (!is_array($request) || (int) ($request['screen'] ?? 0) !== $screenId) {
+            return null;
+        }
+        return (int) $request['id'];
+    }
+
+    /** The Tela's form already on its "Páginas" tab. */
+    public static function tabUrl(int $screenId): string
+    {
+        return MonitorScreen::getFormURLWithID($screenId) . '&forcetab=' . urlencode(self::class . '$1');
     }
 
     public static function showForScreen(MonitorScreen $screen): void
@@ -258,6 +298,26 @@ class MonitorPage extends CommonDBChild
         $chosen         = $this->isNewItem() ? ColumnCatalog::DEFAULT_COLUMNS : $this->columns();
         $orderedColumns = array_values(array_unique([...$chosen, ...ColumnCatalog::allKeys()]));
 
+        $screen  = new MonitorScreen();
+        $screen->getFromDB($screenId);
+        $savedId = (int) ($this->fields['savedsearches_id'] ?? 0);
+
+        // Only an already saved page has something to preview: the count runs the saved search
+        // with the Tela's entity scope, with the viewing user's own session.
+        $search = null;
+        if (!$this->isNewItem() && $savedId > 0) {
+            $search = [
+                'name'    => $this->savedSearchName(),
+                'url'     => \SavedSearch::getSearchURL() . '?action=load&id=' . $savedId,
+                'count'   => null,
+            ];
+            try {
+                $search['count'] = ScreenQuery::countMatching($screen, $this);
+            } catch (\Throwable $e) {
+                \Toolbox::logInFile('gac', 'monitor page preview: ' . $e->getMessage() . "\n");
+            }
+        }
+
         TemplateRenderer::getInstance()->display('@gac/monitor/monitorpage.form.html.twig', [
             'item'            => $this,
             'params'          => $options,
@@ -267,6 +327,9 @@ class MonitorPage extends CommonDBChild
             'chosen'          => $chosen,
             'column_choices'  => $columnChoices,
             'saved_searches'  => ['' => Dropdown::EMPTY_VALUE] + self::sharedTicketSavedSearches(),
+            'default_columns' => ColumnCatalog::DEFAULT_COLUMNS,
+            'back_url'        => self::tabUrl($screenId),
+            'search'          => $search,
         ]);
 
         return true;

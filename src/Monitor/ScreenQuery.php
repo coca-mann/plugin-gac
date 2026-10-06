@@ -100,15 +100,25 @@ final class ScreenQuery
     }
 
     /**
-     * One page's search. Runs inside the session `run()` already established.
-     *
-     * @param array<string, string> $settings
-     * @return array{id: int, title: string, columns: list<array{key: string, label: string}>, rows: list<array<string, string>>}
+     * How many tickets a page's saved search matches right now, for the page form's preview.
+     * Runs with the calling user's own session (the authenticated form), scoped to the Tela's
+     * entity exactly like the board.
      */
-    private static function runPage(MonitorScreen $screen, MonitorPage $page, string $sortMode, string $colorMode, array $settings): array
+    public static function countMatching(MonitorScreen $screen, MonitorPage $page): int
     {
-        $columns = $page->columns();
+        $data = self::search($screen, $page, [2], 1);
+        return (int) ($data['data']['totalcount'] ?? 0);
+    }
 
+    /**
+     * The one place that builds a page's Search::getDatas() call: the saved search's criteria,
+     * the Tela's entity scope forced for the duration of the call (and restored afterwards).
+     *
+     * @param list<int> $forcedisplay
+     * @return array<string, mixed>
+     */
+    private static function search(MonitorScreen $screen, MonitorPage $page, array $forcedisplay, int $limit): array
+    {
         $saved    = new SavedSearch();
         $hasSaved = (int) $page->fields['savedsearches_id'] > 0
             && $saved->getFromDB((int) $page->fields['savedsearches_id']);
@@ -120,20 +130,8 @@ final class ScreenQuery
         $params['reset']      = 'reset';
         $params['is_deleted'] = 0;
         $params['start']      = 0;
-        $params['list_limit'] = self::LIST_LIMIT;
+        $params['list_limit'] = $limit;
         $params['criteria']   = $params['criteria'] ?? [];
-
-        // Priority (3) is always fetched, regardless of whether "priority" is a chosen display
-        // column: it drives the row tone and the badge, a visual cue independent of the text
-        // column. Urgency (10), status (12) and opening date (15) are likewise always needed to
-        // sort even when the page does not display them. The SLA deadlines are only fetched for
-        // the "sla" colour mode.
-        $forcedisplay = [...ColumnCatalog::searchOptionIdsFor($columns), 3, 10, 12, 15];
-        if ($colorMode === RowTone::MODE_SLA) {
-            $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_RESOLVE;
-            $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_OWN;
-        }
-        $forcedisplay = array_values(array_unique($forcedisplay));
 
         $previousEntities       = $_SESSION['glpiactiveentities'] ?? null;
         $previousEntitiesString = $_SESSION['glpiactiveentities_string'] ?? null;
@@ -141,7 +139,7 @@ final class ScreenQuery
         self::forceEntityScope((int) $screen->fields['entities_id'], (bool) $screen->fields['is_recursive']);
 
         try {
-            $data = Search::getDatas('Ticket', $params, $forcedisplay);
+            return Search::getDatas('Ticket', $params, $forcedisplay);
         } finally {
             // Never leaves a real session (the authenticated display, or the service account)
             // scoped to the Tela's entity — restore exactly what was there before, or clear it
@@ -158,6 +156,31 @@ final class ScreenQuery
                 $_SESSION['glpishowallentities'] = $previousShowAll;
             }
         }
+    }
+
+    /**
+     * One page's search. Runs inside the session `run()` already established.
+     *
+     * @param array<string, string> $settings
+     * @return array{id: int, title: string, columns: list<array{key: string, label: string}>, rows: list<array<string, string>>}
+     */
+    private static function runPage(MonitorScreen $screen, MonitorPage $page, string $sortMode, string $colorMode, array $settings): array
+    {
+        $columns = $page->columns();
+
+        // Priority (3) is always fetched, regardless of whether "priority" is a chosen display
+        // column: it drives the row tone and the badge, a visual cue independent of the text
+        // column. Urgency (10), status (12) and opening date (15) are likewise always needed to
+        // sort even when the page does not display them. The SLA deadlines are only fetched for
+        // the "sla" colour mode.
+        $forcedisplay = [...ColumnCatalog::searchOptionIdsFor($columns), 3, 10, 12, 15];
+        if ($colorMode === RowTone::MODE_SLA) {
+            $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_RESOLVE;
+            $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_OWN;
+        }
+        $forcedisplay = array_values(array_unique($forcedisplay));
+
+        $data = self::search($screen, $page, $forcedisplay, self::LIST_LIMIT);
 
         // Built while the session is still alive: columnValue() formats dates through
         // Html::convDateTime(), which reads the session's configured date format.
