@@ -66,40 +66,98 @@ final class SsoConfigSection implements ConfigSection
 
         $redirectUri = SsoSettings::redirectUri($s, (string) $CFG_GLPI['url_base']);
 
-        $general = $this->row(__('Login com Google habilitado', 'gac'), Dropdown::showYesNo('sso_enabled', SsoSettings::enabled($s) ? 1 : 0, -1, ['display' => false]))
-            . $this->row(__('Texto do botão', 'gac'), Html::input('sso_button_label', ['value' => SsoSettings::buttonLabel($s)]))
-            . $this->row(__('Ocultar o formulário de usuário e senha (acessível com ?local=1)', 'gac'), Dropdown::showYesNo('sso_hide_local_form', SsoSettings::hideLocalForm($s) ? 1 : 0, -1, ['display' => false]));
+        $general = $this->row(
+            __('Ativar o login com Google', 'gac'),
+            Dropdown::showYesNo('sso_enabled', SsoSettings::enabled($s) ? 1 : 0, -1, ['display' => false]),
+            __('Desligado, o botão some da tela de login e todos entram só com usuário e senha. Quem já está logado não é afetado.', 'gac')
+        )
+            . $this->row(
+                __('Texto do botão', 'gac'),
+                Html::input('sso_button_label', ['value' => SsoSettings::buttonLabel($s)]),
+                __('O texto que aparece no botão da tela de login.', 'gac')
+            )
+            . $this->row(
+                __('Esconder o login por usuário e senha', 'gac'),
+                Dropdown::showYesNo('sso_hide_local_form', SsoSettings::hideLocalForm($s) ? 1 : 0, -1, ['display' => false]),
+                __('Sim: a tela mostra só o botão do Google, e o formulário aparece ao clicar em "Entrar com usuário e senha". Não: os dois aparecem juntos. Mantenha esse acesso disponível para contas locais, como a do administrador.', 'gac')
+            );
 
         $oauth = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
             . htmlescape(__('URI de redirecionamento a cadastrar no cliente OAuth do Google:', 'gac'))
             . ' <code>' . htmlescape($redirectUri) . '</code></div>'
-            . $this->row(__('ID do cliente OAuth', 'gac'), Html::input('sso_client_id', ['value' => SsoSettings::clientId($s)]))
             . $this->row(
-                SsoSettings::clientSecret($s) !== '' ? __('Segredo do cliente (já configurado; deixe em branco para manter)', 'gac') : __('Segredo do cliente', 'gac'),
-                Html::input('sso_client_secret', ['type' => 'password', 'value' => ''])
+                __('ID do cliente', 'gac'),
+                Html::input('sso_client_id', ['value' => SsoSettings::clientId($s)]),
+                __('Copie do Google Cloud, em APIs e serviços > Credenciais, no cliente OAuth do tipo "Aplicativo da Web".', 'gac')
             )
-            . $this->row(__('URI de redirecionamento (opcional; em branco usa a URL base do GLPI)', 'gac'), Html::input('sso_redirect_uri', ['value' => (string) $s['sso_redirect_uri']]));
+            . $this->row(
+                __('Segredo do cliente', 'gac'),
+                Html::input('sso_client_secret', ['type' => 'password', 'value' => '']),
+                SsoSettings::clientSecret($s) !== ''
+                    ? __('Já configurado. Fica guardado cifrado e nunca é exibido de volta; deixe em branco para manter o atual.', 'gac')
+                    : __('Fica guardado cifrado e nunca é exibido de volta.', 'gac')
+            )
+            . $this->row(
+                __('Endereço de retorno (opcional)', 'gac'),
+                Html::input('sso_redirect_uri', ['value' => (string) $s['sso_redirect_uri']]),
+                __('Para onde o Google devolve o usuário depois do login. Em branco, usa o endereço do GLPI. Precisa ser igual ao cadastrado no Google Cloud.', 'gac')
+            );
 
         $service = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
             . htmlescape(__('Uma única conta de serviço do Google Cloud serve a todos os workspaces: ela precisa ter a delegação em todo o domínio, com somente o escopo admin.directory.user.readonly, autorizada no Admin Console de cada workspace. O administrador representado em cada um é definido no bloco Workspaces.', 'gac'))
             . '</div>'
-            . $this->row(__('E-mail da conta de serviço', 'gac'), Html::input('sso_sa_client_email', ['value' => SsoSettings::saClientEmail($s)]))
             . $this->row(
-                SsoSettings::saPrivateKey($s) !== '' ? __('Chave privada (já configurada; deixe em branco para manter)', 'gac') : __('Chave privada (cole o campo private_key do JSON)', 'gac'),
-                $this->textarea('sso_sa_private_key', '', 4)
+                __('E-mail da conta de serviço', 'gac'),
+                Html::input('sso_sa_client_email', ['value' => SsoSettings::saClientEmail($s)]),
+                __('Campo client_email do arquivo JSON (termina em iam.gserviceaccount.com). É essa conta que consulta a OU do usuário no Google.', 'gac')
+            )
+            . $this->row(
+                __('Chave privada', 'gac'),
+                $this->textarea('sso_sa_private_key', '', 4),
+                SsoSettings::saPrivateKey($s) !== ''
+                    ? __('Já configurada. Fica guardada cifrada; deixe em branco para manter a atual.', 'gac')
+                    : __('Cole o campo private_key do arquivo JSON, com as linhas BEGIN e END. Fica guardada cifrada.', 'gac')
             );
 
         $rules = "<div class='alert alert-warning'><i class='ti ti-alert-triangle me-1'></i>"
             . htmlescape(__('O mapeamento de OU para entidade e perfil é feito em Administração > Regras > Regras de autorização, com o critério "OU do Google Workspace". Use somente a condição "é" nesse critério; a regra vale para a OU e todas as OUs abaixo dela. Regras mais específicas devem ter a ação "Parar o processamento" e ficar acima da regra padrão da unidade.', 'gac'))
             . '</div>'
-            . $this->row(__('OUs sempre bloqueadas (uma por linha; vale para a OU e as abaixo dela)', 'gac'), $this->textarea('sso_blocked_ou_paths', (string) $s['sso_blocked_ou_paths'], 4))
-            . $this->row(__('Criar o usuário automaticamente no primeiro login', 'gac'), Dropdown::showYesNo('sso_auto_create', SsoSettings::autoCreate($s) ? 1 : 0, -1, ['display' => false]))
-            . $this->row(__('Remover autorizações dinâmicas de quem cair em OU bloqueada ou negada', 'gac'), Dropdown::showYesNo('sso_revoke_on_deny', SsoSettings::revokeOnDeny($s) ? 1 : 0, -1, ['display' => false]))
-            . $this->row(__('Posição do domínio no caminho da OU (0 desliga a checagem; 2 para /FIMCA/dominio/...)', 'gac'), Html::input('sso_domain_segment', ['type' => 'number', 'min' => 0, 'value' => SsoSettings::domainSegment($s)]));
+            . $this->row(
+                __('OUs bloqueadas', 'gac'),
+                $this->textarea('sso_blocked_ou_paths', (string) $s['sso_blocked_ou_paths'], 4),
+                __('Um caminho por linha (ex.: /fimca.com.br/ies-pvh/docentes). Quem está nessa OU, ou abaixo dela, é negado antes de qualquer regra. Use para os docentes.', 'gac')
+            )
+            . $this->row(
+                __('Criar o usuário no primeiro login', 'gac'),
+                Dropdown::showYesNo('sso_auto_create', SsoSettings::autoCreate($s) ? 1 : 0, -1, ['display' => false]),
+                __('Sim: quem entra e ainda não existe no GLPI é criado. Não: só entra quem já tem usuário.', 'gac')
+            )
+            . $this->row(
+                __('Retirar o acesso de quem for bloqueado', 'gac'),
+                Dropdown::showYesNo('sso_revoke_on_deny', SsoSettings::revokeOnDeny($s) ? 1 : 0, -1, ['display' => false]),
+                __('Sim: se alguém já vinculado cair numa OU bloqueada ou negada, os perfis que o login do Google deu a essa pessoa são removidos. Perfis dados à mão no GLPI não são afetados.', 'gac')
+            )
+            . $this->row(
+                __('Conferir o domínio no caminho da OU', 'gac'),
+                Html::input('sso_domain_segment', ['type' => 'number', 'min' => 0, 'value' => SsoSettings::domainSegment($s)]),
+                __('Segurança extra, normalmente desligada (0). Se o domínio é uma das pastas do caminho da OU (ex.: /FIMCA/fimca.com.br/ies-pvh, onde ele é a pasta de posição 2), informe a posição e o login só passa se o domínio do e-mail for igual a essa pasta. Com 0, não confere.', 'gac')
+            );
 
-        $pilot = $this->row(__('Modo piloto: só os e-mails abaixo entram pelo Google', 'gac'), Dropdown::showYesNo('sso_pilot_only', SsoSettings::pilotOnly($s) ? 1 : 0, -1, ['display' => false]))
-            . $this->row(__('E-mails do piloto (um por linha)', 'gac'), $this->textarea('sso_pilot_emails', (string) $s['sso_pilot_emails'], 3))
-            . $this->row(__('Dias de retenção dos eventos', 'gac'), Html::input('sso_event_retention_days', ['type' => 'number', 'min' => 7, 'value' => SsoSettings::eventRetentionDays($s)]));
+        $pilot = $this->row(
+            __('Liberar só para o piloto', 'gac'),
+            Dropdown::showYesNo('sso_pilot_only', SsoSettings::pilotOnly($s) ? 1 : 0, -1, ['display' => false]),
+            __('Sim: só os e-mails da lista abaixo entram pelo Google; os demais são negados. Use para testar com a TI antes de abrir para todos.', 'gac')
+        )
+            . $this->row(
+                __('E-mails do piloto', 'gac'),
+                $this->textarea('sso_pilot_emails', (string) $s['sso_pilot_emails'], 3),
+                __('Um por linha. Só vale com o modo piloto ligado.', 'gac')
+            )
+            . $this->row(
+                __('Guardar os eventos por (dias)', 'gac'),
+                Html::input('sso_event_retention_days', ['type' => 'number', 'min' => 7, 'value' => SsoSettings::eventRetentionDays($s)]),
+                __('Eventos de login mais antigos que isso são apagados sozinhos. Mínimo de 7 dias.', 'gac')
+            );
 
         return $this->tabs([
             ['general', 'ti-brand-google', __('Geral', 'gac'),
@@ -174,10 +232,10 @@ HTML;
             . '</div>';
 
         $table = "<div class='table-responsive'><table class='table' id='gac-sso-workspaces'><thead><tr>"
-            . '<th>' . htmlescape(__('Nome', 'gac')) . '</th>'
-            . '<th>' . htmlescape(__('Domínios (um por linha)', 'gac')) . '</th>'
-            . '<th>' . htmlescape(__('Administrador representado (somente leitura)', 'gac')) . '</th>'
-            . '<th>' . htmlescape(__('Ativo', 'gac')) . '</th><th></th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
+            . $this->th(__('Nome', 'gac'), __('Só para identificar o workspace.', 'gac'))
+            . $this->th(__('Domínios', 'gac'), __('Um por linha. Cada domínio só pode estar em um workspace.', 'gac'))
+            . $this->th(__('Administrador do Google', 'gac'), __('A conta de serviço age em nome dele para ler a OU dos usuários. Precisa ser super administrador; o acesso é só de leitura.', 'gac'))
+            . $this->th(__('Ativo', 'gac')) . '<th></th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
             . "<button type='button' class='btn btn-sm btn-outline-secondary' id='gac-sso-add-ws'><i class='ti ti-plus me-1'></i>"
             . htmlescape(__('Adicionar workspace', 'gac')) . '</button>';
 
@@ -348,9 +406,19 @@ HTML;
             . "</div><div class='card-body'>" . $content . '</div></div>';
     }
 
-    private function row(string $label, string $control): string
+    private function row(string $label, string $control, string $help = ''): string
     {
         return "<div class='row mb-3'><label class='col-sm-4 col-form-label'>" . htmlescape($label)
-            . "</label><div class='col-sm-8'>" . $control . '</div></div>';
+            . "</label><div class='col-sm-8'>" . $control
+            . ($help !== '' ? "<div class='form-text'>" . htmlescape($help) . '</div>' : '')
+            . '</div></div>';
+    }
+
+    /** A table header with a small explanation under the title. */
+    private function th(string $title, string $help = ''): string
+    {
+        return '<th>' . htmlescape($title)
+            . ($help !== '' ? "<div class='text-muted fw-normal text-wrap small' style='text-transform:none;letter-spacing:0'>" . htmlescape($help) . '</div>' : '')
+            . '</th>';
     }
 }
