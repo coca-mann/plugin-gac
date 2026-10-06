@@ -2960,9 +2960,6 @@ declare(strict_types=1);
 
 namespace GlpiPlugin\Gac\Sso;
 
-use League\OAuth2\Client\Provider\AbstractProvider;
-use League\OAuth2\Client\Provider\Google;
-
 /**
  * The OAuth 2.0 / OpenID Connect side of the login with Google: builds the authorization URL
  * (state, nonce, PKCE S256) and trades the returned code for verified ID token claims.
@@ -2978,14 +2975,13 @@ final class GoogleClient
         private readonly string $redirectUri
     ) {}
 
-    private function provider(): Google
+    private function provider(): GooglePkceProvider
     {
-        return new Google(
+        return new GooglePkceProvider(
             [
                 'clientId'     => SsoSettings::clientId($this->settings),
                 'clientSecret' => SsoSettings::clientSecret($this->settings),
                 'redirectUri'  => $this->redirectUri,
-                'pkceMethod'   => AbstractProvider::PKCE_METHOD_S256,
             ],
             ['httpClient' => \Toolbox::getGuzzleClient()]
         );
@@ -3089,7 +3085,7 @@ Run:
 ```bash
 /c/xampp/php/php.exe var/tools/gac-eval.php '$c = new GlpiPlugin\Gac\Sso\GoogleClient(["sso_client_id" => "cid.apps.googleusercontent.com", "sso_client_secret" => "x"], "http://localhost/plugins/gac/front/sso/callback.php"); $r = $c->begin(); echo $r["url"], "\n"; echo "state=", strlen($r["state"]), " nonce=", strlen($r["nonce"]), " pkce=", strlen($r["pkce"]), "\n";'
 ```
-Expected: uma URL `https://accounts.google.com/o/oauth2/v2/auth?...` contendo `scope=openid email profile`, `hd=*`, `nonce=`, `code_challenge=` e `code_challenge_method=S256`, e a linha `state=32 nonce=32 pkce=` com um número maior que 40. Se faltar `code_challenge`, a opção `pkceMethod` não foi aceita pelo provider; confira `League\OAuth2\Client\Provider\AbstractProvider` no `vendor/` do GLPI e ajuste o nome da opção.
+Expected: uma URL `https://accounts.google.com/o/oauth2/v2/auth?...` contendo `scope=openid email profile`, `hd=*`, `nonce=`, `code_challenge=` e `code_challenge_method=S256`, e a linha `state=32 nonce=32 pkce=` com um número maior que 40. **Atenção (descoberto na execução):** o PKCE do `league/oauth2-client` não é uma opção do construtor; ele só é ativado sobrescrevendo o método protegido `getPkceMethod()`, e o provider do Google não o faz. Por isso existe `src/Sso/GooglePkceProvider.php` (subclasse de `Google` que devolve `S256`) e o `GoogleClient` a usa. Confira que `code_challenge_method=S256` aparece e que `code_challenge` é `base64url(sha256(verifier))`.
 
 - [ ] **Step 5: Checkpoint (sem commit)**
 
