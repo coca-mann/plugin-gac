@@ -73,12 +73,11 @@ final class SsoLoginButton
         }
 
         $html .= "<div class='gac-sso-login mb-3'>"
-            . "<a class='btn btn-outline-primary w-100' href='" . htmlescape($startUrl) . "'>"
-            . "<i class='ti ti-brand-google me-2'></i>" . htmlescape(SsoSettings::buttonLabel($settings)) . '</a>';
+            . GoogleButton::render($startUrl, SsoSettings::buttonLabel($settings));
 
         if ($hide) {
             $localUrl = '?' . http_build_query(array_merge(array_diff_key($_GET, ['sso_error' => 1]), ['local' => 1]));
-            $html .= "<div class='mt-2'><a class='small text-muted' href='" . htmlescape($localUrl) . "'>"
+            $html .= "<div class='mt-3'><a class='small text-muted' href='" . htmlescape($localUrl) . "'>"
                 . htmlescape(__('Entrar com usuário e senha', 'gac')) . '</a></div>';
         }
         $html .= '</div>';
