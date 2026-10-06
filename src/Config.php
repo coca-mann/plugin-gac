@@ -68,6 +68,9 @@ final class Config
 
     public static function renderPage(): void
     {
+        // The sub-section headers take the theme's own surface variable, so they follow the dark
+        // palettes too (bg-body-tertiary stays light there: GLPI does not set data-bs-theme).
+        echo '<style>.gac-section-head{background:var(--tblr-bg-surface-tertiary)}</style>';
         echo "<div class='container-fluid'>";
         foreach (self::sections() as $section) {
             if (!$section->canConfigure()) {

@@ -401,7 +401,7 @@ HTML;
 
     private function block(string $icon, string $title, string $content): string
     {
-        return "<div class='card border mb-4'><div class='card-header bg-body-tertiary'>"
+        return "<div class='card border mb-4'><div class='card-header gac-section-head'>"
             . "<h4 class='card-title mb-0'><i class='ti " . htmlescape($icon) . " me-2'></i>" . htmlescape($title) . '</h4>'
             . "</div><div class='card-body'>" . $content . '</div></div>';
     }

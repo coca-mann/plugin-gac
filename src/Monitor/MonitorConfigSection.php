@@ -102,7 +102,7 @@ final class MonitorConfigSection implements ConfigSection
     private function block(string $icon, string $title, string $description, string $content): string
     {
         $descriptionHtml = $description === '' ? '' : "<div class='text-muted small'>" . htmlescape($description) . '</div>';
-        return "<div class='card border mb-4'><div class='card-header bg-body-tertiary'><div>"
+        return "<div class='card border mb-4'><div class='card-header gac-section-head'><div>"
             . "<h4 class='card-title mb-1'><i class='ti " . htmlescape($icon) . " me-2'></i>" . htmlescape($title) . '</h4>'
             . $descriptionHtml
             . "</div></div><div class='card-body'>" . $content . '</div></div>';

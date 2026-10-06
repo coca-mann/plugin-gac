@@ -179,7 +179,7 @@ final class LtbpConfigSection implements ConfigSection
     /** A titled, bordered block with a short description right below the title. */
     private function block(string $icon, string $title, string $description, string $content): string
     {
-        return "<div class='card border mb-4'><div class='card-header bg-body-tertiary'><div>"
+        return "<div class='card border mb-4'><div class='card-header gac-section-head'><div>"
             . "<h4 class='card-title mb-1'><i class='ti " . htmlescape($icon) . " me-2'></i>" . htmlescape($title) . '</h4>'
             . "<div class='text-muted small'>" . htmlescape($description) . '</div>'
             . "</div></div><div class='card-body'>" . $content . '</div></div>';
