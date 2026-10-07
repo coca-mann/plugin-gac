@@ -84,6 +84,22 @@ final class MonitorConfigSection implements ConfigSection
             ])
         );
         $body .= $this->row(
+            __('Tempo de exibição do banner de ticket novo (segundos)', 'gac'),
+            Html::input('monitor_banner_seconds', [
+                'type'  => 'number',
+                'min'   => MonitorSettings::MIN_BANNER_SECONDS,
+                'max'   => MonitorSettings::MAX_BANNER_SECONDS,
+                'value' => MonitorSettings::bannerSeconds($s),
+            ])
+        );
+        $body .= $this->row(
+            __('Descrição no banner', 'gac'),
+            "<input type='hidden' name='monitor_banner_show_description' value='0'>"
+            . "<label class='form-check'><input type='checkbox' class='form-check-input' name='monitor_banner_show_description' value='1'"
+            . (MonitorSettings::bannerShowDescription($s) ? ' checked' : '') . '>'
+            . "<span class='form-check-label'>" . htmlescape(__('Mostrar as primeiras linhas da descrição do ticket. Desmarque se a TV fica à vista de quem não deveria ler o texto dos chamados.', 'gac')) . '</span></label>'
+        );
+        $body .= $this->row(
             __('Arquivo de som do alerta (mp3, ogg ou wav, até 512 KB)', 'gac'),
             $this->soundFileControl($s)
         );
@@ -168,6 +184,8 @@ final class MonitorConfigSection implements ConfigSection
         $raw['monitor_default_poll_interval_seconds'] = (string) (int) ($post['monitor_default_poll_interval_seconds'] ?? 15);
         $raw['monitor_default_rotation_seconds'] = (string) (int) ($post['monitor_default_rotation_seconds'] ?? 20);
         $raw['monitor_sla_warning_minutes'] = (string) (int) ($post['monitor_sla_warning_minutes'] ?? 60);
+        $raw['monitor_banner_seconds'] = (string) (int) ($post['monitor_banner_seconds'] ?? MonitorSettings::DEFAULT_BANNER_SECONDS);
+        $raw['monitor_banner_show_description'] = ((string) ($post['monitor_banner_show_description'] ?? '0')) === '1' ? '1' : '0';
         $raw['monitor_alert_sound_url'] = trim((string) ($post['monitor_alert_sound_url'] ?? ''));
         $raw['monitor_service_username'] = trim((string) ($post['monitor_service_username'] ?? ''));
         // Blank password on submit means "keep the current one" — the field is never

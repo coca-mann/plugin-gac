@@ -228,6 +228,43 @@
         }
     }
 
+    // The new-ticket banner card (spec M18): background in the ticket's priority colour, text in
+    // whichever of white/near-black reads on it. Built with textContent only: the data is user text.
+    function buildBannerCard(row, more, priorityColors) {
+        const info = row.banner || {};
+        const color = (priorityColors && priorityColors[row.priority_raw]) || '#2b5fd9';
+
+        function line(className, text) {
+            const el = document.createElement('div');
+            el.className = className;
+            el.textContent = text;
+            return el;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'gac-banner-card';
+        card.style.backgroundColor = color;
+        card.style.color = readableTextColor(color);
+
+        card.appendChild(line('gac-banner-top', 'Novo ticket #' + row.id + (info.priority_label ? ' · ' + info.priority_label : '')));
+        card.appendChild(line('gac-banner-title', info.title || ''));
+        const meta = [info.requester, info.entity, info.category].filter(Boolean).join(' · ');
+        if (meta) {
+            card.appendChild(line('gac-banner-meta', meta));
+        }
+        if (info.description) {
+            card.appendChild(line('gac-banner-description', info.description));
+        }
+        if (more > 0) {
+            card.appendChild(line('gac-banner-more', 'e mais ' + more + (more === 1 ? ' ticket novo' : ' tickets novos')));
+        }
+        return card;
+    }
+
+    function wait(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+
     function boot(root) {
         const url = root.dataset.ajaxUrl;
         // Mutable: a poll_interval_seconds/rotation_seconds change on the Tela takes effect from
@@ -306,11 +343,21 @@
         // and the sound waits until the rotation brings the page to the screen.
         const flashing = {};
 
-        // Returns true when the page ON SCREEN got a ticket it did not have at the previous poll
-        // (to be announced now). A hidden page only gets its alert marked as pending. The first
-        // load of each page never counts (no previous set yet).
+        // New-ticket banner (spec M18). A hidden page keeps the tickets that arrived on it in
+        // pendingRows, announced (banner and sound) when the rotation brings the page to the screen.
+        let bannerEnabled = false;
+        let bannerSeconds = 10;
+        const pendingRows = {};
+        const bannerQueue = [];
+        let bannerBusy = false;
+        const BANNER_BATCH_MAX = 3;
+        const BANNER_QUEUE_MAX = 6;
+
+        // Returns the tickets the page ON SCREEN got that it did not have at the previous poll (to be
+        // announced now). A hidden page only keeps them as pending until the rotation brings it to the
+        // screen. The first load of each page never counts (no previous set yet).
         function diffPages(payloadPages) {
-            let anyNew = false;
+            const activeRows = [];
             const live = {};
             payloadPages.forEach(function (page) {
                 const pid = String(page.id);
@@ -328,14 +375,21 @@
                 newIds[pid] = fresh;
                 if (fresh.size > 0) {
                     if (pid === activeId) {
-                        anyNew = true;
+                        page.rows.forEach(function (row) {
+                            if (fresh.has(String(row.id))) {
+                                activeRows.push(row);
+                            }
+                        });
                     } else {
                         flashing[pid] = true;
+                        pendingRows[pid] = pendingRows[pid] || {};
+                        fresh.forEach(function (id) { pendingRows[pid][id] = true; });
                     }
                 }
                 // A pending alert for a page that has since emptied has nothing left to announce.
                 if (ids.length === 0) {
                     delete flashing[pid];
+                    delete pendingRows[pid];
                 }
             });
             Object.keys(previousIds).forEach(function (pid) {
@@ -343,9 +397,10 @@
                     delete previousIds[pid];
                     delete newIds[pid];
                     delete flashing[pid];
+                    delete pendingRows[pid];
                 }
             });
-            return anyNew;
+            return activeRows;
         }
 
         function activePage() {
@@ -357,7 +412,8 @@
             return null;
         }
 
-        // Shows the active page. Returns true when it brings an alert that was waiting for it.
+        // Shows the active page. Returns whether it brings an alert that was waiting for it, and the
+        // tickets that arrived on it while it was hidden (only those still on the page).
         function showActive() {
             const table = root.querySelector('[data-gac-monitor-viewport] table');
             const empty = root.querySelector('[data-gac-monitor-empty]');
@@ -370,14 +426,16 @@
                 }
                 renderDots(root, pages, activeId, flashing);
                 updateOverflow(root);
-                return false;
+                return { alert: false, rows: [] };
             }
             if (activePage() === null) {
                 activeId = String(pages[0].id);
             }
             const page = activePage();
             const arrivedWithAlert = flashing[activeId] === true;
+            const waiting = pendingRows[activeId] || {};
             delete flashing[activeId];
+            delete pendingRows[activeId];
             table.hidden = false;
             empty.hidden = true;
             // With several pages the page's own title replaces the main one (spec M12); a page
@@ -389,7 +447,71 @@
             renderRows(root, page, newIds[activeId], priorityColors);
             renderDots(root, pages, activeId, flashing);
             updateOverflow(root);
-            return arrivedWithAlert;
+            return {
+                alert: arrivedWithAlert,
+                rows: page.rows.filter(function (row) { return waiting[String(row.id)]; }),
+            };
+        }
+
+        // Announces new tickets. With the banner on, each ticket gets its own banner, one after the
+        // other and most urgent first, and the sound plays with each banner; otherwise the sound plays
+        // once per cycle, as before.
+        function enqueueBanners(rows) {
+            const withData = rows.filter(function (row) { return row.banner; });
+            if (withData.length === 0) {
+                return;
+            }
+            const sorted = withData.slice().sort(function (a, b) { return (b.priority_raw || 0) - (a.priority_raw || 0); });
+            const batch = sorted.slice(0, BANNER_BATCH_MAX);
+            const extra = sorted.length - batch.length;
+            batch.forEach(function (row, index) {
+                if (bannerQueue.length < BANNER_QUEUE_MAX) {
+                    bannerQueue.push({ row: row, more: index === batch.length - 1 ? extra : 0 });
+                }
+            });
+            runBanners();
+        }
+
+        async function runBanners() {
+            if (bannerBusy) {
+                return;
+            }
+            bannerBusy = true;
+            while (bannerQueue.length > 0) {
+                await showBanner(bannerQueue.shift());
+            }
+            bannerBusy = false;
+        }
+
+        async function showBanner(item) {
+            const layer = root.querySelector('[data-gac-monitor-banner]');
+            if (!layer) {
+                return;
+            }
+            const card = buildBannerCard(item.row, item.more, priorityColors);
+            layer.innerHTML = '';
+            layer.appendChild(card);
+            layer.hidden = false;
+            void card.offsetWidth; // so the entrance transition runs from the hidden state
+            card.classList.add('gac-banner-in');
+            if (alertEnabled) {
+                announce();
+            }
+            await wait(bannerSeconds * 1000);
+            card.classList.remove('gac-banner-in');
+            await wait(600); // lets the exit transition finish
+            layer.hidden = true;
+            layer.innerHTML = '';
+            await wait(250);
+        }
+
+        // What to do about tickets that are new on the page now on screen.
+        function announceArrivals(rows, soundNeeded) {
+            if (bannerEnabled) {
+                enqueueBanners(rows);
+            } else if (soundNeeded && alertEnabled) {
+                announce();
+            }
         }
 
         function rotate() {
@@ -401,10 +523,9 @@
                     }
                 }
                 activeId = String(pages[(index + 1) % pages.length].id);
-                // The sound of a ticket that arrived while this page was hidden plays now.
-                if (showActive() && alertEnabled) {
-                    announce();
-                }
+                // What arrived while this page was hidden is announced now (banner and sound).
+                const arrival = showActive();
+                announceArrivals(arrival.rows, arrival.alert);
             }
             scheduleRotation();
         }
@@ -449,10 +570,15 @@
                 }
                 applyAppearance(root, payload.theme, payload.font_size_rem);
                 priorityColors = payload.priority_colors || {};
+                bannerEnabled = payload.banner_enabled === true;
+                const configuredSeconds = parseInt(payload.banner_seconds, 10);
+                if (!Number.isNaN(configuredSeconds) && configuredSeconds > 0) {
+                    bannerSeconds = configuredSeconds;
+                }
                 pages = payload.pages || [];
                 // One alert per cycle, not one per new ticket (plan "Decisões de implementação" item 8).
-                const hasNew = diffPages(pages);
-                const arrived = showActive();
+                const freshRows = diffPages(pages);
+                const arrival = showActive();
                 // Restart the rotation timer only when its parameters change: restarting it on
                 // every poll would postpone the rotation forever whenever polling is faster.
                 const key = rotationMs + '|' + pages.length;
@@ -462,9 +588,7 @@
                 }
                 lastSuccess = new Date();
                 setConnectionState(root, true, lastSuccess);
-                if ((hasNew || arrived) && alertEnabled) {
-                    announce();
-                }
+                announceArrivals(freshRows.concat(arrival.rows), freshRows.length > 0 || arrival.alert);
             } catch (e) {
                 setConnectionState(root, false, lastSuccess || new Date());
             } finally {

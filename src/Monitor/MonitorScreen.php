@@ -121,7 +121,7 @@ class MonitorScreen extends CommonDBTM
             $input['entity_levels'] = EntityLevels::sanitize($levels);
         }
 
-        foreach (['is_recursive', 'is_public', 'alert_enabled', 'is_active'] as $flag) {
+        foreach (['is_recursive', 'is_public', 'alert_enabled', 'banner_enabled', 'is_active'] as $flag) {
             if (array_key_exists($flag, $input)) {
                 $input[$flag] = ((string) $input[$flag]) === '1' ? 1 : 0;
             }
@@ -175,6 +175,12 @@ class MonitorScreen extends CommonDBTM
     {
         $own = (int) ($this->fields['rotation_seconds'] ?? 0);
         return $own > 0 ? $own : MonitorSettings::defaultRotationSeconds($settings);
+    }
+
+    /** Whether a new ticket also opens the big banner with its details (spec M18). */
+    public function bannerEnabled(): bool
+    {
+        return (int) ($this->fields['banner_enabled'] ?? 0) === 1;
     }
 
     public function rowColorMode(): string

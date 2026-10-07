@@ -51,6 +51,10 @@ final class ScreenQuery
 
     private const SEARCH_OPTION_TIME_TO_RESOLVE = 18;
     private const SEARCH_OPTION_TIME_TO_OWN     = 155;
+    private const SEARCH_OPTION_CONTENT         = 21;
+
+    /** How much of the description the banner carries (it is shown in a few lines). */
+    private const BANNER_DESCRIPTION_MAX = 220;
 
     /**
      * @param bool $asServiceAccount Public, session-less path only (Task 8): Search::getDatas()
@@ -96,6 +100,8 @@ final class ScreenQuery
             'poll_interval_seconds' => $screen->pollIntervalSeconds($settings),
             'rotation_seconds'      => $screen->rotationSeconds($settings),
             'row_color_mode'        => $colorMode,
+            'banner_enabled'        => $screen->bannerEnabled(),
+            'banner_seconds'        => MonitorSettings::bannerSeconds($settings),
         ];
     }
 
@@ -162,7 +168,7 @@ final class ScreenQuery
      * One page's search. Runs inside the session `run()` already established.
      *
      * @param array<string, string> $settings
-     * @return array{id: int, title: string, columns: list<array{key: string, label: string}>, rows: list<array<string, string>>}
+     * @return array{id: int, title: string, own_title: string, columns: list<array{key: string, label: string}>, rows: list<array<string, mixed>>}
      */
     private static function runPage(MonitorScreen $screen, MonitorPage $page, string $sortMode, string $colorMode, array $settings): array
     {
@@ -177,6 +183,18 @@ final class ScreenQuery
         if ($colorMode === RowTone::MODE_SLA) {
             $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_RESOLVE;
             $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_OWN;
+        }
+        // The banner (spec M18) shows details no matter which columns the page displays, so it
+        // asks the search for them itself, and only when the Tela has the banner on.
+        $withBanner      = $screen->bannerEnabled();
+        $withDescription = $withBanner && MonitorSettings::bannerShowDescription($settings);
+        if ($withBanner) {
+            array_push($forcedisplay, 1, ...array_filter([
+                ColumnCatalog::searchOptionId('requester'),
+                ColumnCatalog::searchOptionId('entity'),
+                ColumnCatalog::searchOptionId('category'),
+                $withDescription ? self::SEARCH_OPTION_CONTENT : null,
+            ]));
         }
         $forcedisplay = array_values(array_unique($forcedisplay));
 
@@ -212,6 +230,21 @@ final class ScreenQuery
                     continue;
                 }
                 $out[$key] = self::columnValue($row, $key);
+            }
+            if ($withBanner) {
+                $out['banner'] = [
+                    'title'          => self::columnValue($row, 'title'),
+                    'priority_label' => (string) Ticket::getPriorityName($priorityRaw),
+                    'requester'      => self::columnValue($row, 'requester'),
+                    'entity'         => EntityLevels::truncate(
+                        self::columnValue($row, 'entity'),
+                        (int) ($screen->fields['entity_levels'] ?? EntityLevels::DEFAULT_LEVELS)
+                    ),
+                    'category'       => self::columnValue($row, 'category'),
+                    'description'    => $withDescription
+                        ? BannerText::summarize(implode(' ', self::cellParts($row, self::SEARCH_OPTION_CONTENT)), self::BANNER_DESCRIPTION_MAX)
+                        : '',
+                ];
             }
             $out['row_tone'] = RowTone::compute(
                 $colorMode,

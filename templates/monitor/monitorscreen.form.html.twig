@@ -28,6 +28,7 @@
     {{ fields.dropdownArrayField('row_color_mode', item.fields['row_color_mode']|default('priority'), row_color_choices, __('Cor das linhas', 'gac')) }}
 
     {{ fields.sliderField('alert_enabled', item.fields['alert_enabled'], __('Alerta sonoro/visual de ticket novo', 'gac')) }}
+    {{ fields.sliderField('banner_enabled', item.fields['banner_enabled'], __('Banner de ticket novo (detalhes do ticket em destaque na tela)', 'gac')) }}
     {{ fields.sliderField('is_active', item.fields['is_active'], __('Ativa', 'gac')) }}
     {{ fields.sliderField('is_public', item.fields['is_public'], __('Exibição pública (sem login, para TV)', 'gac')) }}
 

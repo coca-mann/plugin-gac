@@ -294,6 +294,7 @@ function plugin_gac_install(): bool
             `is_public` TINYINT NOT NULL DEFAULT '0',
             `public_token` VARCHAR(64) DEFAULT NULL,
             `alert_enabled` TINYINT NOT NULL DEFAULT '1',
+            `banner_enabled` TINYINT NOT NULL DEFAULT '0',
             `is_active` TINYINT NOT NULL DEFAULT '1',
             `date_creation` TIMESTAMP NULL DEFAULT NULL,
             `date_mod` TIMESTAMP NULL DEFAULT NULL,
@@ -322,6 +323,10 @@ function plugin_gac_install(): bool
     }
     if (!$DB->fieldExists($monitorScreens, 'row_color_mode')) {
         $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `row_color_mode` VARCHAR(10) NOT NULL DEFAULT 'priority' AFTER `sort_mode`");
+    }
+
+    if (!$DB->fieldExists($monitorScreens, 'banner_enabled')) {
+        $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `banner_enabled` TINYINT NOT NULL DEFAULT '0' AFTER `alert_enabled`");
     }
 
     // Pages of a Tela (spec M11). The Tela's own savedsearches_id/display_columns columns stay in

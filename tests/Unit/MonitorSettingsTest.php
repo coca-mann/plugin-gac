@@ -46,6 +46,8 @@ final class MonitorSettingsTest extends TestCase
         $this->assertSame(15, MonitorSettings::defaultPollIntervalSeconds($s));
         $this->assertSame(20, MonitorSettings::defaultRotationSeconds($s));
         $this->assertSame(60, MonitorSettings::slaWarningMinutes($s));
+        $this->assertSame(10, MonitorSettings::bannerSeconds($s));
+        $this->assertTrue(MonitorSettings::bannerShowDescription($s));
         $this->assertSame('', MonitorSettings::alertSoundUrl($s));
         $this->assertSame('', MonitorSettings::alertSoundFile($s));
         $this->assertSame('', MonitorSettings::alertSoundFileName($s));
@@ -113,6 +115,26 @@ final class MonitorSettingsTest extends TestCase
             $this->assertSame('', MonitorSettings::alertSoundFile($s), $bad);
             $this->assertSame('', MonitorSettings::alertSoundFileName($s), 'no name without a valid file');
         }
+    }
+
+    public function testBannerSecondsIsClampedToItsRange(): void
+    {
+        $this->assertSame(3, MonitorSettings::bannerSeconds(MonitorSettings::normalize(['monitor_banner_seconds' => '1'])));
+        $this->assertSame(3, MonitorSettings::bannerSeconds(MonitorSettings::normalize(['monitor_banner_seconds' => '-5'])));
+        $this->assertSame(120, MonitorSettings::bannerSeconds(MonitorSettings::normalize(['monitor_banner_seconds' => '9999'])));
+        $this->assertSame(25, MonitorSettings::bannerSeconds(MonitorSettings::normalize(['monitor_banner_seconds' => '25'])));
+        $this->assertSame(10, MonitorSettings::bannerSeconds(MonitorSettings::normalize(['monitor_banner_seconds' => 'abc'])));
+    }
+
+    public function testBannerDescriptionFlag(): void
+    {
+        $off = MonitorSettings::normalize(['monitor_banner_show_description' => '0']);
+        $this->assertFalse(MonitorSettings::bannerShowDescription($off));
+        $on = MonitorSettings::normalize(['monitor_banner_show_description' => '1']);
+        $this->assertTrue(MonitorSettings::bannerShowDescription($on));
+        // Anything that is not an explicit "0" keeps the default (shown).
+        $weird = MonitorSettings::normalize(['monitor_banner_show_description' => 'maybe']);
+        $this->assertTrue(MonitorSettings::bannerShowDescription($weird));
     }
 
     public function testEveryDefaultKeyIsPrefixed(): void

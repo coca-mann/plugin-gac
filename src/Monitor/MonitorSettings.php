@@ -43,6 +43,10 @@ final class MonitorSettings
 {
     private const MIN_POLL_INTERVAL_SECONDS = 5;
 
+    public const MIN_BANNER_SECONDS     = 3;
+    public const MAX_BANNER_SECONDS     = 120;
+    public const DEFAULT_BANNER_SECONDS = 10;
+
     /** @return array<string, string> */
     public static function defaults(): array
     {
@@ -50,6 +54,8 @@ final class MonitorSettings
             'monitor_default_poll_interval_seconds' => '15',
             'monitor_default_rotation_seconds'      => (string) PageRotation::DEFAULT_ROTATION_SECONDS,
             'monitor_sla_warning_minutes'             => '60',
+            'monitor_banner_seconds'                  => (string) self::DEFAULT_BANNER_SECONDS,
+            'monitor_banner_show_description'         => '1',
             'monitor_alert_sound_url'                 => '',
             'monitor_alert_sound_file'                => '',
             'monitor_alert_sound_name'                => '',
@@ -85,6 +91,16 @@ final class MonitorSettings
         if (array_key_exists('monitor_sla_warning_minutes', $raw)) {
             $minutes = is_numeric($raw['monitor_sla_warning_minutes']) ? (int) $raw['monitor_sla_warning_minutes'] : 60;
             $out['monitor_sla_warning_minutes'] = (string) max(1, $minutes);
+        }
+
+        // New-ticket banner (spec M18): how long each banner stays, and whether it may show the
+        // ticket's free-text description (which a public TV would display to anyone looking at it).
+        if (array_key_exists('monitor_banner_seconds', $raw)) {
+            $seconds = is_numeric($raw['monitor_banner_seconds']) ? (int) $raw['monitor_banner_seconds'] : self::DEFAULT_BANNER_SECONDS;
+            $out['monitor_banner_seconds'] = (string) min(self::MAX_BANNER_SECONDS, max(self::MIN_BANNER_SECONDS, $seconds));
+        }
+        if (array_key_exists('monitor_banner_show_description', $raw)) {
+            $out['monitor_banner_show_description'] = ((string) $raw['monitor_banner_show_description']) === '0' ? '0' : '1';
         }
 
         if (array_key_exists('monitor_alert_sound_url', $raw)) {
@@ -134,6 +150,18 @@ final class MonitorSettings
     public static function alertSoundUrl(array $s): string
     {
         return (string) ($s['monitor_alert_sound_url'] ?? '');
+    }
+
+    /** @param array<string, string> $s */
+    public static function bannerSeconds(array $s): int
+    {
+        return (int) ($s['monitor_banner_seconds'] ?? self::DEFAULT_BANNER_SECONDS);
+    }
+
+    /** @param array<string, string> $s */
+    public static function bannerShowDescription(array $s): bool
+    {
+        return ($s['monitor_banner_show_description'] ?? '1') !== '0';
     }
 
     /** @param array<string, string> $s the stored name of the uploaded sound, '' when none */
