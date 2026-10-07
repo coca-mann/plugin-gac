@@ -308,6 +308,41 @@ Fatos do ambiente que moldam o desenho:
   como qualquer pessoa nova; purgar no GLPI deixa de funcionar como barreira. As barreiras de acesso
   continuam sendo suspender a conta no Google, a lista de OUs bloqueadas e o modo piloto. O snapshot
   de "desfazer conversão" se perde com o usuário.
+- **S32. E-mail que mudou no Google acompanha o usuário do GLPI.** *(Decidida em 07/10/2026.)* O
+  login acha a pessoa pelo `sub` do Google, que não muda, então um e-mail novo continua entrando,
+  mas o usuário do GLPI ficava com o e-mail (e, para quem o Google criou, com o login) antigo. Agora,
+  a cada login de um usuário **já vinculado**, se o e-mail do token difere do `email_at_link`
+  (comparação sem caixa e sem espaços): (1) o e-mail do usuário em `glpi_useremails` é atualizado (a
+  linha do e-mail antigo vira o novo; se o novo já era um dos e-mails do usuário, o antigo sai e o
+  novo passa a ser o padrão; sem e-mails, o novo entra como padrão); (2) o `email_at_link` da
+  identidade é atualizado; (3) o **login** (`name`) só é renomeado quando **era** o e-mail antigo,
+  isto é, para o usuário criado pelo Google (S12); um login do AD fica como está; (4) se outro
+  usuário já tem o novo e-mail como login, o login **não** é renomeado e o evento diz isso. A regra
+  é a classe pura `EmailSync`; a gravação é `UserProvisioner::syncEmail`. Não há evento próprio: o
+  evento `ok` daquele login ganha o detalhe, por exemplo `login; email changed: a@x -> b@x; login
+  renamed`. A sincronização acontece antes da abertura da sessão e vale mesmo se a sessão falhar
+  depois. Não vale para o vínculo de um usuário existente (`linked`) nem para a criação, que já usam
+  o e-mail atual. Um `sub` novo com um e-mail antigo reaproveitado não é tratado aqui (ver o risco
+  em aberto na seção 12).
+- **S33. A foto do Google vira a foto do usuário no GLPI.** *(Decidida em 07/10/2026, depois de um
+  teste real com uma conta do Workspace Principal que tem foto.)* A fonte é a **Directory API**, com o
+  escopo de usuário que o login já usa: o `users.get` do login ganhou o campo `thumbnailPhotoEtag` (sem
+  chamada extra) e, só quando o etag muda, `users/{email}/photos/thumbnail` devolve a imagem em base64
+  "web-safe" (JPEG 96x96, cerca de 4 KB no teste); uma conta sem foto responde 404 e etag vazio. O ID
+  token (`picture`) ficou de fora: traria uma URL para baixar e uma silhueta padrão para quem não tem
+  foto. A foto é gravada como o próprio GLPI grava a do LDAP: arquivo em `GLPI_PICTURE_DIR`
+  (`Toolbox::savePicture`), miniatura `_min` (`Toolbox::resizePicture`) e o caminho relativo em
+  `glpi_users.picture`. A identidade guarda o `photo_etag` e o `photo_path` da última cópia. Regras
+  (`PhotoPolicy`, pura): sem foto no Google, nada muda (**a foto removida no Google não apaga a do
+  GLPI**); mesmo etag, nada é baixado (isso respeita a foto que o usuário removeu depois); só se
+  escreve por cima de uma foto **vazia ou a que o módulo gravou**, então uma foto escolhida à mão
+  **nunca é substituída**. Só JPEG ou PNG de até 1 MiB, decididos pelos bytes e não pelo tipo
+  informado (`PhotoImage`). A cópia roda depois das regras de autorização e **nunca bloqueia o
+  login**: um erro é registrado no log `gac`. O evento `ok` ganha `; photo updated` quando uma foto é
+  gravada. A foto antiga do módulo é apagada na troca. Exige duas colunas novas em
+  `glpi_plugin_gac_ssoidentities`, criadas pelo `plugin_gac_install()`, então vale a partir da
+  versão que as traz. Questão de privacidade: a foto dos usuários do Workspace passa a ser guardada no
+  GLPI; não há opção para desligar (fora do escopo).
 
 ## 5. Modelo de dados
 
@@ -317,7 +352,8 @@ mapeamento de OU e as exceções por e-mail **não** têm tabela: são regras na
 ### 5.1 `ssoidentities`
 
 `users_id` (único), `google_sub` (único), `email_at_link`, `prev_authtype`, `prev_auths_id`,
-`prev_entities_id`, `removed_authorizations` (JSON), `linked_at`, `last_login_at`, `last_ou_path`.
+`prev_entities_id`, `removed_authorizations` (JSON), `linked_at`, `last_login_at`, `last_ou_path`,
+`photo_etag`, `photo_path` (a foto copiada do Google, ver S33).
 
 ### 5.2 `ssoevents`
 
@@ -652,3 +688,15 @@ existente é refeito nos itens que tocam o login, porque o `RuleRunner` e o `Rul
 
 **Fora dos testes automáticos, de propósito:** a chamada real ao Google (depende de delegação, de
 papel e de rede; coberta pelo roteiro C e pelo spike) e o componente do GLPI (select2).
+
+### E-mail reaproveitado por outra pessoa (verificado em 07/10/2026, script descartável)
+
+- **V23.** *(Verificada: não há tomada de conta, mas o login falha.)* Se um e-mail de um usuário já
+  vinculado passa a ser de outra pessoa (outro `sub`), o `candidateIdsByEmail` acha o usuário antigo
+  e o `IdentityMatcher` decide `linkExisting`. O `convertExisting` tenta gravar uma segunda
+  identidade para o mesmo usuário e o banco recusa (`Duplicate entry ... for key 'users_id'`,
+  `RuntimeException`); o `LoginService` captura e devolve `api_error`. Nenhuma identidade nova é
+  gravada e a pessoa não entra como o usuário antigo. Para liberar a pessoa nova, o administrador
+  exclui permanentemente (purga) o usuário antigo: pela S31 a identidade dele sai da tabela e o
+  próximo login da pessoa nova é tratado como o de uma pessoa nova. Fora do escopo da S32: um
+  tratamento próprio e uma mensagem melhor para esse caso.
