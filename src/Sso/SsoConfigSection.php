@@ -125,7 +125,7 @@ final class SsoConfigSection implements ConfigSection
             . $this->row(
                 __('OUs bloqueadas', 'gac'),
                 $this->blockedPicker() . $this->textarea('sso_blocked_ou_paths', (string) $s['sso_blocked_ou_paths'], 4),
-                __('Um caminho por linha (ex.: /fimca.com.br/ies-pvh/docentes). Quem está nessa OU, ou abaixo dela, é negado antes de qualquer regra. Use para os docentes.', 'gac')
+                __('Um caminho por linha (ex.: /fimca.com.br/ies-pvh/docentes). Quem está nessa OU, ou abaixo dela, é negado antes de qualquer regra.', 'gac')
             )
             . $this->row(
                 __('Criar o usuário no primeiro login', 'gac'),
