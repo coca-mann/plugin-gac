@@ -34,6 +34,7 @@
 use GlpiPlugin\Gac\Ltbp\Ltbp;
 use GlpiPlugin\Gac\Ltbp\LtbpReason;
 use GlpiPlugin\Gac\Ltbp\LtbpSettings;
+use GlpiPlugin\Gac\Monitor\AlertSound;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
 use GlpiPlugin\Gac\Monitor\MonitorSettings;
 use GlpiPlugin\Gac\Pre\PreSettings;
@@ -611,6 +612,8 @@ function plugin_gac_install(): bool
 function plugin_gac_uninstall(): bool
 {
     global $DB;
+
+    AlertSound::removeAll();
 
     foreach ([
         'glpi_plugin_gac_repairprotocols',

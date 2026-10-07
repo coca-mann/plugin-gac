@@ -47,6 +47,8 @@ final class MonitorSettingsTest extends TestCase
         $this->assertSame(20, MonitorSettings::defaultRotationSeconds($s));
         $this->assertSame(60, MonitorSettings::slaWarningMinutes($s));
         $this->assertSame('', MonitorSettings::alertSoundUrl($s));
+        $this->assertSame('', MonitorSettings::alertSoundFile($s));
+        $this->assertSame('', MonitorSettings::alertSoundFileName($s));
         $this->assertSame('', MonitorSettings::serviceUsername($s));
         $this->assertSame('', MonitorSettings::servicePassword($s));
         $this->assertFalse(MonitorSettings::hasServiceAccount($s));
@@ -95,6 +97,22 @@ final class MonitorSettingsTest extends TestCase
         ]);
         $this->assertSame(30, MonitorSettings::defaultRotationSeconds($s));
         $this->assertSame(90, MonitorSettings::slaWarningMinutes($s));
+    }
+
+    public function testAlertSoundFileIsKeptOnlyWhenItsStoredNameIsValid(): void
+    {
+        $s = MonitorSettings::normalize([
+            'monitor_alert_sound_file' => 'alert-0123456789ab.mp3',
+            'monitor_alert_sound_name' => '  beep.mp3  ',
+        ]);
+        $this->assertSame('alert-0123456789ab.mp3', MonitorSettings::alertSoundFile($s));
+        $this->assertSame('beep.mp3', MonitorSettings::alertSoundFileName($s));
+
+        foreach (['../etc/passwd', 'alert-0123456789ab.php', 'x.mp3', ''] as $bad) {
+            $s = MonitorSettings::normalize(['monitor_alert_sound_file' => $bad, 'monitor_alert_sound_name' => 'beep.mp3']);
+            $this->assertSame('', MonitorSettings::alertSoundFile($s), $bad);
+            $this->assertSame('', MonitorSettings::alertSoundFileName($s), 'no name without a valid file');
+        }
     }
 
     public function testEveryDefaultKeyIsPrefixed(): void

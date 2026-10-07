@@ -235,6 +235,29 @@
     flex: 0 0 auto;
 }
 
+/* "Sound blocked by the browser" indicator (spec M17): a muted speaker next to the clock. */
+.gac-monitor-sound {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #ffd166;
+}
+
+.gac-monitor-sound svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.gac-theme-light .gac-monitor-sound {
+    color: #b26a00;
+}
+
 /* Page indicator: one small dot per page, next to the clock (spec M12). */
 .gac-monitor-dots {
     display: flex;

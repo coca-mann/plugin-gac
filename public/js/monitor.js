@@ -206,11 +206,25 @@
         circle.style.strokeDashoffset = '100';
     }
 
-    function playAlert(root) {
+    // Plays the alert sound. A browser that has not had a user gesture yet refuses (NotAllowedError):
+    // that is reported through onBlocked so the board can show it, instead of failing silently.
+    function playAlert(root, onBlocked, onPlayed) {
         const audio = root.querySelector('[data-gac-monitor-audio]');
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(function () { /* autoplay pode estar bloqueado até um gesto do usuário */ });
+        if (!audio || !audio.getAttribute('src')) {
+            return;
+        }
+        audio.currentTime = 0;
+        const promise = audio.play();
+        if (promise && promise.then) {
+            promise.then(function () {
+                if (onPlayed) {
+                    onPlayed();
+                }
+            }).catch(function (e) {
+                if (e && e.name === 'NotAllowedError' && onBlocked) {
+                    onBlocked();
+                }
+            });
         }
     }
 
@@ -223,6 +237,56 @@
         const alertEnabled = root.dataset.alertEnabled === '1';
         const titleEl = root.querySelector('[data-gac-monitor-title]');
         const screenTitle = titleEl ? titleEl.textContent : '';
+
+        // "Sound blocked" indicator: only meaningful when the alert is on and there is a sound to
+        // play. Shown at load when the browser says it will not autoplay (getAutoplayPolicy) and
+        // whenever a play() is refused; hidden once the user clicks the page.
+        const soundIcon = root.querySelector('[data-gac-monitor-sound]');
+        const audioEl = root.querySelector('[data-gac-monitor-audio]');
+        const hasSound = alertEnabled && !!audioEl && !!audioEl.getAttribute('src');
+        let soundBlocked = false;
+
+        function setSoundBlocked(blocked) {
+            soundBlocked = blocked;
+            if (soundIcon) {
+                soundIcon.hidden = !(hasSound && blocked);
+            }
+        }
+
+        function announce() {
+            playAlert(root, function () { setSoundBlocked(true); }, function () { setSoundBlocked(false); });
+        }
+
+        function autoplayDisallowed() {
+            try {
+                return !!navigator.getAutoplayPolicy && navigator.getAutoplayPolicy(audioEl) !== 'allowed';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        if (hasSound) {
+            setSoundBlocked(autoplayDisallowed());
+            // A real click is what the browser wants: after one, later play() calls are allowed.
+            // A muted play is always accepted, so it is a harmless way to use that click.
+            const unlock = function () {
+                if (!soundBlocked) {
+                    return;
+                }
+                audioEl.muted = true;
+                audioEl.play().then(function () {
+                    audioEl.pause();
+                    audioEl.muted = false;
+                    audioEl.currentTime = 0;
+                    setSoundBlocked(false);
+                }).catch(function () {
+                    audioEl.muted = false;
+                });
+            };
+            ['click', 'keydown', 'touchstart'].forEach(function (name) {
+                document.addEventListener(name, unlock, { passive: true });
+            });
+        }
 
         let clockOffsetMs = 0;
         startClock(root, function () { return clockOffsetMs; });
@@ -339,7 +403,7 @@
                 activeId = String(pages[(index + 1) % pages.length].id);
                 // The sound of a ticket that arrived while this page was hidden plays now.
                 if (showActive() && alertEnabled) {
-                    playAlert(root);
+                    announce();
                 }
             }
             scheduleRotation();
@@ -399,7 +463,7 @@
                 lastSuccess = new Date();
                 setConnectionState(root, true, lastSuccess);
                 if ((hasNew || arrived) && alertEnabled) {
-                    playAlert(root);
+                    announce();
                 }
             } catch (e) {
                 setConnectionState(root, false, lastSuccess || new Date());

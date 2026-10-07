@@ -31,10 +31,10 @@
  * -------------------------------------------------------------------------
  */
 
+use GlpiPlugin\Gac\Monitor\AlertSound;
 use GlpiPlugin\Gac\Monitor\BoardAppearance;
 use GlpiPlugin\Gac\Monitor\MonitorConfig;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\MonitorSettings;
 use GlpiPlugin\Gac\Monitor\PublicToken;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Exception\Http\NotFoundHttpException;
@@ -59,7 +59,7 @@ TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig'
     'poll_interval'   => $screen->pollIntervalSeconds($settings),
     'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
     // Empty when not configured: see the note in front/monitor/display.php.
-    'alert_sound_url' => MonitorSettings::alertSoundUrl($settings),
+    'alert_sound_url' => AlertSound::url($settings),
     'theme'           => $screen->fields['theme'],
     'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
     'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,

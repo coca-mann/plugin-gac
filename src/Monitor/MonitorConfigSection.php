@@ -84,7 +84,11 @@ final class MonitorConfigSection implements ConfigSection
             ])
         );
         $body .= $this->row(
-            __('URL do som de alerta (opcional; em branco o alerta fica só visual)', 'gac'),
+            __('Arquivo de som do alerta (mp3, ogg ou wav, até 512 KB)', 'gac'),
+            $this->soundFileControl($s)
+        );
+        $body .= $this->row(
+            __('URL do som de alerta (só vale sem arquivo enviado; sem arquivo e sem URL o alerta fica só visual)', 'gac'),
             Html::input('monitor_alert_sound_url', [
                 'type'  => 'url',
                 'value' => MonitorSettings::alertSoundUrl($s),
@@ -112,6 +116,31 @@ final class MonitorConfigSection implements ConfigSection
         );
 
         return $out;
+    }
+
+    /**
+     * The upload field with the current file (a player to hear it and a way to remove it). A
+     * file uploaded here wins over the URL setting (spec M17).
+     *
+     * @param array<string, string> $s
+     */
+    private function soundFileControl(array $s): string
+    {
+        $html = '';
+        $path = AlertSound::path($s);
+        if ($path !== null) {
+            $kb    = max(1, (int) round(filesize($path) / 1024));
+            $html .= "<div class='d-flex flex-wrap align-items-center gap-2 mb-2'>"
+                . "<i class='ti ti-music'></i><strong>" . htmlescape(MonitorSettings::alertSoundFileName($s)) . '</strong>'
+                . "<span class='text-muted small'>(" . $kb . ' KB)</span>'
+                . "<audio controls preload='none' src='" . htmlescape(AlertSound::url($s)) . "' style='height:32px'></audio>"
+                . '</div>'
+                . "<label class='form-check mb-2'><input type='checkbox' class='form-check-input' name='monitor_alert_sound_remove' value='1'>"
+                . "<span class='form-check-label'>" . htmlescape(__('Remover o arquivo atual', 'gac')) . '</span></label>';
+        }
+        $html .= "<input type='file' class='form-control' name='monitor_alert_sound_file' accept='.mp3,.ogg,.wav,audio/*'>"
+            . "<div class='form-text'>" . htmlescape(__('Escolher um arquivo novo substitui o atual. O navegador da TV precisa estar liberado para tocar som sem clique (veja o manual).', 'gac')) . '</div>';
+        return $html;
     }
 
     /** A titled, bordered block, matching the other modules' config sections. */
@@ -146,6 +175,16 @@ final class MonitorConfigSection implements ConfigSection
         // to clear it, same convention GLPI's own SMTP OAuth secret field uses.
         if (trim((string) ($post['monitor_service_password'] ?? '')) !== '') {
             $raw['monitor_service_password'] = $post['monitor_service_password'];
+        }
+        if (!empty($post['monitor_alert_sound_remove'])) {
+            AlertSound::remove($raw);
+        }
+        $upload = $_FILES['monitor_alert_sound_file'] ?? null;
+        if (is_array($upload) && (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $problem = AlertSound::store($upload, $raw);
+            if ($problem !== null) {
+                Session::addMessageAfterRedirect($problem, false, ERROR);
+            }
         }
         MonitorConfig::save($raw);
         Session::addMessageAfterRedirect(__('Configuração do Monitor salva.', 'gac'));

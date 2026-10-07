@@ -51,6 +51,8 @@ final class MonitorSettings
             'monitor_default_rotation_seconds'      => (string) PageRotation::DEFAULT_ROTATION_SECONDS,
             'monitor_sla_warning_minutes'             => '60',
             'monitor_alert_sound_url'                 => '',
+            'monitor_alert_sound_file'                => '',
+            'monitor_alert_sound_name'                => '',
             'monitor_service_username'                => '',
             'monitor_service_password'                => '',
         ];
@@ -89,6 +91,13 @@ final class MonitorSettings
             $out['monitor_alert_sound_url'] = trim((string) $raw['monitor_alert_sound_url']);
         }
 
+        // The uploaded sound (spec M17): the stored name is only trusted when it is one AlertSoundFile
+        // could have produced, so a tampered setting can never point outside the sound directory.
+        if (array_key_exists('monitor_alert_sound_file', $raw) && AlertSoundFile::isValidStoredName((string) $raw['monitor_alert_sound_file'])) {
+            $out['monitor_alert_sound_file'] = (string) $raw['monitor_alert_sound_file'];
+            $out['monitor_alert_sound_name'] = AlertSoundFile::displayName(trim((string) ($raw['monitor_alert_sound_name'] ?? '')));
+        }
+
         if (array_key_exists('monitor_service_username', $raw)) {
             $out['monitor_service_username'] = trim((string) $raw['monitor_service_username']);
         }
@@ -125,6 +134,18 @@ final class MonitorSettings
     public static function alertSoundUrl(array $s): string
     {
         return (string) ($s['monitor_alert_sound_url'] ?? '');
+    }
+
+    /** @param array<string, string> $s the stored name of the uploaded sound, '' when none */
+    public static function alertSoundFile(array $s): string
+    {
+        return (string) ($s['monitor_alert_sound_file'] ?? '');
+    }
+
+    /** @param array<string, string> $s the original name of the uploaded sound, for display only */
+    public static function alertSoundFileName(array $s): string
+    {
+        return (string) ($s['monitor_alert_sound_name'] ?? '');
     }
 
     /** @param array<string, string> $s */
