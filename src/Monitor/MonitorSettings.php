@@ -47,6 +47,10 @@ final class MonitorSettings
     public const MAX_BANNER_SECONDS     = 120;
     public const DEFAULT_BANNER_SECONDS = 10;
 
+    public const DEFAULT_RATE_IP    = 120;
+    public const DEFAULT_RATE_TOKEN = 240;
+    public const MAX_RATE           = 100000;
+
     /** @return array<string, string> */
     public static function defaults(): array
     {
@@ -56,6 +60,9 @@ final class MonitorSettings
             'monitor_sla_warning_minutes'             => '60',
             'monitor_banner_seconds'                  => (string) self::DEFAULT_BANNER_SECONDS,
             'monitor_banner_show_description'         => '1',
+            'monitor_public_rate_ip'                  => (string) self::DEFAULT_RATE_IP,
+            'monitor_public_rate_token'               => (string) self::DEFAULT_RATE_TOKEN,
+            'monitor_trusted_proxies'                 => '',
             'monitor_alert_sound_url'                 => '',
             'monitor_alert_sound_file'                => '',
             'monitor_alert_sound_name'                => '',
@@ -101,6 +108,18 @@ final class MonitorSettings
         }
         if (array_key_exists('monitor_banner_show_description', $raw)) {
             $out['monitor_banner_show_description'] = ((string) $raw['monitor_banner_show_description']) === '0' ? '0' : '1';
+        }
+
+        // Rate limit of the public endpoints (spec M21): requests per minute per client address and per
+        // public link; 0 turns a limit off. Trusted proxies are the addresses whose X-Forwarded-For is believed.
+        foreach (['monitor_public_rate_ip' => self::DEFAULT_RATE_IP, 'monitor_public_rate_token' => self::DEFAULT_RATE_TOKEN] as $key => $default) {
+            if (array_key_exists($key, $raw)) {
+                $value = is_numeric($raw[$key]) ? (int) $raw[$key] : $default;
+                $out[$key] = (string) min(self::MAX_RATE, max(0, $value));
+            }
+        }
+        if (array_key_exists('monitor_trusted_proxies', $raw)) {
+            $out['monitor_trusted_proxies'] = implode(', ', ClientIp::parseTrusted((string) $raw['monitor_trusted_proxies']));
         }
 
         if (array_key_exists('monitor_alert_sound_url', $raw)) {
@@ -150,6 +169,24 @@ final class MonitorSettings
     public static function alertSoundUrl(array $s): string
     {
         return (string) ($s['monitor_alert_sound_url'] ?? '');
+    }
+
+    /** @param array<string, string> $s */
+    public static function publicRateIp(array $s): int
+    {
+        return (int) ($s['monitor_public_rate_ip'] ?? self::DEFAULT_RATE_IP);
+    }
+
+    /** @param array<string, string> $s */
+    public static function publicRateToken(array $s): int
+    {
+        return (int) ($s['monitor_public_rate_token'] ?? self::DEFAULT_RATE_TOKEN);
+    }
+
+    /** @param array<string, string> $s the trusted proxies as a normalized, comma-separated text */
+    public static function trustedProxies(array $s): string
+    {
+        return (string) ($s['monitor_trusted_proxies'] ?? '');
     }
 
     /** @param array<string, string> $s */

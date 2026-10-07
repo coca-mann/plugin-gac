@@ -47,6 +47,9 @@ final class MonitorSettingsTest extends TestCase
         $this->assertSame(20, MonitorSettings::defaultRotationSeconds($s));
         $this->assertSame(60, MonitorSettings::slaWarningMinutes($s));
         $this->assertSame(10, MonitorSettings::bannerSeconds($s));
+        $this->assertSame(120, MonitorSettings::publicRateIp($s));
+        $this->assertSame(240, MonitorSettings::publicRateToken($s));
+        $this->assertSame('', MonitorSettings::trustedProxies($s));
         $this->assertTrue(MonitorSettings::bannerShowDescription($s));
         $this->assertSame('', MonitorSettings::alertSoundUrl($s));
         $this->assertSame('', MonitorSettings::alertSoundFile($s));
@@ -135,6 +138,25 @@ final class MonitorSettingsTest extends TestCase
         // Anything that is not an explicit "0" keeps the default (shown).
         $weird = MonitorSettings::normalize(['monitor_banner_show_description' => 'maybe']);
         $this->assertTrue(MonitorSettings::bannerShowDescription($weird));
+    }
+
+    public function testPublicRateLimitsAreNonNegativeAndBounded(): void
+    {
+        $get = static fn(array $raw): array => MonitorSettings::normalize($raw);
+        $this->assertSame(0, MonitorSettings::publicRateIp($get(['monitor_public_rate_ip' => '0'])));
+        $this->assertSame(0, MonitorSettings::publicRateIp($get(['monitor_public_rate_ip' => '-7'])));
+        $this->assertSame(100000, MonitorSettings::publicRateIp($get(['monitor_public_rate_ip' => '999999999'])));
+        $this->assertSame(60, MonitorSettings::publicRateIp($get(['monitor_public_rate_ip' => '60'])));
+        $this->assertSame(120, MonitorSettings::publicRateIp($get(['monitor_public_rate_ip' => 'abc'])));
+        $this->assertSame(500, MonitorSettings::publicRateToken($get(['monitor_public_rate_token' => '500'])));
+        $this->assertSame(240, MonitorSettings::publicRateToken($get(['monitor_public_rate_token' => 'abc'])));
+    }
+
+    public function testTrustedProxiesAreKeptInCanonicalFormWithoutTheInvalidOnes(): void
+    {
+        $s = MonitorSettings::normalize(['monitor_trusted_proxies' => "10.0.0.5;  192.168.0.0/16\nlixo 10.0.0.0/99"]);
+        $this->assertSame('10.0.0.5, 192.168.0.0/16', MonitorSettings::trustedProxies($s));
+        $this->assertSame('', MonitorSettings::trustedProxies(MonitorSettings::normalize(['monitor_trusted_proxies' => 'so lixo'])));
     }
 
     public function testEveryDefaultKeyIsPrefixed(): void

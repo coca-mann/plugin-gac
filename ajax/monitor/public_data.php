@@ -32,11 +32,17 @@
  */
 
 // Rota stateless (setup.php): sem sessão GLPI, sem Session::checkCSRF() — somente leitura, GET.
+use GlpiPlugin\Gac\Monitor\MonitorConfig;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
+use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
 use GlpiPlugin\Gac\Monitor\PublicToken;
 use GlpiPlugin\Gac\Monitor\ScreenQuery;
 
 header('Content-Type: application/json; charset=utf-8');
+
+// Before anything else, so that a flood of junk requests is cut off as cheaply as possible.
+$settings = MonitorConfig::load();
+PublicRateLimiter::enforceIp($settings);
 
 $token = (string) ($_GET['token'] ?? '');
 if (!PublicToken::isWellFormed($token)) {
@@ -51,6 +57,9 @@ if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_a
     echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+// The token exists: now it may be counted on its own (see PublicRateLimiter::enforceToken()).
+PublicRateLimiter::enforceToken($settings, $token);
 
 try {
     $result = ScreenQuery::run($screen, true);

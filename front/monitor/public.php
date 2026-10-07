@@ -35,11 +35,15 @@ use GlpiPlugin\Gac\Monitor\AlertSound;
 use GlpiPlugin\Gac\Monitor\BoardAppearance;
 use GlpiPlugin\Gac\Monitor\MonitorConfig;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
+use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
 use GlpiPlugin\Gac\Monitor\PublicToken;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Exception\Http\NotFoundHttpException;
 
 global $CFG_GLPI;
+
+$settings = MonitorConfig::load();
+PublicRateLimiter::enforceIp($settings, false);
 
 $token  = (string) ($_GET['token'] ?? '');
 $screen = new MonitorScreen();
@@ -50,7 +54,6 @@ if (
     throw new NotFoundHttpException();
 }
 
-$settings = MonitorConfig::load();
 $version  = Plugin::getPluginFilesVersion('gac');
 
 TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig', [

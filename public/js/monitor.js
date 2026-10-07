@@ -592,10 +592,23 @@
                 return;
             }
             fetching = true;
+            let nextDelay = interval;
             setWaitingState(root, true);
             try {
                 const response = await fetch(url, { credentials: 'same-origin' });
+                if (response.status === 429) {
+                    // Rate limited (spec M21): keep the board as it is and wait at least as long as asked.
+                    const retry = parseInt(response.headers.get('Retry-After'), 10);
+                    if (!Number.isNaN(retry) && retry > 0) {
+                        nextDelay = Math.max(interval, Math.min(retry, 300) * 1000);
+                    }
+                }
                 const payload = await response.json();
+                if (response.status === 404 && payload.code === 'screen_unavailable') {
+                    clearScreen();
+                    setConnectionState(root, false, lastSuccess || new Date());
+                    return;
+                }
                 if (!response.ok || payload.error) {
                     throw new Error(payload.error || ('HTTP ' + response.status));
                 }
@@ -604,11 +617,6 @@
                     clockOffsetMs = serverNow - Date.now();
                 }
                 const pollSeconds = parseInt(payload.poll_interval_seconds, 10);
-                if (response.status === 404 && payload.code === 'screen_unavailable') {
-                    clearScreen();
-                    setConnectionState(root, false, lastSuccess || new Date());
-                    return;
-                }
                 if (!Number.isNaN(pollSeconds) && pollSeconds > 0) {
                     interval = Math.max(5, pollSeconds) * 1000;
                 }
@@ -617,6 +625,13 @@
                     rotationMs = Math.max(5, rotationSeconds) * 1000;
                 }
                 applyAppearance(root, payload.theme, payload.font_size_rem);
+                if (unavailable) {
+                    unavailable = false;
+                    if (emptyEl) {
+                        emptyEl.textContent = emptyDefaultText;
+                        emptyEl.classList.remove('gac-monitor-empty-alert');
+                    }
+                }
                 priorityColors = payload.priority_colors || {};
                 bannerEnabled = payload.banner_enabled === true;
                 const configuredSeconds = parseInt(payload.banner_seconds, 10);
@@ -625,13 +640,6 @@
                 }
                 pages = payload.pages || [];
                 // One alert per cycle, not one per new ticket (plan "Decisões de implementação" item 8).
-                if (unavailable) {
-                    unavailable = false;
-                    if (emptyEl) {
-                        emptyEl.textContent = emptyDefaultText;
-                        emptyEl.classList.remove('gac-monitor-empty-alert');
-                    }
-                }
                 const freshRows = diffPages(pages);
                 const arrival = showActive();
                 // Restart the rotation timer only when its parameters change: restarting it on
@@ -648,9 +656,9 @@
                 setConnectionState(root, false, lastSuccess || new Date());
             } finally {
                 setWaitingState(root, false);
-                restartCountdown(root, interval);
+                restartCountdown(root, nextDelay);
                 fetching = false;
-                setTimeout(tick, interval);
+                setTimeout(tick, nextDelay);
             }
         }
 

@@ -131,7 +131,64 @@ final class MonitorConfigSection implements ConfigSection
             $serviceBody
         );
 
+        $out .= $this->rateLimitBlock($s);
+
         return $out;
+    }
+
+    /**
+     * Rate limit of the public endpoints (spec M21), with what GLPI sees as the client address of this
+     * very request: behind nginx that is the proxy's address until the proxy is listed as trusted.
+     *
+     * @param array<string, string> $s
+     */
+    private function rateLimitBlock(array $s): string
+    {
+        $remote   = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $resolved = PublicRateLimiter::clientIp($s);
+        $trusted  = MonitorSettings::trustedProxies($s);
+
+        $privateRemote = filter_var($remote, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
+        $hint = "<div class='alert alert-info mb-3'><i class='ti ti-info-circle me-1'></i>"
+            . htmlescape(sprintf(__('Para esta requisição, o GLPI vê a conexão vindo de %1$s e considera que o cliente é %2$s.', 'gac'), $remote, $resolved))
+            . '</div>';
+        if ($trusted === '' && $privateRemote) {
+            $hint .= "<div class='alert alert-warning mb-3'><i class='ti ti-alert-triangle me-1'></i>"
+                . htmlescape(__('Esse endereço é interno. Se for o do seu nginx (e não o do seu computador), todas as TVs estão sendo contadas como um só cliente: informe o endereço do nginx em "Proxies confiáveis" e confira que o nginx envia X-Forwarded-For.', 'gac'))
+                . '</div>';
+        }
+
+        $body = $hint
+            . $this->row(
+                __('Limite por endereço de cliente (requisições por minuto, 0 desliga)', 'gac'),
+                Html::input('monitor_public_rate_ip', [
+                    'type'  => 'number',
+                    'min'   => 0,
+                    'max'   => MonitorSettings::MAX_RATE,
+                    'value' => MonitorSettings::publicRateIp($s),
+                ])
+            )
+            . $this->row(
+                __('Limite por link público (requisições por minuto, 0 desliga)', 'gac'),
+                Html::input('monitor_public_rate_token', [
+                    'type'  => 'number',
+                    'min'   => 0,
+                    'max'   => MonitorSettings::MAX_RATE,
+                    'value' => MonitorSettings::publicRateToken($s),
+                ])
+            )
+            . $this->row(
+                __('Proxies confiáveis (endereços ou faixas, separados por vírgula)', 'gac'),
+                Html::input('monitor_trusted_proxies', ['value' => $trusted, 'placeholder' => '10.0.0.5, 192.168.0.0/24'])
+                . "<div class='form-text'>" . htmlescape(__('Só conexões vindas desses endereços têm o cabeçalho X-Forwarded-For aceito para descobrir o cliente real. Deixe em branco se o GLPI recebe os clientes direto (sem proxy reverso).', 'gac')) . '</div>'
+            );
+
+        return $this->block(
+            'ti-shield-lock',
+            __('Proteção das Telas públicas contra excesso de requisições', 'gac'),
+            __('Cada TV consulta a cada poucos segundos: o limite por endereço precisa caber todas as TVs de uma mesma rede.', 'gac'),
+            $body
+        );
     }
 
     /**
@@ -188,6 +245,9 @@ final class MonitorConfigSection implements ConfigSection
         $raw['monitor_banner_show_description'] = ((string) ($post['monitor_banner_show_description'] ?? '0')) === '1' ? '1' : '0';
         $raw['monitor_alert_sound_url'] = trim((string) ($post['monitor_alert_sound_url'] ?? ''));
         $raw['monitor_service_username'] = trim((string) ($post['monitor_service_username'] ?? ''));
+        $raw['monitor_public_rate_ip'] = (string) (int) ($post['monitor_public_rate_ip'] ?? MonitorSettings::DEFAULT_RATE_IP);
+        $raw['monitor_public_rate_token'] = (string) (int) ($post['monitor_public_rate_token'] ?? MonitorSettings::DEFAULT_RATE_TOKEN);
+        $raw['monitor_trusted_proxies'] = (string) ($post['monitor_trusted_proxies'] ?? '');
         // Blank password on submit means "keep the current one" — the field is never
         // pre-filled with the real secret (see render()), so an empty submit is not a request
         // to clear it, same convention GLPI's own SMTP OAuth secret field uses.

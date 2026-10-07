@@ -31,23 +31,41 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, somente leitura, GET. O som de um alerta não é
-// sensível e a exibição pública (TV) não tem login para buscá-lo. `f` é o nome gravado do arquivo
-// (só nomes no formato validado e que existam); sem `f` serve o som do plugin, como antes.
-use GlpiPlugin\Gac\Monitor\AlertSound;
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
+declare(strict_types=1);
 
-$settings = MonitorConfig::load();
-PublicRateLimiter::enforceIp($settings, false);
+namespace GlpiPlugin\Gac\Monitor;
 
-$name = (string) ($_GET['f'] ?? '');
-$path = $name !== ''
-    ? AlertSound::pathOf($name)
-    : AlertSound::path(MonitorConfig::load());
-if ($path === null) {
-    http_response_code(404);
-    exit;
+/**
+ * Pure: the arithmetic of the fixed one-minute window the public endpoints are rate limited by
+ * (spec M21). Nothing here touches the cache or the clock: the caller passes the time in.
+ */
+final class FixedWindow
+{
+    public const WINDOW_SECONDS = 60;
+
+    public static function windowStart(int $now): int
+    {
+        return $now - ($now % self::WINDOW_SECONDS);
+    }
+
+    /**
+     * The cache key of one counter. The subject (an address, a token) is user-controlled, so it is
+     * hashed: PSR-16 keys cannot hold {}()/\@: and a hash also keeps the key short.
+     */
+    public static function key(string $scope, string $subject, int $now): string
+    {
+        return 'gac_rl_' . sha1($scope . '|' . $subject) . '_' . self::windowStart($now);
+    }
+
+    /** @param int $countAfterHit the counter value including the request being judged */
+    public static function isLimited(int $countAfterHit, int $limit): bool
+    {
+        return $limit > 0 && $countAfterHit > $limit;
+    }
+
+    /** Seconds until the window ends and the counter starts over; never less than one. */
+    public static function retryAfter(int $now): int
+    {
+        return max(1, self::windowStart($now) + self::WINDOW_SECONDS - $now);
+    }
 }
-
-AlertSound::send($path);
