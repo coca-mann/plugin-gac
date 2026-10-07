@@ -452,6 +452,7 @@ Colunas:
 ## Desfazer a conversão ou o vínculo
 
 - **Desfazer conversão**: o usuário volta ao método de login que tinha antes (por exemplo, o AD), à **entidade padrão** que tinha e às **autorizações dinâmicas** que foram substituídas pelo login do Google. A identidade é removida e o evento `undone` é registrado.
+- **Usuário excluído permanentemente no GLPI** (purgado, e não só enviado para a lixeira): a identidade **sai desta lista** sozinha, e o evento `undone` com o detalhe "user purged in GLPI" registra o motivo. O snapshot da conversão (usado por **Desfazer conversão**) se perde com o usuário. No próximo login pelo Google, a pessoa é tratada como **nova**: se ainda estiver ativa no Google e numa OU com regra, o usuário é **recriado** (ou vinculado a um usuário do AD de mesmo e-mail). Excluir permanentemente um usuário no GLPI **não impede** o acesso dele; para isso, suspenda a conta no Google, coloque a OU em **OUs bloqueadas** ou use o modo piloto. Um usuário que está **só na lixeira** continua com a identidade e é negado com `user_inactive`; restaurá-lo devolve o acesso.
 - **Desfazer vínculo** (usuário criado pelo Google): o usuário **continua existindo** no GLPI, mas perde as autorizações dinâmicas e o vínculo com a conta do Google. No próximo login pelo Google, ele é vinculado de novo.
 
 > `[GIF AQUI: abrir a tela de Identidades e desfazer a conversão de um usuário]`
