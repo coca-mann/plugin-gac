@@ -34,8 +34,8 @@
                 {{ fields.dropdownArrayField('theme', item.fields['theme']|default('dark'), theme_choices, __('Tema (claro ou escuro)', 'gac')) }}
                 {{ fields.dropdownArrayField('font_size', item.fields['font_size']|default(3), font_size_choices, __('Tamanho do texto da tabela', 'gac')) }}
 
-                {{ fields.dropdownArrayField('sort_mode', item.fields['sort_mode']|default('priority'), sort_mode_choices, __('Ordem das linhas', 'gac'), {
-                    helper: __('Em que ordem os tickets aparecem na tabela.', 'gac'),
+                {{ fields.dropdownArrayField('sort_mode', item.fields['sort_mode']|default('priority'), sort_mode_choices, __('Ordem padrão das linhas', 'gac'), {
+                    helper: __('Vale para as páginas que não escolherem a sua própria ordem.', 'gac'),
                 }) }}
                 {{ fields.dropdownArrayField('row_color_mode', item.fields['row_color_mode']|default('priority'), row_color_choices, __('Pintar as linhas por', 'gac'), {
                     helper: __('O que define a cor de fundo de cada linha.', 'gac'),

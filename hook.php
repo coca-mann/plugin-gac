@@ -350,6 +350,7 @@ function plugin_gac_install(): bool
             `savedsearches_id` INT {$sign} NOT NULL DEFAULT '0',
             `title` VARCHAR(255) NOT NULL DEFAULT '',
             `display_columns` TEXT DEFAULT NULL,
+            `sort_mode` VARCHAR(20) NOT NULL DEFAULT '',
             `position` INT UNSIGNED NOT NULL DEFAULT '1',
             `date_creation` TIMESTAMP NULL DEFAULT NULL,
             `date_mod` TIMESTAMP NULL DEFAULT NULL,
@@ -358,6 +359,11 @@ function plugin_gac_install(): bool
             KEY `savedsearches_id` (`savedsearches_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$collation} ROW_FORMAT=DYNAMIC");
         $pagesJustCreated = true;
+    }
+
+    // Row order of a page (empty = follow the Tela's own).
+    if (!$DB->fieldExists($monitorPages, 'sort_mode')) {
+        $DB->doQuery("ALTER TABLE `$monitorPages` ADD COLUMN `sort_mode` VARCHAR(20) NOT NULL DEFAULT '' AFTER `display_columns`");
     }
 
     // Only on the run that creates the pages table: every existing Tela gets its page 1 from its

@@ -23,6 +23,10 @@
                     placeholder: __('Em branco usa o nome da pesquisa salva', 'gac'),
                 }) }}
 
+                {{ fields.dropdownArrayField('sort_mode', item.fields['sort_mode']|default(''), sort_choices, __('Ordem das linhas', 'gac'), {
+                    helper: __('Em que ordem os tickets aparecem nesta página.', 'gac'),
+                }) }}
+
                 {{ fields.numberField('position', item.fields['position']|default(next_position), __('Posição no rodízio', 'gac'), {
                     min: 1,
                 }) }}

@@ -67,9 +67,6 @@ final class ScreenQuery
     public static function run(MonitorScreen $screen, bool $asServiceAccount = false): array
     {
         $settings  = MonitorConfig::load();
-        $sortMode  = TicketSortOrder::isValidMode((string) ($screen->fields['sort_mode'] ?? ''))
-            ? (string) $screen->fields['sort_mode']
-            : TicketSortOrder::DEFAULT_MODE;
         $colorMode = $screen->rowColorMode();
 
         if ($asServiceAccount) {
@@ -81,7 +78,7 @@ final class ScreenQuery
         try {
             $pages = [];
             foreach ($screen->pages() as $page) {
-                $pages[] = self::runPage($screen, $page, $sortMode, $colorMode, $settings);
+                $pages[] = self::runPage($screen, $page, $colorMode, $settings);
             }
         } finally {
             if ($asServiceAccount) {
@@ -170,7 +167,7 @@ final class ScreenQuery
      * @param array<string, string> $settings
      * @return array{id: int, title: string, own_title: string, columns: list<array{key: string, label: string}>, rows: list<array<string, mixed>>}
      */
-    private static function runPage(MonitorScreen $screen, MonitorPage $page, string $sortMode, string $colorMode, array $settings): array
+    private static function runPage(MonitorScreen $screen, MonitorPage $page, string $colorMode, array $settings): array
     {
         $columns = $page->columns();
 
@@ -263,6 +260,11 @@ final class ScreenQuery
             ];
         }
 
+        // The page's own order, else the Tela's (spec M10).
+        $sortMode = TicketSortOrder::resolve(
+            (string) ($page->fields['sort_mode'] ?? ''),
+            (string) ($screen->fields['sort_mode'] ?? '')
+        );
         if ($sortMode === TicketSortOrder::MODE_PRIORITY) {
             usort($entries, static fn(array $a, array $b): int => TicketSortOrder::compare($a, $b));
         } elseif ($sortMode === TicketSortOrder::MODE_ELAPSED) {

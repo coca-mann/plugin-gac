@@ -69,6 +69,20 @@ final class TicketSortOrder
         return in_array($mode, self::MODES, true);
     }
 
+    /**
+     * The order a page uses: its own when it has a valid one, else the Tela's, else the default.
+     * An empty page value means "follow the Tela".
+     */
+    public static function resolve(?string $page, ?string $screen): string
+    {
+        foreach ([$page, $screen] as $mode) {
+            if ($mode !== null && self::isValidMode($mode)) {
+                return $mode;
+            }
+        }
+        return self::DEFAULT_MODE;
+    }
+
     public static function statusPriority(int $status): int
     {
         return self::STATUS_PRIORITY[$status] ?? 999;

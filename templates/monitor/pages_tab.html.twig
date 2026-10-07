@@ -13,6 +13,7 @@
                     <th>{{ __('Título', 'gac') }}</th>
                     <th>{{ __('Pesquisa salva', 'gac') }}</th>
                     <th>{{ __('Colunas', 'gac') }}</th>
+                    <th>{{ __('Ordem das linhas', 'gac') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -22,6 +23,7 @@
                         <td><a href="{{ page.url }}">{{ page.title|default(__('(sem título)', 'gac')) }}</a></td>
                         <td>{{ page.saved_search }}</td>
                         <td>{{ page.columns_count }}</td>
+                        <td>{{ page.sort_label }}{% if not page.sort_own %} <span class="text-muted small">({{ __('padrão da Tela', 'gac') }})</span>{% endif %}</td>
                     </tr>
                 {% endfor %}
             </tbody>

@@ -142,6 +142,10 @@ class MonitorPage extends CommonDBChild
                 'title'         => $page->displayTitle(),
                 'saved_search'  => $page->savedSearchName(),
                 'columns_count' => count($page->columns()),
+                'sort_label'    => MonitorLabels::sortMode(
+                    TicketSortOrder::resolve((string) ($page->fields['sort_mode'] ?? ''), (string) ($screen->fields['sort_mode'] ?? ''))
+                ),
+                'sort_own'      => TicketSortOrder::isValidMode((string) ($page->fields['sort_mode'] ?? '')),
             ];
         }
 
@@ -219,6 +223,12 @@ class MonitorPage extends CommonDBChild
                 ColumnCatalog::sanitize(is_array($raw) ? $raw : []),
                 JSON_THROW_ON_ERROR
             );
+        }
+
+        if (array_key_exists('sort_mode', $input)) {
+            // Empty (or anything unknown) means "follow the Tela".
+            $mode               = (string) $input['sort_mode'];
+            $input['sort_mode'] = TicketSortOrder::isValidMode($mode) ? $mode : '';
         }
 
         if (array_key_exists('title', $input)) {
@@ -300,6 +310,15 @@ class MonitorPage extends CommonDBChild
 
         $screen  = new MonitorScreen();
         $screen->getFromDB($screenId);
+
+        $sortChoices = ['' => sprintf(
+            __('Usar o padrão da Tela (%s)', 'gac'),
+            MonitorLabels::sortMode(TicketSortOrder::resolve(null, (string) ($screen->fields['sort_mode'] ?? '')))
+        )];
+        foreach (TicketSortOrder::MODES as $mode) {
+            $sortChoices[$mode] = MonitorLabels::sortMode($mode);
+        }
+
         $savedId = (int) ($this->fields['savedsearches_id'] ?? 0);
 
         // Only an already saved page has something to preview: the count runs the saved search
@@ -323,6 +342,7 @@ class MonitorPage extends CommonDBChild
             'params'          => $options,
             'screen_id'       => $screenId,
             'next_position'   => PageRotation::nextPosition(self::positionsFor($screenId)),
+            'sort_choices'    => $sortChoices,
             'columns_ordered' => $orderedColumns,
             'chosen'          => $chosen,
             'column_choices'  => $columnChoices,

@@ -113,4 +113,23 @@ final class TicketSortOrderTest extends TestCase
         $high = ['priority' => 5, 'status' => 2, 'date' => '2026-09-01 10:00:00'];
         $this->assertGreaterThan(0, TicketSortOrder::compareElapsed($low, $high));
     }
+
+    public function testResolveUsesThePageModeWhenValid(): void
+    {
+        $this->assertSame('elapsed', TicketSortOrder::resolve('elapsed', 'priority'));
+        $this->assertSame('id', TicketSortOrder::resolve('id', 'elapsed'));
+    }
+
+    public function testResolveFallsBackToTheScreenWhenThePageHasNone(): void
+    {
+        $this->assertSame('elapsed', TicketSortOrder::resolve('', 'elapsed'));
+        $this->assertSame('id', TicketSortOrder::resolve('bogus', 'id'));
+        $this->assertSame('id', TicketSortOrder::resolve(null, 'id'));
+    }
+
+    public function testResolveFallsBackToTheDefaultWhenBothAreInvalid(): void
+    {
+        $this->assertSame(TicketSortOrder::DEFAULT_MODE, TicketSortOrder::resolve('', ''));
+        $this->assertSame(TicketSortOrder::DEFAULT_MODE, TicketSortOrder::resolve(null, 'bogus'));
+    }
 }
