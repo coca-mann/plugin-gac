@@ -52,6 +52,20 @@ test('buildOptions copes with an empty or broken payload', () => {
     assert.deepEqual(picker.buildOptions({ workspaces: [{ key: 'a', name: 'A' }] }, ''), []);
 });
 
+test('failedWorkspaces lists the workspaces whose list could not be read', () => {
+    assert.deepEqual(picker.failedWorkspaces(payload), [{ name: 'Quebrado', error: 'HTTP 401' }]);
+    assert.deepEqual(picker.failedWorkspaces({ workspaces: [{ key: 'a', name: 'A', error: '', ous: [] }] }), []);
+    assert.deepEqual(picker.failedWorkspaces(null), []);
+});
+
+test('failureNote names the workspaces without a list', () => {
+    assert.equal(picker.failureNote([]), '');
+    assert.equal(
+        picker.failureNote([{ name: 'Metropolitana', error: 'x' }, { name: 'Outro', error: 'y' }]),
+        'Sem lista de OUs para: Metropolitana, Outro. Digite o caminho da OU.'
+    );
+});
+
 test('appendPathLine adds the path as a new line', () => {
     assert.equal(picker.appendPathLine('', '/a'), '/a');
     assert.equal(picker.appendPathLine('/a\n/b', '/c'), '/a\n/b\n/c');

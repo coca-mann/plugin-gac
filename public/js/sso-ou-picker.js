@@ -44,6 +44,20 @@
         return options;
     }
 
+    /** @returns {Array<{name: string, error: string}>} the workspaces whose list could not be read */
+    function failedWorkspaces(payload) {
+        return ((payload && payload.workspaces) || [])
+            .filter(function (workspace) { return !!workspace.error; })
+            .map(function (workspace) { return { name: workspace.name, error: workspace.error }; });
+    }
+
+    /** The warning shown next to a picker when some workspaces have no list; empty when all are fine. */
+    function failureNote(failed) {
+        if (!failed.length) { return ''; }
+
+        return 'Sem lista de OUs para: ' + failed.map(function (f) { return f.name; }).join(', ') + '. Digite o caminho da OU.';
+    }
+
     /** Adds a path as a new line of the blocked OUs text, unless a line already has it. */
     function appendPathLine(text, path) {
         var wanted = String(path).trim();
@@ -113,6 +127,23 @@
         input.insertAdjacentElement('afterend', note);
     }
 
+    /** Shows (or refreshes) the note about workspaces without a list right after the given element. */
+    function showFailures(after, payload) {
+        var text = failureNote(failedWorkspaces(payload));
+        var note = after.parentNode.querySelector('.gac-picker-failures');
+        if (text === '') {
+            if (note) { note.remove(); }
+            return;
+        }
+        if (!note) {
+            note = root.document.createElement('div');
+            note.className = 'form-text text-warning gac-picker-failures';
+            after.insertAdjacentElement('afterend', note);
+        }
+        note.textContent = text;
+        note.title = failedWorkspaces(payload).map(function (f) { return f.name + ': ' + f.error; }).join('\n');
+    }
+
     /** Fills a select with an empty option, the options and, if missing, the value already saved. */
     function fillSelect(select, options, current) {
         select.innerHTML = '';
@@ -164,11 +195,13 @@
                 .then(function (fresh) {
                     fillSelect(select, buildOptions(fresh, narrowed(fresh)), select.value);
                     $(select).trigger('change.select2');
+                    showFailures(wrapper, fresh);
                 })
                 .catch(function () {})
                 .then(function () { button.disabled = false; });
         });
         wrapper.appendChild(button);
+        showFailures(wrapper, payload);
     }
 
     function buildWorkspaceSelect(input, payload) {
@@ -230,6 +263,7 @@
                 select.className = 'form-select';
                 fillSelect(select, buildOptions(payload, ''), '');
                 host.appendChild(select);
+                showFailures(select, payload);
 
                 var $ = root.jQuery;
                 $(select).select2({ width: '100%', placeholder: TEXT.placeholderBlocked, allowClear: false });
@@ -268,6 +302,8 @@
         escapeHtml: escapeHtml,
         optionLabel: optionLabel,
         buildOptions: buildOptions,
+        failedWorkspaces: failedWorkspaces,
+        failureNote: failureNote,
         appendPathLine: appendPathLine
     };
 
