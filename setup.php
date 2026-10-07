@@ -70,7 +70,7 @@ function plugin_init_gac(): void
         $PLUGIN_HOOKS['config_page']['gac'] = 'front/config.php';
 
         // Value has no "public/" prefix: GLPI's router adds it for plugin assets.
-        $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['gac'] = 'js/pre.js';
+        $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['gac'] = ['js/pre.js', 'js/sso-ou-picker.js'];
 
         // Plugin rights are invisible in Perfis unless the plugin adds its own tab.
         Plugin::registerClass(ProfileRights::class, ['addtabon' => Profile::class]);
