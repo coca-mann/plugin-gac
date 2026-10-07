@@ -137,6 +137,14 @@ class SsoIdentity extends CommonDBTM
         return (int) $DB->insertId();
     }
 
+    /** The etag and the file of the last Google photo copied to the user (spec S33). */
+    public static function setPhoto(int $identityId, string $etag, string $path): void
+    {
+        global $DB;
+
+        $DB->update(self::getTable(), ['photo_etag' => mb_substr($etag, 0, 255), 'photo_path' => mb_substr($path, 0, 255)], ['id' => $identityId]);
+    }
+
     /** The e-mail the identity remembers, kept in step with the Google account (spec S32). */
     public static function updateEmail(int $identityId, string $email): void
     {

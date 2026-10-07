@@ -36,13 +36,16 @@ declare(strict_types=1);
 namespace GlpiPlugin\Gac\Sso;
 
 /**
- * Reads a user's org unit from the Google Admin SDK Directory API, using a service account with
- * domain-wide delegation that impersonates a read-only admin (spec S3).
+ * Reads a user's org unit (and photo, spec S33) from the Google Admin SDK Directory API, using a
+ * service account with domain-wide delegation that impersonates a read-only admin (spec S3).
  */
 final class DirectoryClient
 {
     private const USERS_URI = 'https://admin.googleapis.com/admin/directory/v1/users/';
     private const SCOPES    = ['https://www.googleapis.com/auth/admin.directory.user.readonly'];
+
+    /** The access token of this client, requested once and reused by its next calls. */
+    private ?string $token = null;
 
     /**
      * @param array<string, string> $settings     SsoConfig::load() (the shared service account)
@@ -50,16 +53,22 @@ final class DirectoryClient
      */
     public function __construct(private readonly array $settings, private readonly string $adminSubject) {}
 
-    /** @throws SsoException */
-    public function orgUnitPath(string $email): string
+    /**
+     * What the login needs from the user's Directory record: the org unit and the etag of the photo
+     * (empty when the account has none). One call, as before.
+     *
+     * @return array{ou: string, photoEtag: string}
+     * @throws SsoException
+     */
+    public function lookup(string $email): array
     {
         $client = \Toolbox::getGuzzleClient();
-        $token  = $this->accessToken($client);
+        $token  = $this->token($client);
 
         try {
             $response = $client->get(self::USERS_URI . rawurlencode($email), [
                 'headers'     => ['Authorization' => 'Bearer ' . $token],
-                'query'       => ['fields' => 'orgUnitPath,suspended'],
+                'query'       => ['fields' => 'orgUnitPath,suspended,thumbnailPhotoEtag'],
                 'timeout'     => 10,
                 'http_errors' => false,
             ]);
@@ -85,7 +94,57 @@ final class DirectoryClient
             throw new SsoException('Directory user has no orgUnitPath');
         }
 
-        return $path;
+        return [
+            'ou'        => $path,
+            'photoEtag' => is_string($body['thumbnailPhotoEtag'] ?? null) ? $body['thumbnailPhotoEtag'] : '',
+        ];
+    }
+
+    /** @throws SsoException */
+    public function orgUnitPath(string $email): string
+    {
+        return $this->lookup($email)['ou'];
+    }
+
+    /**
+     * The user's thumbnail photo (spec S33), or null when the account has none.
+     *
+     * @throws SsoException
+     */
+    public function photo(string $email): ?string
+    {
+        $client = \Toolbox::getGuzzleClient();
+        $token  = $this->token($client);
+
+        try {
+            $response = $client->get(self::USERS_URI . rawurlencode($email) . '/photos/thumbnail', [
+                'headers'     => ['Authorization' => 'Bearer ' . $token],
+                'timeout'     => 10,
+                'http_errors' => false,
+            ]);
+        } catch (\Throwable $e) {
+            throw new SsoException('Directory API unreachable: ' . $e->getMessage());
+        }
+
+        $status = $response->getStatusCode();
+        if ($status === 404) {
+            return null;
+        }
+
+        $body = json_decode((string) $response->getBody(), true);
+        if ($status !== 200 || !is_array($body)) {
+            throw new SsoException('Directory API returned HTTP ' . $status . self::errorDetail($body));
+        }
+
+        $bytes = PhotoImage::decode(is_string($body['photoData'] ?? null) ? $body['photoData'] : '');
+
+        return $bytes === '' ? null : $bytes;
+    }
+
+    /** @throws SsoException */
+    private function token(\GuzzleHttp\Client $client): string
+    {
+        return $this->token ??= $this->accessToken($client);
     }
 
     /**
