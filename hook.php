@@ -622,6 +622,10 @@ function plugin_gac_install(): bool
         ]);
     }
 
+    // Identities left behind by users purged before the purge hook existed: such a person would be
+    // denied as "inactive" at every login. Idempotent, a clean table has nothing to remove.
+    SsoIdentity::purgeOrphans();
+
     $migration->executeMigration();
 
     return true;

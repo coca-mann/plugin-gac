@@ -294,6 +294,20 @@ Fatos do ambiente que moldam o desenho:
   falha para o lado seguro (bloqueia mais, nunca menos), e o rótulo do seletor deixa claro que o
   efeito é em todos. Bloqueio por workspace fica fora desta entrega: exigiria mudar o formato do
   texto e a migração dos dados gravados.
+- **S31. Usuário purgado do GLPI sai da tabela de identidades.** *(Decidida em 07/10/2026.)* Antes,
+  a purga de um usuário vinculado deixava a identidade órfã, e o login seguinte da pessoa caía em
+  `useLinked(id antigo)`, onde o usuário não existe, e era negado com `user_inactive` para sempre.
+  Agora: (1) o hook `item_purge` de `User` apaga a identidade (`SsoIdentity::onUserPurged`) e grava
+  um evento `undone` com o detalhe "user purged in GLPI"; (2) no login, uma identidade cujo usuário
+  não existe mais é descartada na hora (`SsoIdentity::linkedUserId`, evento `undone` com o detalhe
+  "stale identity") e o login segue como para uma pessoa sem vínculo; (3) a instalação remove as
+  identidades órfãs que já existiam (`SsoIdentity::purgeOrphans`, idempotente). Só a **purga** conta:
+  um usuário na lixeira (`is_deleted`) continua com a identidade e é negado com `user_inactive`,
+  porque pode ser restaurado. Consequência aceita: quem foi purgado e ainda está ativo no Google, em
+  uma OU com regra, é **recriado** no próximo login (com "Criar o usuário no primeiro login" ligado),
+  como qualquer pessoa nova; purgar no GLPI deixa de funcionar como barreira. As barreiras de acesso
+  continuam sendo suspender a conta no Google, a lista de OUs bloqueadas e o modo piloto. O snapshot
+  de "desfazer conversão" se perde com o usuário.
 
 ## 5. Modelo de dados
 

@@ -120,7 +120,7 @@ final class LoginService
             }
 
             $identity = SsoIdentity::findBySub($sub);
-            $linkedId = $identity === null ? null : (int) $identity['users_id'];
+            $linkedId = SsoIdentity::linkedUserId($identity);
 
             $denied = LoginDecision::afterDirectory(
                 $ou,

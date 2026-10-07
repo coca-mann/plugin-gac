@@ -10,6 +10,12 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [0.9.1] - 2026-10-07
+
+### Fixed
+
+- [a3ebf82](https://github.com/coca-mann/plugin-gac/commit/a3ebf82), [91660e4](https://github.com/coca-mann/plugin-gac/commit/91660e4) - Um usuário vinculado ao Google que era excluído permanentemente do GLPI deixava a identidade dele na tela Identidades, sem usuário, e a pessoa passava a ser negada com "user_inactive" em todo login, sem saída pela tela. Agora a identidade sai da lista na exclusão permanente, com um evento "undone" explicando o motivo; uma identidade que já tenha ficado órfã é descartada no login e o login segue como para uma pessoa nova; e a instalação (na próxima atualização do plugin) remove as órfãs que já existiam. Usuário que está só na lixeira continua com a identidade. Quem for excluído permanentemente e ainda estiver ativo no Google, numa OU com regra, é recriado no próximo login; para barrar acesso, suspenda a conta no Google, use as OUs bloqueadas ou o modo piloto. O manual do usuário, o roteiro de testes e a especificação foram atualizados.
+
 ## [0.9.0] - 2026-10-07
 
 ### Added

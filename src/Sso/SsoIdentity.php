@@ -154,4 +154,85 @@ class SsoIdentity extends CommonDBTM
 
         $DB->delete(self::getTable(), ['id' => $id]);
     }
+
+    /**
+     * Hook item_purge on User: a user purged from GLPI (not just sent to the trash) leaves the
+     * identities table, so the person is a new user at the next Google login.
+     */
+    public static function onUserPurged(CommonDBTM $item): void
+    {
+        self::forgetUser((int) $item->getID(), 'user purged in GLPI');
+    }
+
+    /**
+     * Removes the identities of a user that no longer exists and leaves an "undone" event for each
+     * one, so the audit trail explains why the row disappeared.
+     *
+     * @return int how many identities were removed
+     */
+    public static function forgetUser(int $usersId, string $reason): int
+    {
+        global $DB;
+
+        if ($usersId <= 0) {
+            return 0;
+        }
+
+        $removed = 0;
+        foreach ($DB->request(['FROM' => self::getTable(), 'WHERE' => ['users_id' => $usersId]]) as $row) {
+            self::unlink((int) $row['id']);
+            SsoEvent::record(Outcome::UNDONE, (string) $row['email_at_link'], $usersId, (string) $row['last_ou_path'], $reason);
+            ++$removed;
+        }
+
+        return $removed;
+    }
+
+    /**
+     * The GLPI user an identity points to, or null when there is no identity or its user no longer
+     * exists (purged by a path that did not run the hook, or before the hook existed). A stale
+     * identity is removed on the spot, so the login goes on as for an unlinked person. A user in the
+     * trash still exists, so the login keeps denying it as inactive.
+     *
+     * @param ?array<string, mixed> $identity a row from findBySub()
+     */
+    public static function linkedUserId(?array $identity): ?int
+    {
+        if ($identity === null) {
+            return null;
+        }
+
+        $usersId = (int) $identity['users_id'];
+        if (countElementsInTable('glpi_users', ['id' => $usersId]) > 0) {
+            return $usersId;
+        }
+
+        self::forgetUser($usersId, 'stale identity: the user no longer exists');
+
+        return null;
+    }
+
+    /**
+     * Removes every identity whose user does not exist anymore (cleanup of rows left behind before
+     * the purge hook existed).
+     *
+     * @return int how many identities were removed
+     */
+    public static function purgeOrphans(): int
+    {
+        global $DB;
+
+        $removed = 0;
+        foreach ($DB->request([
+            'SELECT'    => ['glpi_plugin_gac_ssoidentities.users_id'],
+            'DISTINCT'  => true,
+            'FROM'      => self::getTable(),
+            'LEFT JOIN' => ['glpi_users' => ['ON' => [self::getTable() => 'users_id', 'glpi_users' => 'id']]],
+            'WHERE'     => ['glpi_users.id' => null],
+        ]) as $row) {
+            $removed += self::forgetUser((int) $row['users_id'], 'orphan identity removed: the user no longer exists');
+        }
+
+        return $removed;
+    }
 }
