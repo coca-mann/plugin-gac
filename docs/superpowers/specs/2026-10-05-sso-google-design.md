@@ -16,6 +16,10 @@ dois está errado e deve ser corrigido. Segue o formato das specs do PRE
   para não recriar o escopo de ações, e um spike no GLPI local confirmou a viabilidade (seção 12).
 - **Decidido em 07/10/2026**: S25 a S30 (seletor de OU e workspace nas regras e nas OUs
   bloqueadas, chave estável do workspace, trava de remoção, lista de OUs sem tabela). Spike na seção 12.
+  **Implementadas em 07/10/2026** e testadas no GLPI local (resultados em `docs/sso-manual-tests.md`,
+  cenários 36 a 46). Em aberto: V19 (Metropolitana sem o escopo delegado) e V21 (caminhos repetidos
+  entre workspaces), e a conferência na tela da mensagem da trava (V20) e de salvar as OUs bloqueadas
+  (V22).
 - **Revisável**: S12 (login do usuário novo = e-mail completo) e S18 (checagem domínio × OU,
   desligada por padrão).
 - **Proposta, aguardando confirmação do dono**: S23 (convivência com as regras do AD).
