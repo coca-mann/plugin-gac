@@ -243,6 +243,9 @@ final class ScreenQuery
         return [
             'id'      => (int) $page->getID(),
             'title'   => $page->displayTitle(),
+            // Only what the admin typed (empty when none): the board swaps its main title for it,
+            // and falls back to the Tela's own name, not to the saved search's.
+            'own_title' => trim((string) ($page->fields['title'] ?? '')),
             'columns' => $labels,
             'rows'    => $rows,
         ];

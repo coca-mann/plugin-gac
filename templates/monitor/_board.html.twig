@@ -5,8 +5,9 @@
      data-poll-interval="{{ poll_interval }}"
      data-alert-enabled="{{ alert_enabled ? '1' : '0' }}">
     <div class="gac-monitor-topbar">
-        <h1 class="gac-monitor-title">{{ screen.fields.name }}</h1>
+        <h1 class="gac-monitor-title" data-gac-monitor-title>{{ screen.fields.name }}</h1>
         <div class="gac-monitor-topbar-right">
+            <div class="gac-monitor-dots" data-gac-monitor-dots hidden></div>
             <div class="gac-monitor-clock" data-gac-monitor-clock>00:00:00</div>
             <div class="gac-monitor-countdown" data-gac-monitor-status title="">
                 <svg viewBox="0 0 36 36" class="gac-countdown-ring">
@@ -16,7 +17,6 @@
             </div>
         </div>
     </div>
-    <div class="gac-monitor-pager" data-gac-monitor-pager hidden></div>
     <div class="gac-monitor-viewport" data-gac-monitor-viewport>
         <table>
             <thead><tr data-gac-monitor-head></tr></thead>

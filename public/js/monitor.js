@@ -139,27 +139,24 @@
         bar.textContent = '▼ ' + hidden + (hidden === 1 ? ' ticket abaixo' : ' tickets abaixo');
     }
 
-    function renderPager(root, pages, activeId, flashing) {
-        const pager = root.querySelector('[data-gac-monitor-pager]');
-        pager.innerHTML = '';
+    // The page indicator (spec M12): one small dot per page next to the clock, so it costs no
+    // extra row of the screen. The title attribute (page title and ticket count) is only for
+    // whoever hovers it; a TV never does.
+    function renderDots(root, pages, activeId, flashing) {
+        const box = root.querySelector('[data-gac-monitor-dots]');
+        box.innerHTML = '';
         if (pages.length <= 1) {
-            pager.hidden = true;
+            box.hidden = true;
             return;
         }
-        pager.hidden = false;
+        box.hidden = false;
         pages.forEach(function (page) {
-            const pill = document.createElement('span');
-            pill.className = 'gac-pager-pill'
-                + (String(page.id) === activeId ? ' gac-pager-active' : '')
-                + (flashing[String(page.id)] ? ' gac-pager-flash' : '');
-            const title = document.createElement('span');
-            title.textContent = page.title;
-            const count = document.createElement('span');
-            count.className = 'gac-pager-count';
-            count.textContent = String(page.rows.length);
-            pill.appendChild(title);
-            pill.appendChild(count);
-            pager.appendChild(pill);
+            const dot = document.createElement('span');
+            dot.className = 'gac-dot'
+                + (String(page.id) === activeId ? ' gac-dot-active' : '')
+                + (flashing[String(page.id)] ? ' gac-dot-flash' : '');
+            dot.title = page.title + ' (' + page.rows.length + ')';
+            box.appendChild(dot);
         });
     }
 
@@ -224,6 +221,8 @@
         let interval = Math.max(5, parseInt(root.dataset.pollInterval, 10) || 15) * 1000;
         let rotationMs = 20000;
         const alertEnabled = root.dataset.alertEnabled === '1';
+        const titleEl = root.querySelector('[data-gac-monitor-title]');
+        const screenTitle = titleEl ? titleEl.textContent : '';
 
         let clockOffsetMs = 0;
         startClock(root, function () { return clockOffsetMs; });
@@ -239,9 +238,12 @@
         let rotationKey = '';
         const previousIds = {}; // page id => Set of ticket ids seen at the last poll
         const newIds = {};      // page id => Set of ids that appeared at the last poll
-        const flashing = {};    // page id => true while a hidden page's pill blinks
+        // page id => true while a hidden page holds an alert it has not played yet: its dot blinks
+        // and the sound waits until the rotation brings the page to the screen.
+        const flashing = {};
 
-        // Returns true when any page got a ticket it did not have at the previous poll. The first
+        // Returns true when the page ON SCREEN got a ticket it did not have at the previous poll
+        // (to be announced now). A hidden page only gets its alert marked as pending. The first
         // load of each page never counts (no previous set yet).
         function diffPages(payloadPages) {
             let anyNew = false;
@@ -261,10 +263,15 @@
                 previousIds[pid] = new Set(ids);
                 newIds[pid] = fresh;
                 if (fresh.size > 0) {
-                    anyNew = true;
-                    if (pid !== activeId) {
+                    if (pid === activeId) {
+                        anyNew = true;
+                    } else {
                         flashing[pid] = true;
                     }
+                }
+                // A pending alert for a page that has since emptied has nothing left to announce.
+                if (ids.length === 0) {
+                    delete flashing[pid];
                 }
             });
             Object.keys(previousIds).forEach(function (pid) {
@@ -286,6 +293,7 @@
             return null;
         }
 
+        // Shows the active page. Returns true when it brings an alert that was waiting for it.
         function showActive() {
             const table = root.querySelector('[data-gac-monitor-viewport] table');
             const empty = root.querySelector('[data-gac-monitor-empty]');
@@ -293,21 +301,31 @@
                 activeId = null;
                 table.hidden = true;
                 empty.hidden = false;
-                renderPager(root, pages, activeId, flashing);
+                if (titleEl) {
+                    titleEl.textContent = screenTitle;
+                }
+                renderDots(root, pages, activeId, flashing);
                 updateOverflow(root);
-                return;
+                return false;
             }
             if (activePage() === null) {
                 activeId = String(pages[0].id);
             }
             const page = activePage();
+            const arrivedWithAlert = flashing[activeId] === true;
             delete flashing[activeId];
             table.hidden = false;
             empty.hidden = true;
+            // With several pages the page's own title replaces the main one (spec M12); a page
+            // without a title keeps the Tela's name.
+            if (titleEl) {
+                titleEl.textContent = (pages.length > 1 && page.own_title) ? page.own_title : screenTitle;
+            }
             renderHeader(root, page.columns);
             renderRows(root, page, newIds[activeId], priorityColors);
-            renderPager(root, pages, activeId, flashing);
+            renderDots(root, pages, activeId, flashing);
             updateOverflow(root);
+            return arrivedWithAlert;
         }
 
         function rotate() {
@@ -319,7 +337,10 @@
                     }
                 }
                 activeId = String(pages[(index + 1) % pages.length].id);
-                showActive();
+                // The sound of a ticket that arrived while this page was hidden plays now.
+                if (showActive() && alertEnabled) {
+                    playAlert(root);
+                }
             }
             scheduleRotation();
         }
@@ -367,7 +388,7 @@
                 pages = payload.pages || [];
                 // One alert per cycle, not one per new ticket (plan "Decisões de implementação" item 8).
                 const hasNew = diffPages(pages);
-                showActive();
+                const arrived = showActive();
                 // Restart the rotation timer only when its parameters change: restarting it on
                 // every poll would postpone the rotation forever whenever polling is faster.
                 const key = rotationMs + '|' + pages.length;
@@ -377,7 +398,7 @@
                 }
                 lastSuccess = new Date();
                 setConnectionState(root, true, lastSuccess);
-                if (hasNew && alertEnabled) {
+                if ((hasNew || arrived) && alertEnabled) {
                     playAlert(root);
                 }
             } catch (e) {

@@ -218,42 +218,51 @@
     font-size: 1.3rem;
 }
 
-.gac-monitor-pager {
+/* A long page title must never push the clock away: it truncates, the clock and the dots keep
+   their size. */
+.gac-monitor-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gac-monitor-topbar {
+    gap: 1rem;
+}
+
+.gac-monitor-topbar-right {
+    flex: 0 0 auto;
+}
+
+/* Page indicator: one small dot per page, next to the clock (spec M12). */
+.gac-monitor-dots {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-bottom: 0.9rem;
-}
-
-.gac-pager-pill {
-    display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.35em 0.9em;
-    border-radius: 999px;
-    background: #141f3d;
-    color: #8fa3bf;
-    font-size: 1rem;
-    font-weight: 600;
+    gap: 0.45rem;
+    flex: 0 0 auto;
 }
 
-.gac-pager-active {
-    background: #2b5fd9;
-    color: #fff;
+.gac-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: rgba(143, 163, 191, 0.35);
+    transition: width 0.2s ease, height 0.2s ease, background-color 0.2s ease;
 }
 
-.gac-pager-count {
-    padding: 0.05em 0.55em;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.16);
-    font-variant-numeric: tabular-nums;
+.gac-dot-active {
+    width: 0.85rem;
+    height: 0.85rem;
+    background: #4f83ff;
 }
 
-.gac-pager-flash {
-    animation: gac-pager-blink 1s ease-in-out infinite;
+.gac-dot-flash {
+    background: #2ecc71;
+    animation: gac-dot-pulse 1s ease-in-out infinite;
 }
 
-@keyframes gac-pager-blink {
+@keyframes gac-dot-pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
     50%      { box-shadow: 0 0 0 4px rgba(46, 204, 113, 0.9); }
 }
@@ -291,14 +300,16 @@
 .gac-tone-sla-none    { --gac-row-accent: #7f8c8d; --gac-row-tint: rgba(127, 140, 141, 0.18); }
 
 /* Light theme */
-.gac-theme-light .gac-pager-pill {
-    background: #e3e9f5;
-    color: #4a5a78;
+.gac-theme-light .gac-dot {
+    background: rgba(74, 90, 120, 0.3);
 }
 
-.gac-theme-light .gac-pager-active {
+.gac-theme-light .gac-dot-active {
     background: #2b5fd9;
-    color: #fff;
+}
+
+.gac-theme-light .gac-dot-flash {
+    background: #1fa85a;
 }
 
 .gac-theme-light .gac-monitor-overflow {
