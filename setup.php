@@ -37,6 +37,7 @@ use Glpi\Plugin\Hooks;
 use GlpiPlugin\Gac\GacMenu;
 use GlpiPlugin\Gac\Ltbp\AssetUpdateGuard;
 use GlpiPlugin\Gac\ProfileRights;
+use GlpiPlugin\Gac\Sso\SsoIdentity;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
 define('PLUGIN_GAC_VERSION', '0.9.0');
@@ -102,6 +103,9 @@ function plugin_init_gac(): void
 
         // Button and error box on the login page.
         $PLUGIN_HOOKS[Hooks::DISPLAY_LOGIN]['gac'] = 'plugin_gac_display_login';
+
+        // SSO Google: a user purged from GLPI (not just trashed) leaves the identities table.
+        $PLUGIN_HOOKS[Hooks::ITEM_PURGE]['gac'][User::class] = [SsoIdentity::class, 'onUserPurged'];
     }
 }
 
