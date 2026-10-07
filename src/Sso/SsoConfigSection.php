@@ -291,6 +291,7 @@ HTML;
             . "<div class='input-group mb-3'><input type='email' class='form-control' id='gac-sso-dry-email' placeholder='nome@dominio.com.br'>"
             . "<button type='button' class='btn btn-outline-primary' id='gac-sso-dry-run'>" . htmlescape(__('Testar', 'gac')) . '</button></div>'
             . "<div id='gac-sso-dry-result'></div>"
+            . OuCopy::script()
             . <<<HTML
 <script>
 (function () {
@@ -312,7 +313,7 @@ HTML;
                 var ok = d.outcome === 'ok';
                 var html = '<div class="alert alert-' + (ok ? 'success' : 'danger') + '">' + esc(d.message || (ok ? 'Login permitido.' : d.outcome)) + '</div>';
                 if (d.workspace) { html += '<div><strong>Workspace:</strong> ' + esc(d.workspace) + '</div>'; }
-                if (d.ou) { html += '<div><strong>OU:</strong> <code>' + esc(d.ou) + '</code></div>'; }
+                if (d.ou) { html += '<div><strong>OU:</strong> <code>' + esc(d.ou) + '</code>' + window.gacOuCopyButton(d.ou) + '</div>'; }
                 if (d.grants && d.grants.length) {
                     html += '<table class="table table-sm mt-2"><thead><tr><th>Entidade</th><th>Perfil</th><th>Recursivo</th></tr></thead><tbody>';
                     d.grants.forEach(function (g) {
