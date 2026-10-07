@@ -17,9 +17,10 @@ dois está errado e deve ser corrigido. Segue o formato das specs do PRE
 - **Decidido em 07/10/2026**: S25 a S30 (seletor de OU e workspace nas regras e nas OUs
   bloqueadas, chave estável do workspace, trava de remoção, lista de OUs sem tabela). Spike na seção 12.
   **Implementadas em 07/10/2026** e testadas no GLPI local (resultados em `docs/sso-manual-tests.md`,
-  cenários 36 a 46). Em aberto: V19 (Metropolitana sem o escopo delegado) e V21 (caminhos repetidos
-  entre workspaces), e a conferência na tela da mensagem da trava (V20) e de salvar as OUs bloqueadas
-  (V22).
+  cenários 36 a 46). V19 (Metropolitana lista 22 OUs depois de autorizado o escopo) e V21 (`/Sistemas` e
+  `/[desativados]` se repetem entre os workspaces) foram resolvidas. Em aberto: a conferência na
+  tela da mensagem da trava (V20) e de salvar as OUs bloqueadas (V22). O grupo "Login com Google"
+  separa os critérios do plugin dos critérios LDAP na tela de regras.
 - **Revisável**: S12 (login do usuário novo = e-mail completo) e S18 (checagem domínio × OU,
   desligada por padrão).
 - **Proposta, aguardando confirmação do dono**: S23 (convivência com as regras do AD).

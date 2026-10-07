@@ -79,13 +79,13 @@ Entrega do seletor de OU e workspace (V17 a V22, spec S25 a S30), 07/10/2026:
 
 - **V17** resolvida: o componente é o select2 do GLPI; o rótulo "workspace - caminho" com valor só do caminho funciona.
 - **V18** resolvida no navegador: os campos `criteria`, `pattern` e `rules_id` existem como previsto; o observador troca o campo ao escolher o critério, ao editar um critério gravado e ao voltar de outro critério; outros critérios não são afetados.
-- **V19** em aberto: a Metropolitana ainda não tem o escopo `admin.directory.orgunit.readonly` delegado (`unauthorized_client`). O isolamento de falha entre workspaces foi confirmado; falta a leitura bem-sucedida dela depois de autorizar o escopo e dar o privilégio ao papel.
+- **V19** resolvida em 07/10/2026: depois de autorizar o escopo `admin.directory.orgunit.readonly` e o privilégio do papel, a Metropolitana lista 22 OUs (script `tests/integration/orgunits.php` e seletor), com cache e atualização funcionando. Antes disso o erro `unauthorized_client` ficou isolado e o seletor avisou "Sem lista de OUs para: Metropolitana" (cenário 46).
 - **V20** resolvida por script (ver cenário 42); falta ver a mensagem na tela.
-- **V21** em aberto: só o Principal lista OUs hoje; ver se algum caminho repete na Metropolitana quando ela funcionar.
+- **V21** resolvida em 07/10/2026: **dois caminhos se repetem** entre o Principal e a Metropolitana, `/Sistemas` e `/[desativados]`. O seletor os marca com "(repetida)". Uma regra ou um bloqueio por esses caminhos vale nos dois workspaces, a menos que a regra tenha o critério "Workspace do Google".
 - **V22** resolvida no navegador sem salvar (cenário 43); falta salvar pela tela.
 
 ## Limitações conhecidas
 
 - O usuário novo é criado antes de a sessão abrir. Se a abertura da sessão falhar, o usuário já existe e o evento `created` não é gravado (o login seguinte aparece como `login`). Inofensivo, mas o log perde o "criado".
 - Uma regra de autorização com perfil alto (por exemplo Super-Admin) para uma OU vale para toda pessoa nessa OU e abaixo dela. Em produção, usar perfil mínimo na regra da OU e as exceções de TI em regras por e-mail.
-- Os caminhos de OU de workspaces diferentes dividem o mesmo espaço de nomes: o bloqueio de OUs só enxerga o caminho, não o workspace, e as regras de autorização também, **a menos que tenham o critério "Workspace do Google"** (spec S26). Se dois workspaces tiverem uma OU com o mesmo caminho (por exemplo `/dti`), um bloqueio para um vale para o outro, e uma regra sem o critério de workspace também. Hoje os caminhos não colidem. Antes de abrir para os usuários, o bloqueio de OUs sempre bloqueadas precisa ter a OU de docentes de **cada** workspace.
+- Os caminhos de OU de workspaces diferentes dividem o mesmo espaço de nomes: o bloqueio de OUs só enxerga o caminho, não o workspace, e as regras de autorização também, **a menos que tenham o critério "Workspace do Google"** (spec S26). Hoje **`/Sistemas` e `/[desativados]` existem nos dois workspaces**: um bloqueio ou uma regra sem o critério de workspace para um deles vale para o outro. Antes de abrir para os usuários, o bloqueio de OUs sempre bloqueadas precisa ter a OU de docentes de **cada** workspace.

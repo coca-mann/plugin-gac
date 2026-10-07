@@ -59,7 +59,10 @@ final class RuleHooks
             return [];
         }
 
+        // A text entry opens a new group in the criteria dropdown (like the core "LDAP criteria"
+        // one); without it the plugin criteria, appended last, would fall under "Critérios LDAP".
         return [
+            'gac_sso_group' => __('Login com Google', 'gac'),
             self::CRITERION => [
                 'name'      => __('OU do Google Workspace', 'gac'),
                 'field'     => '',
