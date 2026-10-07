@@ -31,19 +31,33 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, somente leitura, GET. O som de um alerta não é
-// sensível e a exibição pública (TV) não tem login para buscá-lo. `f` é o nome gravado do arquivo
-// (só nomes no formato validado e que existam); sem `f` serve o som do plugin, como antes.
-use GlpiPlugin\Gac\Monitor\AlertSound;
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
+declare(strict_types=1);
 
-$name = (string) ($_GET['f'] ?? '');
-$path = $name !== ''
-    ? AlertSound::pathOf($name)
-    : AlertSound::path(MonitorConfig::load());
-if ($path === null) {
-    http_response_code(404);
-    exit;
+namespace GlpiPlugin\Gac\Monitor;
+
+/**
+ * Pure: which alert sound a Tela uses (spec M19). The caller passes, for each source, the value
+ * only when it is really usable (a stored file name only when the file exists on disk), and gets
+ * back which source wins: the Tela's own file, then the plugin's file, then the plugin's URL.
+ */
+final class AlertSoundChoice
+{
+    public const SCREEN_FILE = 'screen_file';
+    public const PLUGIN_FILE = 'plugin_file';
+    public const PLUGIN_URL  = 'plugin_url';
+    public const NONE        = 'none';
+
+    public static function choose(string $screenFile, string $pluginFile, string $pluginUrl): string
+    {
+        if (trim($screenFile) !== '') {
+            return self::SCREEN_FILE;
+        }
+        if (trim($pluginFile) !== '') {
+            return self::PLUGIN_FILE;
+        }
+        if (trim($pluginUrl) !== '') {
+            return self::PLUGIN_URL;
+        }
+        return self::NONE;
+    }
 }
-
-AlertSound::send($path);

@@ -65,7 +65,7 @@ TemplateRenderer::getInstance()->display('@gac/monitor/display.html.twig', [
     'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
     // Empty when not configured: public/sounds/ is not guaranteed to have a bundled file (Task
     // 9, Step 3). The JS's play() call already swallows a missing/empty source silently.
-    'alert_sound_url' => AlertSound::url($settings),
+    'alert_sound_url' => AlertSound::urlFor($settings, $screen),
     'theme'           => $screen->fields['theme'],
     'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
     'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,

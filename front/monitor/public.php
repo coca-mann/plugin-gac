@@ -59,7 +59,7 @@ TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig'
     'poll_interval'   => $screen->pollIntervalSeconds($settings),
     'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
     // Empty when not configured: see the note in front/monitor/display.php.
-    'alert_sound_url' => AlertSound::url($settings),
+    'alert_sound_url' => AlertSound::urlFor($settings, $screen),
     'theme'           => $screen->fields['theme'],
     'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
     'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,

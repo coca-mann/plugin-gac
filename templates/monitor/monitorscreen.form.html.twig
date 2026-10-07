@@ -2,103 +2,191 @@
 {% import 'components/form/fields_macros.html.twig' as fields %}
 
 {% block form_fields %}
-    {{ fields.textField('name', item.fields['name'], __('Nome', 'gac'), {required: true}) }}
-
-    {{ fields.dropdownField('Entity', 'entities_id', item.fields['entities_id'], __('Entidade', 'gac'), {
-        required: true,
-    }) }}
-    {{ fields.sliderField('is_recursive', item.fields['is_recursive'], __('Incluir sub-entidades', 'gac')) }}
-
-    {{ fields.dropdownArrayField('sort_mode', item.fields['sort_mode']|default('priority'), sort_mode_choices, __('Ordenação dos tickets', 'gac')) }}
-
-    {{ fields.dropdownArrayField('theme', item.fields['theme']|default('dark'), theme_choices, __('Tema da tela', 'gac')) }}
-    {{ fields.dropdownArrayField('font_size', item.fields['font_size']|default(3), font_size_choices, __('Tamanho da fonte (só a tabela)', 'gac')) }}
-    {{ fields.dropdownArrayField('entity_levels', item.fields['entity_levels']|default(3), entity_levels_choices, __('Níveis de entidade exibidos', 'gac')) }}
-
-    {{ fields.numberField('poll_interval_seconds', item.fields['poll_interval_seconds'], __('Intervalo de atualização (segundos)', 'gac'), {
-        placeholder: __('Em branco usa o padrão da configuração global', 'gac'),
-    }) }}
-
-    {# No "min" here: GLPI's macro fills an empty field with the min value, which would silently
-       save 5 for a Tela that wants the global default. The server clamps to the minimum anyway. #}
-    {{ fields.numberField('rotation_seconds', item.fields['rotation_seconds'], __('Tempo de cada página no rodízio (segundos)', 'gac'), {
-        placeholder: __('Em branco usa o padrão da configuração global', 'gac'),
-    }) }}
-
-    {{ fields.dropdownArrayField('row_color_mode', item.fields['row_color_mode']|default('priority'), row_color_choices, __('Cor das linhas', 'gac')) }}
-
-    {{ fields.sliderField('alert_enabled', item.fields['alert_enabled'], __('Alerta sonoro/visual de ticket novo', 'gac')) }}
-    {{ fields.sliderField('banner_enabled', item.fields['banner_enabled'], __('Banner de ticket novo (detalhes do ticket em destaque na tela)', 'gac')) }}
-    {{ fields.sliderField('is_active', item.fields['is_active'], __('Ativa', 'gac')) }}
-    {{ fields.sliderField('is_public', item.fields['is_public'], __('Exibição pública (sem login, para TV)', 'gac')) }}
-
-    {% if item.fields['is_public'] and item.fields['public_token'] %}
-        {{ fields.readOnlyField('public_url_display', public_url, __('URL pública', 'gac'), {
-            inline_add_field_html: true,
-            add_field_html: '<button type="button" class="btn btn-outline-secondary ms-1" data-gac-copy-url="' ~ public_url|e('html_attr') ~ '" title="' ~ __('Copiar link', 'gac')|e('html_attr') ~ '"><i class="ti ti-copy"></i></button>',
-        }) }}
-        <script>
-            (function () {
-                const button = document.querySelector('[data-gac-copy-url]');
-                if (!button) { return; }
-                const icon = button.querySelector('i');
-                const resetIcon = function () { icon.className = 'ti ti-copy'; };
-                const showResult = function (ok) {
-                    icon.className = ok ? 'ti ti-check text-success' : 'ti ti-x text-danger';
-                    setTimeout(resetIcon, 1500);
-                };
-                button.addEventListener('click', function () {
-                    const url = button.getAttribute('data-gac-copy-url');
-                    if (window.isSecureContext && navigator.clipboard) {
-                        navigator.clipboard.writeText(url).then(function () {
-                            showResult(true);
-                        }).catch(function () {
-                            showResult(false);
-                        });
-                        return;
-                    }
-                    // Plain HTTP (no secure context): navigator.clipboard is unavailable there,
-                    // fall back to the classic hidden-textarea + execCommand trick.
-                    const temp = document.createElement('textarea');
-                    temp.value = url;
-                    temp.style.position = 'fixed';
-                    temp.style.opacity = '0';
-                    document.body.appendChild(temp);
-                    temp.select();
-                    let ok = false;
-                    try {
-                        ok = document.execCommand('copy');
-                    } catch (e) {
-                        ok = false;
-                    }
-                    document.body.removeChild(temp);
-                    showResult(ok);
-                });
-            })();
-        </script>
-        <div class="d-none" data-gac-regenerate-holder>
-            <button type="submit" name="regenerate_token" value="1" class="btn btn-outline-warning me-2"
-                    formnovalidate onclick="return confirm('{{ __('Gerar um novo link público? O link atual deixa de funcionar.', 'gac')|e('js') }}');">
-                <i class="ti ti-refresh"></i>
-                <span>{{ __('Gerar novo link', 'gac') }}</span>
-            </button>
+    {# Identification: what this Tela is and which tickets it may show. #}
+    <div class="card border mb-4">
+        <div class="card-header">
+            <h4 class="card-title mb-0"><i class="ti ti-id me-2"></i>{{ __('Identificação', 'gac') }}</h4>
         </div>
-        <script>
-            (function () {
-                const place = function () {
-                    const holder = document.querySelector('[data-gac-regenerate-holder]');
-                    const save = holder && holder.closest('form').querySelector('button[name="update"]');
-                    if (!holder || !save) { return; }
-                    save.after(holder.firstElementChild);
-                    holder.remove();
-                };
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', place);
-                } else {
-                    place();
-                }
-            })();
-        </script>
-    {% endif %}
+        <div class="card-body">
+            <div class="row">
+                {{ fields.textField('name', item.fields['name'], __('Nome da Tela', 'gac'), {required: true}) }}
 
+                {{ fields.dropdownField('Entity', 'entities_id', item.fields['entities_id'], __('Entidade dos tickets', 'gac'), {
+                    required: true,
+                    helper: __('Só tickets desta entidade (e das sub-entidades, se marcado abaixo) aparecem na tela.', 'gac'),
+                }) }}
+                {{ fields.sliderField('is_recursive', item.fields['is_recursive'], __('Incluir sub-entidades', 'gac')) }}
+
+                {{ fields.sliderField('is_active', item.fields['is_active'], __('Tela ativa', 'gac'), {
+                    helper: __('Uma Tela inativa não é exibida, nem pelo link público.', 'gac'),
+                }) }}
+            </div>
+        </div>
+    </div>
+
+    {# Look: how the board is drawn. #}
+    <div class="card border mb-4">
+        <div class="card-header">
+            <h4 class="card-title mb-0"><i class="ti ti-palette me-2"></i>{{ __('Exibição', 'gac') }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {{ fields.dropdownArrayField('theme', item.fields['theme']|default('dark'), theme_choices, __('Tema (claro ou escuro)', 'gac')) }}
+                {{ fields.dropdownArrayField('font_size', item.fields['font_size']|default(3), font_size_choices, __('Tamanho do texto da tabela', 'gac')) }}
+
+                {{ fields.dropdownArrayField('sort_mode', item.fields['sort_mode']|default('priority'), sort_mode_choices, __('Ordem das linhas', 'gac'), {
+                    helper: __('Em que ordem os tickets aparecem na tabela.', 'gac'),
+                }) }}
+                {{ fields.dropdownArrayField('row_color_mode', item.fields['row_color_mode']|default('priority'), row_color_choices, __('Pintar as linhas por', 'gac'), {
+                    helper: __('O que define a cor de fundo de cada linha.', 'gac'),
+                }) }}
+
+                {{ fields.dropdownArrayField('entity_levels', item.fields['entity_levels']|default(3), entity_levels_choices, __('Níveis da entidade na coluna Entidade', 'gac'), {
+                    helper: __('Quantos níveis da hierarquia aparecem, contados a partir da entidade mais específica.', 'gac'),
+                }) }}
+            </div>
+        </div>
+    </div>
+
+    {# Timing: how often the data and the pages change. #}
+    <div class="card border mb-4">
+        <div class="card-header">
+            <h4 class="card-title mb-0"><i class="ti ti-refresh me-2"></i>{{ __('Atualização', 'gac') }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {# Plain number inputs, not numberField/textField: GLPI's number macro fills an empty field with 0
+                   (or its min) and its text macro ignores type and placeholder. Empty means "use the plugin
+                   default"; the server maps empty or 0 to that and clamps to the minimum. #}
+                {% set poll_input %}
+                    <input type="number" class="form-control" name="poll_interval_seconds" min="5" step="1"
+                           value="{{ item.fields['poll_interval_seconds'] }}" placeholder="{{ __('Em branco usa o padrão do plugin', 'gac') }}">
+                {% endset %}
+                {{ fields.htmlField('poll_interval_seconds_ui', poll_input, __('Atualizar os tickets a cada (segundos)', 'gac')) }}
+
+                {% set rotation_input %}
+                    <input type="number" class="form-control" name="rotation_seconds" min="5" step="1"
+                           value="{{ item.fields['rotation_seconds'] }}" placeholder="{{ __('Em branco usa o padrão do plugin', 'gac') }}">
+                {% endset %}
+                {{ fields.htmlField('rotation_seconds_ui', rotation_input, __('Tempo de cada página (segundos)', 'gac'), {
+                    helper: __('Só vale quando a Tela tem mais de uma página.', 'gac'),
+                }) }}
+            </div>
+        </div>
+    </div>
+
+    {# New-ticket alerts: sound, row highlight and banner. #}
+    <div class="card border mb-4">
+        <div class="card-header">
+            <h4 class="card-title mb-0"><i class="ti ti-bell-ringing me-2"></i>{{ __('Alertas de ticket novo', 'gac') }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {{ fields.sliderField('alert_enabled', item.fields['alert_enabled'], __('Alerta de ticket novo (som e destaque da linha)', 'gac')) }}
+                {{ fields.sliderField('banner_enabled', item.fields['banner_enabled'], __('Banner grande de ticket novo', 'gac'), {
+                    helper: __('Mostra os detalhes de cada ticket novo num banner no centro da tela. O tempo de exibição fica na configuração do plugin.', 'gac'),
+                }) }}
+
+                {% set sound_html %}
+                    {% if sound.own_name %}
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <i class="ti ti-music"></i>
+                            <strong>{{ sound.own_name }}</strong>
+                            <span class="text-muted small">({{ sound.own_kb }} KB)</span>
+                            <audio controls preload="none" src="{{ sound.own_url }}" style="height: 32px;"></audio>
+                        </div>
+                        <label class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" name="alert_sound_remove" value="1">
+                            <span class="form-check-label">{{ __('Remover o som desta Tela', 'gac') }}</span>
+                        </label>
+                    {% endif %}
+                    <input type="file" class="form-control" name="alert_sound_file" accept=".mp3,.ogg,.wav,audio/*">
+                    <div class="form-text">{{ __('mp3, ogg ou wav, até %d KB. Vale para todas as páginas da Tela; sem arquivo aqui, vale o som da configuração do plugin.', 'gac')|format(sound.max_kb) }}</div>
+                    <div class="form-text fw-bold">{{ sound.effective }}</div>
+                {% endset %}
+                {{ fields.htmlField('alert_sound_ui', sound_html, __('Som de alerta desta Tela', 'gac'), {full_width: true}) }}
+            </div>
+        </div>
+    </div>
+
+    {# Publication: the link for a TV that has no login. #}
+    <div class="card border mb-4">
+        <div class="card-header">
+            <h4 class="card-title mb-0"><i class="ti ti-device-tv me-2"></i>{{ __('Publicação', 'gac') }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {{ fields.sliderField('is_public', item.fields['is_public'], __('Liberar exibição pública (link sem login, para TV)', 'gac')) }}
+            </div>
+
+            {% if item.fields['is_public'] and item.fields['public_token'] %}
+            {{ fields.readOnlyField('public_url_display', public_url, __('URL pública', 'gac'), {
+                inline_add_field_html: true,
+                add_field_html: '<button type="button" class="btn btn-outline-secondary ms-1" data-gac-copy-url="' ~ public_url|e('html_attr') ~ '" title="' ~ __('Copiar link', 'gac')|e('html_attr') ~ '"><i class="ti ti-copy"></i></button>',
+            }) }}
+            <script>
+                (function () {
+                    const button = document.querySelector('[data-gac-copy-url]');
+                    if (!button) { return; }
+                    const icon = button.querySelector('i');
+                    const resetIcon = function () { icon.className = 'ti ti-copy'; };
+                    const showResult = function (ok) {
+                        icon.className = ok ? 'ti ti-check text-success' : 'ti ti-x text-danger';
+                        setTimeout(resetIcon, 1500);
+                    };
+                    button.addEventListener('click', function () {
+                        const url = button.getAttribute('data-gac-copy-url');
+                        if (window.isSecureContext && navigator.clipboard) {
+                            navigator.clipboard.writeText(url).then(function () {
+                                showResult(true);
+                            }).catch(function () {
+                                showResult(false);
+                            });
+                            return;
+                        }
+                        // Plain HTTP (no secure context): navigator.clipboard is unavailable there,
+                        // fall back to the classic hidden-textarea + execCommand trick.
+                        const temp = document.createElement('textarea');
+                        temp.value = url;
+                        temp.style.position = 'fixed';
+                        temp.style.opacity = '0';
+                        document.body.appendChild(temp);
+                        temp.select();
+                        let ok = false;
+                        try {
+                            ok = document.execCommand('copy');
+                        } catch (e) {
+                            ok = false;
+                        }
+                        document.body.removeChild(temp);
+                        showResult(ok);
+                    });
+                })();
+            </script>
+            <div class="d-none" data-gac-regenerate-holder>
+                <button type="submit" name="regenerate_token" value="1" class="btn btn-outline-warning me-2"
+                        formnovalidate onclick="return confirm('{{ __('Gerar um novo link público? O link atual deixa de funcionar.', 'gac')|e('js') }}');">
+                    <i class="ti ti-refresh"></i>
+                    <span>{{ __('Gerar novo link', 'gac') }}</span>
+                </button>
+            </div>
+            <script>
+                (function () {
+                    const place = function () {
+                        const holder = document.querySelector('[data-gac-regenerate-holder]');
+                        const save = holder && holder.closest('form').querySelector('button[name="update"]');
+                        if (!holder || !save) { return; }
+                        save.after(holder.firstElementChild);
+                        holder.remove();
+                    };
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', place);
+                    } else {
+                        place();
+                    }
+                })();
+            </script>
+        {% endif %}
+        </div>
+    </div>
 {% endblock %}

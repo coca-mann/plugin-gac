@@ -34,10 +34,14 @@
 namespace GlpiPlugin\Gac\Monitor;
 
 /**
- * The alert sound the administrator uploads (spec M17): stored on disk inside GLPI's plugin
- * documents folder and served by a session-less endpoint (ajax/monitor/alert_sound.php), because
- * the public board that plays it has no login. The pure rules (types, size, names) live in
- * AlertSoundFile.
+ * The alert sounds the administrator uploads (spec M17, M19): one for the whole plugin (the
+ * monitor configuration) and one per Tela. Files live in GLPI's plugin documents folder and are
+ * served by a session-less endpoint (ajax/monitor/alert_sound.php), because the public board that
+ * plays them has no login. The pure rules (types, size, names, which source wins) live in
+ * AlertSoundFile and AlertSoundChoice.
+ *
+ * A stored file is named after the hash of its content, so the same sound uploaded in two places
+ * is one file on disk: it is only deleted when nothing references it any more.
  */
 final class AlertSound
 {
@@ -46,56 +50,97 @@ final class AlertSound
         return GLPI_PLUGIN_DOC_DIR . '/gac/monitor';
     }
 
+    /** Full path of a stored sound; null when the name is not a valid one or the file is gone. */
+    public static function pathOf(string $storedName): ?string
+    {
+        if (!AlertSoundFile::isValidStoredName($storedName)) {
+            return null;
+        }
+        $path = self::directory() . '/' . $storedName;
+        return is_file($path) ? $path : null;
+    }
+
     /**
-     * Full path of the uploaded sound; null when none is set or the file is gone from the disk.
+     * Full path of the plugin-wide uploaded sound; null when none is set or the file is gone.
      *
      * @param array<string, string> $settings
      */
     public static function path(array $settings): ?string
     {
-        $name = MonitorSettings::alertSoundFile($settings);
-        if ($name === '') {
-            return null;
-        }
-        $path = self::directory() . '/' . $name;
-        return is_file($path) ? $path : null;
+        return self::pathOf(MonitorSettings::alertSoundFile($settings));
+    }
+
+    /** The URL that serves one stored sound; the modification time busts the browser cache. */
+    public static function fileUrl(string $storedName): string
+    {
+        global $CFG_GLPI;
+        $path = self::pathOf($storedName);
+        return $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/alert_sound.php?f=' . rawurlencode($storedName)
+            . '&v=' . ($path !== null ? (int) filemtime($path) : 0);
     }
 
     /**
-     * What the board's <audio> loads: the uploaded file when there is one, otherwise the URL
-     * setting (which is empty by default: then the alert is only visual).
+     * Which source a Tela's sound comes from (AlertSoundChoice), looking at what really exists on disk.
      *
      * @param array<string, string> $settings
      */
-    public static function url(array $settings): string
+    public static function sourceFor(array $settings, ?MonitorScreen $screen): string
     {
-        global $CFG_GLPI;
-        $path = self::path($settings);
-        if ($path !== null) {
-            // The modification time busts the browser cache when the file is replaced.
-            return $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/alert_sound.php?v=' . (int) filemtime($path);
-        }
-        return MonitorSettings::alertSoundUrl($settings);
+        return AlertSoundChoice::choose(
+            self::usableName((string) ($screen?->fields['alert_sound_file'] ?? '')),
+            self::usableName(MonitorSettings::alertSoundFile($settings)),
+            MonitorSettings::alertSoundUrl($settings)
+        );
     }
 
     /**
-     * Validates and stores an uploaded file, replacing the previous one.
+     * What a board's <audio> loads: the Tela's own sound, else the plugin's file, else the plugin's
+     * URL (empty by default: then the alert is only visual).
      *
-     * @param array<string, mixed>  $upload   one entry of $_FILES
-     * @param array<string, string> $settings updated in place on success
-     * @return string|null an error message, null on success
+     * @param array<string, string> $settings
      */
-    public static function store(array $upload, array &$settings): ?string
+    public static function urlFor(array $settings, ?MonitorScreen $screen): string
     {
+        return match (self::sourceFor($settings, $screen)) {
+            AlertSoundChoice::SCREEN_FILE => self::fileUrl((string) $screen?->fields['alert_sound_file']),
+            AlertSoundChoice::PLUGIN_FILE => self::fileUrl(MonitorSettings::alertSoundFile($settings)),
+            AlertSoundChoice::PLUGIN_URL  => MonitorSettings::alertSoundUrl($settings),
+            default                       => '',
+        };
+    }
+
+    /** @param array<string, string> $settings */
+    public static function url(array $settings): string
+    {
+        return self::urlFor($settings, null);
+    }
+
+    /** The stored name when its file exists, '' otherwise. */
+    private static function usableName(string $storedName): string
+    {
+        return self::pathOf($storedName) !== null ? $storedName : '';
+    }
+
+    /**
+     * Validates one uploaded file and moves it into the sounds folder. It does not touch any
+     * setting: the caller decides who owns the file.
+     *
+     * @param array<string, mixed> $upload one entry of $_FILES
+     * @return array{error: string|null, stored: string, name: string}
+     */
+    public static function storeUpload(array $upload): array
+    {
+        $fail = static fn(string $message): array => ['error' => $message, 'stored' => '', 'name' => ''];
+
         $error = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($error !== UPLOAD_ERR_OK) {
-            return self::uploadErrorMessage($error);
+            return $fail(self::uploadErrorMessage($error));
         }
 
         $tmp  = (string) ($upload['tmp_name'] ?? '');
         $name = (string) ($upload['name'] ?? '');
         if (!is_uploaded_file($tmp)) {
-            return __('O envio do arquivo de som falhou.', 'gac');
+            return $fail(__('O envio do arquivo de som falhou.', 'gac'));
         }
 
         // The type is read from the file's own content: the one the browser announces is
@@ -103,25 +148,44 @@ final class AlertSound
         $mime    = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($tmp);
         $problem = AlertSoundFile::validate($name, (int) filesize($tmp), $mime);
         if ($problem !== null) {
-            return self::validationMessage($problem);
+            return $fail(self::validationMessage($problem));
         }
 
         $dir = self::directory();
         if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
-            return __('Não foi possível criar a pasta do som de alerta.', 'gac');
+            return $fail(__('Não foi possível criar a pasta do som de alerta.', 'gac'));
         }
 
         $stored = AlertSoundFile::storedName((string) AlertSoundFile::extensionOf($name), (string) sha1_file($tmp));
-        if (!move_uploaded_file($tmp, $dir . '/' . $stored)) {
-            return __('Não foi possível gravar o arquivo de som.', 'gac');
+        if (!is_file($dir . '/' . $stored) && !move_uploaded_file($tmp, $dir . '/' . $stored)) {
+            return $fail(__('Não foi possível gravar o arquivo de som.', 'gac'));
+        }
+
+        return ['error' => null, 'stored' => $stored, 'name' => AlertSoundFile::displayName($name)];
+    }
+
+    /**
+     * The plugin-wide sound: stores an upload and makes it the configured one, replacing the
+     * previous one.
+     *
+     * @param array<string, mixed>  $upload   one entry of $_FILES
+     * @param array<string, string> $settings updated in place on success
+     * @return string|null an error message, null on success
+     */
+    public static function store(array $upload, array &$settings): ?string
+    {
+        $result = self::storeUpload($upload);
+        if ($result['error'] !== null) {
+            return $result['error'];
         }
 
         $previous = MonitorSettings::alertSoundFile($settings);
-        if ($previous !== '' && $previous !== $stored) {
-            self::deleteStored($previous);
+        $settings['monitor_alert_sound_file'] = $result['stored'];
+        $settings['monitor_alert_sound_name'] = $result['name'];
+        if ($previous !== '' && $previous !== $result['stored']) {
+            // The configuration still points at the old file until it is saved, so ignore that reference.
+            self::deleteIfUnused($previous, null, true);
         }
-        $settings['monitor_alert_sound_file'] = $stored;
-        $settings['monitor_alert_sound_name'] = AlertSoundFile::displayName($name);
         return null;
     }
 
@@ -129,11 +193,44 @@ final class AlertSound
     public static function remove(array &$settings): void
     {
         $previous = MonitorSettings::alertSoundFile($settings);
-        if ($previous !== '') {
-            self::deleteStored($previous);
-        }
         $settings['monitor_alert_sound_file'] = '';
         $settings['monitor_alert_sound_name'] = '';
+        if ($previous !== '') {
+            self::deleteIfUnused($previous, null, true);
+        }
+    }
+
+    /**
+     * Whether anything still points at this stored sound: the plugin configuration or a Tela.
+     *
+     * @param int|null $exceptScreenId a Tela to leave out (the one being changed or deleted)
+     * @param bool     $exceptPlugin   leave out the plugin configuration (it is being changed)
+     */
+    public static function isReferenced(string $storedName, ?int $exceptScreenId = null, bool $exceptPlugin = false): bool
+    {
+        if (!$exceptPlugin && MonitorSettings::alertSoundFile(MonitorConfig::load()) === $storedName) {
+            return true;
+        }
+        $where = ['alert_sound_file' => $storedName];
+        if ($exceptScreenId !== null) {
+            $where['NOT'] = ['id' => $exceptScreenId];
+        }
+        return countElementsInTable(MonitorScreen::getTable(), $where) > 0;
+    }
+
+    /** Deletes a stored sound from the disk, unless something else still uses it. */
+    public static function deleteIfUnused(string $storedName, ?int $exceptScreenId = null, bool $exceptPlugin = false): void
+    {
+        if (!AlertSoundFile::isValidStoredName($storedName)) {
+            return;
+        }
+        if (self::isReferenced($storedName, $exceptScreenId, $exceptPlugin)) {
+            return;
+        }
+        $path = self::directory() . '/' . $storedName;
+        if (is_file($path)) {
+            unlink($path);
+        }
     }
 
     /** Uninstall: leaves no sound file behind. */
@@ -143,17 +240,6 @@ final class AlertSound
             if (AlertSoundFile::isValidStoredName(basename($file))) {
                 unlink($file);
             }
-        }
-    }
-
-    private static function deleteStored(string $storedName): void
-    {
-        if (!AlertSoundFile::isValidStoredName($storedName)) {
-            return;
-        }
-        $path = self::directory() . '/' . $storedName;
-        if (is_file($path)) {
-            unlink($path);
         }
     }
 
@@ -201,7 +287,7 @@ final class AlertSound
         exit;
     }
 
-    private static function validationMessage(string $problem): string
+    public static function validationMessage(string $problem): string
     {
         return match ($problem) {
             AlertSoundFile::ERROR_EXTENSION => __('Use um arquivo de som mp3, ogg ou wav.', 'gac'),

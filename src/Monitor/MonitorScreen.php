@@ -96,6 +96,10 @@ class MonitorScreen extends CommonDBTM
      */
     private function prepareCommonInput(array $input)
     {
+        // The sound columns are only ever set by applyAlertSound(), never straight from the form.
+        unset($input['alert_sound_file'], $input['alert_sound_name']);
+        $input = $this->applyAlertSound($input);
+
         if (array_key_exists('sort_mode', $input)) {
             $mode = (string) $input['sort_mode'];
             $input['sort_mode'] = TicketSortOrder::isValidMode($mode) ? $mode : TicketSortOrder::DEFAULT_MODE;
@@ -152,6 +156,44 @@ class MonitorScreen extends CommonDBTM
             $input['public_token'] = PublicToken::generate();
         }
 
+        return $input;
+    }
+
+    /**
+     * The Tela's own alert sound (spec M19): turns the uploaded file (or the "remove" box) of the
+     * form into the two sound columns. A sound that fails validation leaves the current one alone and
+     * the rest of the form is still saved.
+     *
+     * @param array<string, mixed> $input
+     * @return array<string, mixed>
+     */
+    private function applyAlertSound(array $input): array
+    {
+        $previous = (string) ($this->fields['alert_sound_file'] ?? '');
+        $screenId = $this->isNewItem() ? null : (int) $this->getID();
+
+        if (!empty($input['alert_sound_remove'])) {
+            $input['alert_sound_file'] = '';
+            $input['alert_sound_name'] = '';
+            if ($previous !== '') {
+                AlertSound::deleteIfUnused($previous, $screenId);
+            }
+        }
+        unset($input['alert_sound_remove']);
+
+        $upload = $_FILES['alert_sound_file'] ?? null;
+        if (is_array($upload) && (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $result = AlertSound::storeUpload($upload);
+            if ($result['error'] !== null) {
+                Session::addMessageAfterRedirect($result['error'], false, ERROR);
+            } else {
+                $input['alert_sound_file'] = $result['stored'];
+                $input['alert_sound_name'] = $result['name'];
+                if ($previous !== '' && $previous !== $result['stored']) {
+                    AlertSound::deleteIfUnused($previous, $screenId);
+                }
+            }
+        }
         return $input;
     }
 
@@ -217,7 +259,11 @@ class MonitorScreen extends CommonDBTM
 
     public function cleanDBonPurge()
     {
+        $sound = (string) ($this->fields['alert_sound_file'] ?? '');
         $this->deleteChildrenAndRelationsFromDb([MonitorPage::class]);
+        if ($sound !== '') {
+            AlertSound::deleteIfUnused($sound, (int) $this->getID());
+        }
     }
 
     public function showForm($ID, array $options = [])
@@ -250,7 +296,27 @@ class MonitorScreen extends CommonDBTM
             $rowColorChoices[$mode] = MonitorLabels::rowColorMode($mode);
         }
 
+        $settings = MonitorConfig::load();
+        $own      = (string) ($this->fields['alert_sound_file'] ?? '');
+        $ownPath  = $own !== '' ? AlertSound::pathOf($own) : null;
+        $pluginFile = AlertSound::path($settings);
+        $source   = AlertSound::sourceFor($settings, $this);
+        $effective = match ($source) {
+            AlertSoundChoice::SCREEN_FILE => sprintf(__('Vale o som desta Tela: %s.', 'gac'), (string) ($this->fields['alert_sound_name'] ?? '')),
+            AlertSoundChoice::PLUGIN_FILE => sprintf(__('Esta Tela não tem som próprio: vale o arquivo do plugin (%s).', 'gac'), MonitorSettings::alertSoundFileName($settings)),
+            AlertSoundChoice::PLUGIN_URL  => __('Esta Tela não tem som próprio: vale a URL de som da configuração do plugin.', 'gac'),
+            default                       => __('Sem som: o alerta fica só visual. Envie um arquivo aqui ou na configuração do plugin.', 'gac'),
+        };
+        $sound = [
+            'own_name'  => $ownPath !== null ? (string) ($this->fields['alert_sound_name'] ?? '') : '',
+            'own_kb'    => $ownPath !== null ? max(1, (int) round(filesize($ownPath) / 1024)) : 0,
+            'own_url'   => $ownPath !== null ? AlertSound::fileUrl($own) : '',
+            'effective' => $effective,
+            'max_kb'    => intdiv(AlertSoundFile::MAX_BYTES, 1024),
+        ];
+
         TemplateRenderer::getInstance()->display('@gac/monitor/monitorscreen.form.html.twig', [
+            'sound'             => $sound,
             'item'              => $this,
             'params'            => $options,
             'sort_mode_choices' => $sortModeChoices,
@@ -278,26 +344,26 @@ class MonitorScreen extends CommonDBTM
                 'datatype' => 'itemlink', 'itemtype' => self::class, 'massiveaction' => false, 'autocomplete' => true,
             ],
             ['id' => 2, 'table' => $t, 'field' => 'id', 'name' => __('ID'), 'datatype' => 'number', 'massiveaction' => false],
-            ['id' => 4, 'table' => $t, 'field' => 'is_public', 'name' => __('Pública', 'gac'), 'datatype' => 'bool', 'massiveaction' => false],
-            ['id' => 5, 'table' => $t, 'field' => 'is_active', 'name' => __('Ativa', 'gac'), 'datatype' => 'bool', 'massiveaction' => false],
+            ['id' => 4, 'table' => $t, 'field' => 'is_public', 'name' => __('Exibição pública', 'gac'), 'datatype' => 'bool', 'massiveaction' => false],
+            ['id' => 5, 'table' => $t, 'field' => 'is_active', 'name' => __('Tela ativa', 'gac'), 'datatype' => 'bool', 'massiveaction' => false],
             [
-                'id' => 6, 'table' => $t, 'field' => 'poll_interval_seconds', 'name' => __('Intervalo (s)', 'gac'),
+                'id' => 6, 'table' => $t, 'field' => 'poll_interval_seconds', 'name' => __('Atualizar a cada (s)', 'gac'),
                 'datatype' => 'number', 'massiveaction' => false,
             ],
             [
-                'id' => 7, 'table' => $t, 'field' => 'sort_mode', 'name' => __('Ordenação', 'gac'),
+                'id' => 7, 'table' => $t, 'field' => 'sort_mode', 'name' => __('Ordem das linhas', 'gac'),
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
-                'id' => 8, 'table' => $t, 'field' => 'theme', 'name' => __('Tema', 'gac'),
+                'id' => 8, 'table' => $t, 'field' => 'theme', 'name' => __('Tema (claro ou escuro)', 'gac'),
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
-                'id' => 9, 'table' => $t, 'field' => 'font_size', 'name' => __('Tamanho da fonte', 'gac'),
+                'id' => 9, 'table' => $t, 'field' => 'font_size', 'name' => __('Tamanho do texto da tabela', 'gac'),
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
-                'id' => 10, 'table' => $t, 'field' => 'entity_levels', 'name' => __('Níveis de entidade exibidos', 'gac'),
+                'id' => 10, 'table' => $t, 'field' => 'entity_levels', 'name' => __('Níveis da entidade na coluna Entidade', 'gac'),
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [
@@ -305,7 +371,7 @@ class MonitorScreen extends CommonDBTM
                 'datatype' => 'number', 'massiveaction' => false,
             ],
             [
-                'id' => 12, 'table' => $t, 'field' => 'row_color_mode', 'name' => __('Cor das linhas', 'gac'),
+                'id' => 12, 'table' => $t, 'field' => 'row_color_mode', 'name' => __('Pintar as linhas por', 'gac'),
                 'datatype' => 'specific', 'massiveaction' => false,
             ],
             [

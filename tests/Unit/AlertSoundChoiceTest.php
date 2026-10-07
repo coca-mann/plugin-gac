@@ -31,19 +31,40 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, somente leitura, GET. O som de um alerta não é
-// sensível e a exibição pública (TV) não tem login para buscá-lo. `f` é o nome gravado do arquivo
-// (só nomes no formato validado e que existam); sem `f` serve o som do plugin, como antes.
-use GlpiPlugin\Gac\Monitor\AlertSound;
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
+declare(strict_types=1);
 
-$name = (string) ($_GET['f'] ?? '');
-$path = $name !== ''
-    ? AlertSound::pathOf($name)
-    : AlertSound::path(MonitorConfig::load());
-if ($path === null) {
-    http_response_code(404);
-    exit;
+namespace GlpiPlugin\Gac\Tests\Unit;
+
+use GlpiPlugin\Gac\Monitor\AlertSoundChoice;
+use PHPUnit\Framework\TestCase;
+
+final class AlertSoundChoiceTest extends TestCase
+{
+    public function testTheScreenFileWinsOverEverything(): void
+    {
+        $this->assertSame(AlertSoundChoice::SCREEN_FILE, AlertSoundChoice::choose('alert-aaaaaaaaaaaa.mp3', 'alert-bbbbbbbbbbbb.mp3', 'https://x/y.mp3'));
+        $this->assertSame(AlertSoundChoice::SCREEN_FILE, AlertSoundChoice::choose('alert-aaaaaaaaaaaa.mp3', '', ''));
+    }
+
+    public function testThePluginFileComesNext(): void
+    {
+        $this->assertSame(AlertSoundChoice::PLUGIN_FILE, AlertSoundChoice::choose('', 'alert-bbbbbbbbbbbb.mp3', 'https://x/y.mp3'));
+        $this->assertSame(AlertSoundChoice::PLUGIN_FILE, AlertSoundChoice::choose('', 'alert-bbbbbbbbbbbb.mp3', ''));
+    }
+
+    public function testThePluginUrlIsTheLastResort(): void
+    {
+        $this->assertSame(AlertSoundChoice::PLUGIN_URL, AlertSoundChoice::choose('', '', 'https://x/y.mp3'));
+    }
+
+    public function testNoSoundWhenNothingIsConfigured(): void
+    {
+        $this->assertSame(AlertSoundChoice::NONE, AlertSoundChoice::choose('', '', ''));
+    }
+
+    public function testBlankValuesCountAsMissing(): void
+    {
+        $this->assertSame(AlertSoundChoice::NONE, AlertSoundChoice::choose('  ', "\t", ' '));
+        $this->assertSame(AlertSoundChoice::PLUGIN_URL, AlertSoundChoice::choose('  ', '', ' https://x/y.mp3 '));
+    }
 }
-
-AlertSound::send($path);

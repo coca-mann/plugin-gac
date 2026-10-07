@@ -295,6 +295,8 @@ function plugin_gac_install(): bool
             `public_token` VARCHAR(64) DEFAULT NULL,
             `alert_enabled` TINYINT NOT NULL DEFAULT '1',
             `banner_enabled` TINYINT NOT NULL DEFAULT '0',
+            `alert_sound_file` VARCHAR(40) NOT NULL DEFAULT '',
+            `alert_sound_name` VARCHAR(120) NOT NULL DEFAULT '',
             `is_active` TINYINT NOT NULL DEFAULT '1',
             `date_creation` TIMESTAMP NULL DEFAULT NULL,
             `date_mod` TIMESTAMP NULL DEFAULT NULL,
@@ -327,6 +329,14 @@ function plugin_gac_install(): bool
 
     if (!$DB->fieldExists($monitorScreens, 'banner_enabled')) {
         $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `banner_enabled` TINYINT NOT NULL DEFAULT '0' AFTER `alert_enabled`");
+    }
+
+    // The Tela's own alert sound (spec M19): the stored file name and the original name for display.
+    if (!$DB->fieldExists($monitorScreens, 'alert_sound_file')) {
+        $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `alert_sound_file` VARCHAR(40) NOT NULL DEFAULT '' AFTER `banner_enabled`");
+    }
+    if (!$DB->fieldExists($monitorScreens, 'alert_sound_name')) {
+        $DB->doQuery("ALTER TABLE `$monitorScreens` ADD COLUMN `alert_sound_name` VARCHAR(120) NOT NULL DEFAULT '' AFTER `alert_sound_file`");
     }
 
     // Pages of a Tela (spec M11). The Tela's own savedsearches_id/display_columns columns stay in
