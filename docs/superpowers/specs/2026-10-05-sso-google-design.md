@@ -294,7 +294,7 @@ Fatos do ambiente que moldam o desenho:
   falha para o lado seguro (bloqueia mais, nunca menos), e o rótulo do seletor deixa claro que o
   efeito é em todos. Bloqueio por workspace fica fora desta entrega: exigiria mudar o formato do
   texto e a migração dos dados gravados.
-- **S31. Usuário purgado do GLPI sai da tabela de identidades.** *(Decidida em 08/10/2026.)* Antes,
+- **S31. Usuário purgado do GLPI sai da tabela de identidades.** *(Decidida em 07/10/2026.)* Antes,
   a purga de um usuário vinculado deixava a identidade órfã, e o login seguinte da pessoa caía em
   `useLinked(id antigo)`, onde o usuário não existe, e era negado com `user_inactive` para sempre.
   Agora: (1) o hook `item_purge` de `User` apaga a identidade (`SsoIdentity::onUserPurged`) e grava
