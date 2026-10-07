@@ -137,6 +137,14 @@ class SsoIdentity extends CommonDBTM
         return (int) $DB->insertId();
     }
 
+    /** The e-mail the identity remembers, kept in step with the Google account (spec S32). */
+    public static function updateEmail(int $identityId, string $email): void
+    {
+        global $DB;
+
+        $DB->update(self::getTable(), ['email_at_link' => mb_substr($email, 0, 255)], ['id' => $identityId]);
+    }
+
     public static function touch(string $sub, string $ouPath): void
     {
         global $DB;

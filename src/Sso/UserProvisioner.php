@@ -84,6 +84,70 @@ final class UserProvisioner
         return $user->getFromDB($id) ? $user : null;
     }
 
+    /**
+     * Brings a linked user in step with an e-mail that changed in Google (spec S32): the user's
+     * e-mail, the identity and, only for a user whose login was the old e-mail, the login too. A
+     * login that is not the old e-mail (an AD login) stays, and so does one another user already has.
+     *
+     * @param array<string, mixed> $identity the user's identity row (id, email_at_link)
+     * @return string the text for the login event, empty when nothing changed
+     */
+    public static function syncEmail(\User $user, array $identity, string $newEmail): string
+    {
+        global $DB;
+
+        $id    = $user->getID();
+        $old   = (string) $identity['email_at_link'];
+        $new   = mb_strtolower(trim($newEmail));
+        $taken = $new !== '' && countElementsInTable('glpi_users', ['name' => $new, 'id' => ['<>', $id]]) > 0;
+        $plan  = EmailSync::plan((string) $user->fields['name'], $old, $new, $taken);
+        if (!$plan['changed']) {
+            return '';
+        }
+
+        $oldRow     = null;
+        $newRow     = null;
+        $hasDefault = false;
+        foreach ($DB->request(['FROM' => 'glpi_useremails', 'WHERE' => ['users_id' => $id]]) as $row) {
+            $address    = mb_strtolower(trim((string) $row['email']));
+            $hasDefault = $hasDefault || (int) $row['is_default'] === 1;
+            if ($address === mb_strtolower(trim($old))) {
+                $oldRow ??= $row;
+            } elseif ($address === $new) {
+                $newRow ??= $row;
+            }
+        }
+
+        if ($newRow !== null) {
+            // The new address is already one of the user's: drop the old one, keeping a default.
+            if ($oldRow !== null) {
+                if ((int) $oldRow['is_default'] === 1) {
+                    $DB->update('glpi_useremails', ['is_default' => 1], ['id' => $newRow['id']]);
+                }
+                $DB->delete('glpi_useremails', ['id' => $oldRow['id']]);
+            }
+        } elseif ($oldRow !== null) {
+            $DB->update('glpi_useremails', ['email' => $new], ['id' => $oldRow['id']]);
+        } else {
+            $DB->insert('glpi_useremails', [
+                'users_id'   => $id,
+                'email'      => $new,
+                'is_default' => $hasDefault ? 0 : 1,
+                'is_dynamic' => 0,
+            ]);
+        }
+
+        if ($plan['rename']) {
+            $DB->update('glpi_users', ['name' => $new], ['id' => $id]);
+        }
+        SsoIdentity::updateEmail((int) $identity['id'], $new);
+
+        // The session is opened from this object next, so it must carry the new login.
+        $user->getFromDB($id);
+
+        return EmailSync::detail($old, $new, $plan);
+    }
+
     /** @return list<array{entities_id: int, profiles_id: int, is_recursive: int}> */
     private static function dynamicSnapshot(int $usersId): array
     {

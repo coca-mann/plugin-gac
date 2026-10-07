@@ -179,6 +179,13 @@ final class LoginService
                     UserProvisioner::convertExisting($user, $sub, $email);
                     $detail = 'linked';
                 }
+                // The e-mail of a linked account may have changed in Google (spec S32).
+                if ($match->action === IdentityMatch::USE_LINKED && $identity !== null) {
+                    $synced = UserProvisioner::syncEmail($user, $identity, $email);
+                    if ($synced !== '') {
+                        $detail .= '; ' . $synced;
+                    }
+                }
             }
             $usersId = $user->getID();
 
