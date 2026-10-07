@@ -228,7 +228,7 @@ HTML;
         }
 
         $note = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
-            . htmlescape(__('Cada workspace do Google que o GLPI aceita. Os domínios aceitos no login são os dos workspaces ativos, e a OU do usuário é lida com o administrador do workspace dele. Um domínio só pode estar em um workspace. Para remover um, use "Limpar" e salve. Um workspace sem domínio ou sem administrador fica inutilizável.', 'gac'))
+            . htmlescape(__('Cada workspace do Google que o GLPI aceita. Os domínios aceitos no login são os dos workspaces ativos, e a OU do usuário é lida com o administrador do workspace dele. Um domínio só pode estar em um workspace. Para remover um, use "Limpar" e salve; se alguma regra de autorização ainda usa o workspace, o GLPI recusa e lista as regras. Um workspace sem domínio ou sem administrador fica inutilizável.', 'gac'))
             . '</div>';
 
         $table = "<div class='table-responsive'><table class='table' id='gac-sso-workspaces'><thead><tr>"
@@ -368,6 +368,30 @@ HTML;
 
             return;
         }
+
+        // A workspace that authorization rules still use cannot be removed (spec S27): saving is
+        // refused as a whole, so nothing is written halfway.
+        $using = WorkspaceRuleUsage::rulesUsing(WorkspaceRemoval::removedKeys($current, $registry));
+        if ($using !== []) {
+            $lines = [];
+            foreach ($using as $rule) {
+                $lines[] = sprintf(
+                    '<a href="%s">%s</a> (%s)',
+                    htmlescape(\RuleRight::getFormURLWithID($rule['rule_id'])),
+                    htmlescape($rule['name']),
+                    htmlescape($rule['key'])
+                );
+            }
+            Session::addMessageAfterRedirect(
+                htmlescape(__('Nada foi salvo: há regras de autorização que usam um workspace que seria removido. Tire o critério "Workspace do Google" delas, ou mantenha o workspace:', 'gac'))
+                    . '<br>' . implode('<br>', $lines),
+                false,
+                ERROR
+            );
+
+            return;
+        }
+
         foreach ($registry->all() as $workspace) {
             if ($workspace->active && !$workspace->isUsable()) {
                 Session::addMessageAfterRedirect(
