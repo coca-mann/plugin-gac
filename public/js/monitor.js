@@ -53,6 +53,9 @@
         columns.forEach(function (col) {
             const th = document.createElement('th');
             th.textContent = col.label;
+            if (col.key === 'priority') {
+                th.classList.add('gac-col-center');
+            }
             headRow.appendChild(th);
         });
     }
@@ -90,6 +93,9 @@
             const badgeColor = priorityColors && priorityColors[row.priority_raw];
             page.columns.forEach(function (col) {
                 const td = document.createElement('td');
+                if (col.key === 'priority') {
+                    td.classList.add('gac-col-center');
+                }
                 if (col.key === 'priority' && badgeColor) {
                     const badge = document.createElement('span');
                     badge.className = 'gac-priority-badge';

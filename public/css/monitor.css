@@ -131,6 +131,12 @@
     background: #121d38;
 }
 
+/* The priority column (the only one with a badge) is centred, header and cells. */
+.gac-monitor-board thead th.gac-col-center,
+.gac-monitor-board tbody td.gac-col-center {
+    text-align: center;
+}
+
 .gac-priority-badge {
     display: inline-block;
     padding: 0.2em 0.75em;
