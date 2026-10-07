@@ -14,6 +14,8 @@ dois está errado e deve ser corrigido. Segue o formato das specs do PRE
 - **Decidido após spike (2026-10-05)**: S4 a S6. A primeira versão desta spec tinha uma tabela
   própria de mapeamentos e outra de exceções; o dono propôs reaproveitar o motor de regras do GLPI
   para não recriar o escopo de ações, e um spike no GLPI local confirmou a viabilidade (seção 12).
+- **Decidido em 07/10/2026**: S25 a S30 (seletor de OU e workspace nas regras e nas OUs
+  bloqueadas, chave estável do workspace, trava de remoção, lista de OUs sem tabela). Spike na seção 12.
 - **Revisável**: S12 (login do usuário novo = e-mail completo) e S18 (checagem domínio × OU,
   desligada por padrão).
 - **Proposta, aguardando confirmação do dono**: S23 (convivência com as regras do AD).
@@ -110,7 +112,8 @@ Fatos do ambiente que moldam o desenho:
   um admin dedicado de função somente leitura. O escopo `admin.directory.orgunit.readonly` só
   será necessário se a página de árvore de OUs (fora da primeira entrega) for feita; pedir menos
   limita o dano de uma chave vazada. Falha da API nega o login (falha fechada); nunca há OU ou
-  entidade padrão como plano B.
+  entidade padrão como plano B. *(Atualizada em 07/10/2026: o login continua com esse único
+  escopo; o escopo de OUs entra só para listar, com a delegação autorizada à parte, ver S28.)*
 - **S4. O mapeamento OU → entidade/perfil são regras de autorização nativas.** O plugin declara
   `$PLUGIN_HOOKS['use_rules']['gac'] = ['RuleRight']` (o valor é um **array de tipos**, não
   `true`) e implementa dois hooks: `getRuleCriteria`, que acrescenta o critério virtual
@@ -214,6 +217,76 @@ Fatos do ambiente que moldam o desenho:
   terceiros); a estrutura aceita acrescentá-la depois. A configuração antiga de um workspace só
   (`sso_allowed_domains` e `sso_sa_admin_subject`) é migrada para um workspace "Principal" na
   instalação.
+- **S25. O workspace tem uma chave estável.** *(Decidida em 07/10/2026.)* O `name` é editável e
+  não serve de referência para as regras: renomear "Principal" quebraria em silêncio todas as
+  regras que o citam. Cada workspace ganha `key`, um identificador `[a-z0-9-]` (1 a 40
+  caracteres), **único** e **imutável** depois de salvo. É gerado na criação a partir do nome
+  (`Principal` vira `principal`; acento é removido; colisão ganha o sufixo `-2`, `-3`...). Os
+  workspaces já gravados sem chave a recebem na primeira carga, pelo preenchimento de valores
+  faltantes do `SsoSettings::normalize()`, derivada do nome atual. A tela mostra a chave como
+  somente leitura, e o servidor ignora qualquer alteração dela vinda do formulário. O
+  `WorkspaceRegistry` recusa chave duplicada. Se um workspace for removido e outro for criado com o
+  mesmo nome, a chave gerada é a mesma e as regras antigas voltam a casar; isso é consequência da
+  geração, não uma garantia.
+- **S26. Novo critério de regra `GOOGLE_WORKSPACE`.** *(Decidida em 07/10/2026.)* Além de
+  `GOOGLE_OU` (S4), o `RuleRight` ganha o critério virtual "Workspace do Google", que só aceita a
+  condição "é" e cujo valor é a **chave** (S25). O `RuleRunner` já conhece o workspace achado pelo
+  domínio do e-mail (S24) e passa a entregar a chave ao motor; o `RuleHooks::inputData` a coloca na
+  entrada com a mesma mecânica do `GOOGLE_OU`. **Regras sem esse critério continuam valendo em
+  qualquer workspace**, exatamente como antes: a conversão para regras por workspace é opcional e
+  feita regra a regra. Motivo: o motor compara apenas o caminho da OU, então o mesmo caminho em dois
+  workspaces (por exemplo `/Sistemas`) casaria a mesma regra nos dois; com o critério novo a regra
+  pode distinguir.
+- **S27. Trava na remoção de um workspace.** *(Decidida em 07/10/2026.)* Ao salvar a
+  configuração, se um workspace gravado deixou de existir na lista enviada, o servidor procura
+  as regras de autorização que o usam e **recusa o salvamento inteiro** (nada é gravado pela
+  metade) enquanto houver alguma. A varredura é uma consulta em `glpi_rulecriterias` ligada a
+  `glpi_rules`, com `criteria = 'GOOGLE_WORKSPACE'`, `pattern` igual à chave (qualquer condição: uma regra "não é" também depende do workspace) e regra de autorização
+  (`glpi_rules.sub_type = 'RuleRight'`; a tabela `glpi_rules` não tem `is_deleted`, uma regra apagada
+  simplesmente deixa de existir). **Regras desativadas contam**: elas
+  podem ser reativadas e é ali que quebrariam. A mensagem lista cada regra pelo nome, com link
+  para abri-la. A trava vale na remoção, não na desativação: um workspace desativado já nega o
+  login por domínio (S24), então a regra nunca chega a ser avaliada. A trava é no servidor
+  (`SsoConfig::save()`), porque "Limpar" só esvazia campos no navegador.
+- **S28. Lista de OUs lida direto do Google, com cache, sem tabela.** *(Decidida em 07/10/2026,
+  depois do spike da seção 12: 91 OUs em uma chamada de cerca de 1,2 s, sem paginação.)* Uma classe
+  nova, `OrgUnitDirectory`, chama `GET /admin/directory/v1/customer/my_customer/orgunits?type=all`
+  com o escopo **`admin.directory.orgunit.readonly`**, **só na listagem**: o login continua pedindo
+  apenas o escopo de usuário (S3), então um workspace que ainda não autorizou o escopo novo não
+  afeta ninguém. O resultado é guardado em `$GLPI_CACHE` por chave de workspace, com TTL de 10
+  minutos e um botão "Atualizar" que o ignora. Cada workspace falha de forma isolada: o erro de
+  um aparece no seletor e não impede a lista dos outros. Não há tabela do plugin; a lista nunca é
+  fonte de verdade de nada, só ajuda a digitar. O administrador representado precisa de um papel
+  com **Unidades organizacionais: Ler** além da leitura de usuários; super administrador não é
+  necessário (o texto da configuração, que dizia isso, é corrigido). Se a Directory API devolver
+  401 ou 403 para o escopo novo, a causa provável é o privilégio do papel (seção 12).
+- **S29. Seletor na tela de regras.** *(Decidida em 07/10/2026.)* O campo do valor do critério
+  não está no HTML da página de regras: o GLPI o carrega por AJAX (`ajax/rulecriteriavalue.php`
+  chama `Rule::displayCriteriaSelectPattern()`, que imprime `Html::input('pattern')`) a cada troca
+  de critério ou condição. Um JS do plugin (`add_javascript`, sem efeito fora do formulário de
+  critérios) observa o DOM e, quando o critério é:
+  - `GOOGLE_WORKSPACE`: troca o campo por um `<select>` (valor = chave, rótulo = nome);
+  - `GOOGLE_OU`: troca o campo por um **combobox com texto livre**; o rótulo é
+    `<nome do workspace> - <caminho>`, e o **valor gravado é só o caminho** (o `RuleHooks` compara
+    o caminho puro). Se a mesma regra já tem um critério `GOOGLE_WORKSPACE`, as opções são
+    filtradas por ele.
+  Os dados vêm de `ajax/sso/orgunits.php` (JSON; exige o direito de ler regras de autorização).
+  Se a lista falhar, o campo de texto original permanece, com um aviso discreto. O texto livre
+  continua valendo: cobre a OU recém-criada, o cache velho e o Google fora do ar. A escolha do
+  componente (select2 do GLPI ou `<datalist>`) fica para o plano; não muda o contrato acima. O
+  campo de OUs bloqueadas (S9) usa o mesmo mecanismo de dados, ver S30.
+- **S30. Seletor também no campo de OUs bloqueadas.** *(Decidida em 07/10/2026.)* Na
+  configuração, o campo `sso_blocked_ou_paths` continua sendo um **texto com um caminho por
+  linha** (formato, `OuBlocklist` e dados já gravados não mudam, sem migração). Acima do texto
+  entra um combobox "Adicionar OU" com as mesmas OUs da S29 (todos os workspaces, rótulo
+  `<workspace> - <caminho>`); escolher uma OU **acrescenta o caminho como uma nova linha** do
+  texto, sem duplicar uma linha que já existe (comparação sem diferença de caixa, como o
+  `OuPath::normalize()`). O texto continua editável à mão e é a única fonte de verdade; se a lista
+  falhar, resta só o texto. **A lista de bloqueio é global, não por workspace**: ela compara apenas
+  o caminho (S9), então bloquear `/Docentes` bloqueia esse caminho em todos os workspaces. Isso
+  falha para o lado seguro (bloqueia mais, nunca menos), e o rótulo do seletor deixa claro que o
+  efeito é em todos. Bloqueio por workspace fica fora desta entrega: exigiria mudar o formato do
+  texto e a migração dos dados gravados.
 
 ## 5. Modelo de dados
 
@@ -238,7 +311,7 @@ configurável.
 ### 5.3 Configuração (`glpi_configs`, contexto `plugin:gac`, chaves `sso_*`)
 
 `sso_enabled`, `sso_client_id`, `sso_client_secret` (protegido), `sso_workspaces` (JSON: lista de
-`{name, domains, admin_subject, is_active}`, ver S24), `sso_sa_client_email`, `sso_sa_private_key`
+`{key, name, domains, admin_subject, is_active}`, ver S24 e S25), `sso_sa_client_email`, `sso_sa_private_key`
 (protegido), `sso_blocked_ou_paths`, `sso_auto_create` (padrão sim), `sso_hide_local_form` (padrão sim),
 `sso_domain_segment` (vazio = desligado), `sso_pilot_only` (padrão não), `sso_pilot_emails`,
 `sso_revoke_on_deny` (padrão sim), `sso_event_retention_days`, `sso_button_label`,
@@ -454,4 +527,107 @@ implementação.
 - O 2FA do GLPI não é exigido (S17).
 - O bloqueio de professores vale no login, não em sessões abertas (S22).
 - A edição de OU em texto livre sujeita a erro de digitação, sem a tela de árvore (fora da
-  primeira entrega).
+  primeira entrega). *(Mitigado em 07/10/2026 pelo seletor da S29, que sugere as OUs do Google
+  e mantém o texto livre como reserva.)*
+
+### Confirmado no spike de listagem de OUs (2026-10-07, script descartável, workspace Principal)
+
+- `orgunits.list?type=all` com `customer/my_customer` devolveu **91 OUs** em uma chamada
+  (HTTP 200, cerca de 1,2 s somando o pedido do token, 36 KB, sem `nextPageToken`), com no máximo
+  3 níveis. Vieram também as pastas intermediárias vazias. Campos: `name`, `orgUnitPath`,
+  `orgUnitId`, `parentOrgUnitPath`, `parentOrgUnitId`.
+- O caminho segue o formato do `orgUnitPath` do usuário (barra inicial, com espaços, acentos e
+  colchetes: `/fimca.com.br/IES-PVH/Almoxarifado e Compras`, `/[desativados]`) e **mantém a caixa**
+  do Google (`IES-PVH`); o `OuPath::normalize()` compara em minúsculas.
+- **O administrador representado precisa de um papel com "Unidades organizacionais: Ler".** Os dois
+  administradores testados são delegados (`isAdmin: false`, `isDelegatedAdmin: true`). Enquanto o
+  papel não tinha o privilégio, a API respondeu **401 "Login Required"** (não 403) com um token
+  válido para o escopo (`tokeninfo` confirmou o escopo); `my_customer`, o `customerId` real e hosts
+  diferentes deram o mesmo erro. Depois de acrescentar o privilégio ao papel, 200. Um token só com o
+  escopo de usuário recebe 403 "insufficient authentication scopes" nessa rota.
+
+### Verificações pendentes da entrega S25 a S30
+
+- **V17.** Escolher o componente do combobox (select2 do GLPI ou `<datalist>`) lendo o GLPI 11.0.x
+  local, e confirmar que o rótulo "workspace - caminho" com valor só do caminho funciona nele.
+- **V18.** Confirmar no navegador que o observador do DOM troca o campo quando o critério ou a
+  condição mudam e na edição de um critério já gravado (valor preenchido).
+- **V19.** Testar a listagem na **Metropolitana** (escopo delegado e papel com leitura de OUs ainda
+  não conferidos lá) e o isolamento de falha entre workspaces.
+- **V20.** Conferir a trava de remoção (S27) com regra ativa e desativada, e que o salvamento
+  recusado não grava nada.
+- **V21.** Conferir se algum caminho de OU se repete entre o Principal e a Metropolitana; se sim, o
+  aviso de repetição no rótulo vale a pena (S26).
+- **V22.** Conferir no navegador o "Adicionar OU" do campo de OUs bloqueadas (S30): acrescenta a
+  linha, não duplica, respeita linhas de comentário (`#`) e não apaga o que foi digitado à mão.
+
+### Testes da entrega S25 a S30
+
+O harness unitário (`tests/Unit/`, sem GLPI) não tem `__()` nem `htmlescape()`, e o repositório não
+tem teste de JS. Para que o que é regra seja testável sem o GLPI, a lógica fica em **classes puras
+novas** (em `src/Sso/`, sem `__()`, sem banco e sem Guzzle) e em **funções puras de JS**, e o código
+preso ao GLPI fica fino. Há quatro camadas.
+
+**A. Unitários de PHP (`phpunit.unit.xml`).** Classes puras novas:
+
+- `WorkspaceKey`: gerar a chave a partir do nome (`Principal` vira `principal`; acentos, espaços e
+  símbolos viram `-`; sem hífen nas pontas; nome só de símbolos ou vazio vira um valor válido
+  fixo; limite de 40 caracteres); validar o formato; sufixo `-2`, `-3` em colisão com as chaves
+  existentes, sem passar do limite.
+- `WorkspaceRegistry` (estende o teste existente): chave acrescentada às linhas sem chave; chave
+  duplicada recusada; **chave gravada vence a do formulário** (imutabilidade); renomear mantém a
+  chave; JSON de ida e volta; linha antiga sem chave e sem nome não quebra.
+- `SsoSettings::normalize()` (estende o teste existente): preenchimento de `key` ao ler a
+  configuração antiga; idempotência (normalizar duas vezes dá o mesmo).
+- `WorkspaceRemoval` (diferença entre a lista gravada e a enviada): remoção detectada pela chave;
+  renomear não conta; desativar não conta; acrescentar não conta; lista vazia e lista nova vazia.
+- `OrgUnitList`: ler a resposta de `orgunits.list` (campos ausentes, caminho sem barra inicial,
+  lista vazia, resposta sem `organizationUnits`); ordenação estável; rótulo
+  `<workspace> - <caminho>`; filtro por workspace; marcação de caminho repetido entre workspaces;
+  envelope do cache (montar, ler, expirar, versão inválida descartada).
+- `RuleInput` (monta o array de parâmetros do motor): com chave de workspace entrega
+  `google_workspace`; sem workspace não entrega a chave; o `google_ou` não muda. Cobre a regra
+  de compatibilidade da S26. `RuleHooks::inputData` passa a delegar a ele.
+- `OuBlocklist` (estende o teste existente): texto com linhas acrescentadas à mão e por
+  "Adicionar OU" (comentários, linhas em branco, caixa diferente, duplicata) dá o mesmo conjunto.
+
+**B. Unitários de JS (`node --test`, Node 24 local).** `public/js/sso-ou-picker.js` expõe suas
+funções puras com `module.exports` quando existir `module` (o navegador as ignora): montar rótulo
+e valor de uma opção; filtrar por workspace e por texto; acrescentar linha ao texto sem duplicar
+(sem diferença de caixa, ignorando comentários, preservando o que existe, com e sem quebra de
+linha final); escapar nome de OU com aspas, `<`, `&` e `'` ao montar HTML. O teste roda com
+`node --test tests/js/`. Fica **fora** desta camada tudo que mexe no DOM do GLPI.
+
+**C. Roteiros contra o GLPI local (script em `tests/` ou `var/`, rodando com o PHP do XAMPP).**
+Integração com o banco real do ambiente de desenvolvimento, descartável e com dados próprios:
+
+- Varredura da trava (S27): com regras de autorização criadas pelo script e removidas no fim,
+  cobrir regra ativa, desativada, de outro tipo (`sub_type`), com a chave de outro workspace e
+  com o critério em outra condição (por exemplo "não é"), e uma regra apagada. Esperado: bloqueiam a
+  ativa, a desativada e a de outra condição; não bloqueiam a de outro tipo, a de outra chave nem a
+  apagada. A mensagem traz o nome e o link de cada uma.
+- `SsoConfig::save()` com remoção bloqueada: **nada é gravado** (comparar a configuração antes e
+  depois) e o erro volta ao formulário.
+- Compatibilidade de regras (S26): uma regra antiga só com `GOOGLE_OU` e outra com `GOOGLE_OU` mais
+  `GOOGLE_WORKSPACE`, ambas pelo `RuleRunner`, com usuários de dois workspaces. Esperado: a antiga
+  casa nos dois, a nova só no workspace dela.
+- `OrgUnitDirectory`: resposta com a OU lida do Google (o spike de `var/` já fez a chamada real),
+  falha de um workspace sem derrubar o outro, escopo não delegado (401 e 403 viram mensagem
+  legível, sem expor o corpo do erro além do que o `errorDetail` já filtra), cache dentro e fora
+  do TTL e o botão "Atualizar".
+- Endpoint `ajax/sso/orgunits.php` por `curl`: sem sessão, sem o direito de regras, com o direito;
+  o JSON não pode conter chave de conta de serviço, token nem e-mail de administrador.
+
+**D. Roteiro no navegador (`docs/sso-manual-tests.md`, nova seção).** O que só o navegador mostra:
+o campo trocado ao escolher o critério `GOOGLE_OU` e `GOOGLE_WORKSPACE`; ao trocar a condição; ao
+editar um critério já gravado (valor preenchido); o filtro das OUs pelo workspace da própria
+regra; a rotina sem lista (campo de texto original mais o aviso); salvar a regra e conferir o valor
+gravado (**só o caminho**); o "Adicionar OU" das bloqueadas (V22); largura de celular; botão de
+copiar que já existe. A trava de remoção pela tela, lendo a mensagem e abrindo o link da regra.
+Teste de segurança de tela: OU com `<`, aspas ou `&` no nome aparece como texto, nunca como HTML.
+
+**Regressão.** A suíte unitária inteira (`phpunit.unit.xml`) continua verde, e o roteiro do SSO
+existente é refeito nos itens que tocam o login, porque o `RuleRunner` e o `RuleHooks` mudam.
+
+**Fora dos testes automáticos, de propósito:** a chamada real ao Google (depende de delegação, de
+papel e de rede; coberta pelo roteiro C e pelo spike) e o componente do GLPI (select2).
