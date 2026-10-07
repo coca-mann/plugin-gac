@@ -10,6 +10,32 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Added
+
+- [9233a8c](https://github.com/coca-mann/plugin-gac/commit/9233a8c), [c94da60](https://github.com/coca-mann/plugin-gac/commit/c94da60), [e76481c](https://github.com/coca-mann/plugin-gac/commit/e76481c) - A Tela de Monitoramento agora pode ter de 1 a 8 páginas, cada uma com a sua pesquisa salva e as suas colunas. A exibição alterna entre elas no tempo configurado (padrão global ou por Tela), uma barra na parte de baixo conta os tickets que não cabem na tela e as linhas podem ser pintadas por status, prioridade ou prazo de SLA. As páginas são editadas na aba "Páginas" da Tela, com a contagem de tickets que a pesquisa retorna hoje.
+- [2d6b0a3](https://github.com/coca-mann/plugin-gac/commit/2d6b0a3) - Na exibição com várias páginas, pequenos pontos ao lado do relógio indicam a página atual e o título da página substitui o título da Tela. O som de ticket novo de uma página que não está na tela só toca quando o rodízio a traz de volta, e o ponto dela pisca enquanto isso.
+- [76c3ca3](https://github.com/coca-mann/plugin-gac/commit/76c3ca3) - O som do alerta de ticket novo agora pode ser enviado como arquivo (mp3, ogg ou wav, até 512 KB) na configuração do módulo, em vez de depender de uma URL. Quando o navegador impede o som de tocar, um ícone de alto-falante cortado aparece ao lado do relógio.
+- [04bb869](https://github.com/coca-mann/plugin-gac/commit/04bb869) - A Tela de Monitoramento pode mostrar um banner grande a cada ticket novo, com número, título, prioridade, solicitante, entidade, categoria e o início da descrição, na cor da prioridade, com transição de entrada e saída e o som tocando junto. Os banners entram numa fila, o mais urgente primeiro, e ficam desligados por padrão em cada Tela.
+- [9802d75](https://github.com/coca-mann/plugin-gac/commit/9802d75) - Cada Tela de Monitoramento pode ter o seu próprio som de alerta, usado antes do som do plugin. O formulário da Tela foi reorganizado em cinco blocos (Identificação, Exibição, Atualização, Alertas de ticket novo e Publicação), com nomes de campos mais claros e dicas de ajuda.
+- [f70033b](https://github.com/coca-mann/plugin-gac/commit/f70033b), [1eb39bf](https://github.com/coca-mann/plugin-gac/commit/1eb39bf) - Nova ordem de linhas "Tempo decorrido (mais antigo primeiro)" na Tela de Monitoramento, e cada página pode escolher a sua própria ordem, seguindo a ordem padrão da Tela quando não escolher nenhuma.
+- [c510478](https://github.com/coca-mann/plugin-gac/commit/c510478) - A troca de uma página para outra na exibição da Tela de Monitoramento agora tem um efeito suave de desaparecer e reaparecer.
+- [a021696](https://github.com/coca-mann/plugin-gac/commit/a021696) - Quando uma Tela de Monitoramento é desativada (ou o link público é desligado) enquanto está aberta, a tabela é esvaziada e aparece uma mensagem avisando, em vez de continuar mostrando tickets antigos. A exibição volta sozinha se a Tela for reativada.
+- [e76d1af](https://github.com/coca-mann/plugin-gac/commit/e76d1af), [fe06d94](https://github.com/coca-mann/plugin-gac/commit/fe06d94) - Manuais do usuário dos módulos de Laudo Técnico de Baixa Patrimonial e de Login com Google (SSO).
+
+### Changed
+
+- [fa5c3cc](https://github.com/coca-mann/plugin-gac/commit/fa5c3cc) - As margens da exibição da Tela de Monitoramento ficaram menores, dando mais espaço à tabela na TV.
+
+### Fixed
+
+- [1eb39bf](https://github.com/coca-mann/plugin-gac/commit/1eb39bf) - A ordenação "Urgência, status e data" da Tela de Monitoramento deixava os tickets fora de ordem de prioridade, porque comparava a urgência e não a prioridade que a tela mostra. Agora a opção se chama "Prioridade, status e data" e a prioridade mais alta fica sempre no topo.
+
+### Security
+
+- [6e67bf1](https://github.com/coca-mann/plugin-gac/commit/6e67bf1) - As páginas públicas da Tela de Monitoramento passaram a ter limite de requisições por minuto, por endereço de cliente e por link público, respondendo com erro 429 quando excedido; a tela da TV mantém a tabela e espera para tentar de novo. O endereço do cliente atrás de um proxy reverso (como o nginx) só é lido do cabeçalho X-Forwarded-For para os proxies confiáveis configurados.
+
 ## [0.7.0] - 2026-10-05
 
 ### Added
