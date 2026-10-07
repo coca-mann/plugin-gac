@@ -351,6 +351,10 @@
         const bannerQueue = [];
         let bannerBusy = false;
         const BANNER_BATCH_MAX = 3;
+        // A Tela deactivated (or its public link turned off) while it is on screen: see clearScreen().
+        let unavailable = false;
+        const emptyEl = root.querySelector('[data-gac-monitor-empty]');
+        const emptyDefaultText = emptyEl ? emptyEl.textContent : '';
         const BANNER_QUEUE_MAX = 6;
 
         // Returns the tickets the page ON SCREEN got that it did not have at the previous poll (to be
@@ -514,6 +518,45 @@
             }
         }
 
+        // The Tela stopped being available while it is open (spec M20): drop everything held in memory
+        // (pages, the per-page ticket sets, pending alerts, queued banners, the rotation timer), empty
+        // the table and say why. Polling goes on at the usual pace, so the board comes back by itself
+        // if the Tela is reactivated; what it then loads counts as a first load (no alert).
+        function clearScreen() {
+            clearTimeout(rotationTimer);
+            rotationTimer = null;
+            rotationKey = '';
+            pages = [];
+            activeId = null;
+            priorityColors = {};
+            [previousIds, newIds, flashing, pendingRows].forEach(function (holder) {
+                Object.keys(holder).forEach(function (key) { delete holder[key]; });
+            });
+            bannerQueue.length = 0;
+            const layer = root.querySelector('[data-gac-monitor-banner]');
+            if (layer) {
+                layer.hidden = true;
+                layer.innerHTML = '';
+            }
+            root.querySelector('[data-gac-monitor-head]').innerHTML = '';
+            root.querySelector('[data-gac-monitor-body]').innerHTML = '';
+            root.querySelector('[data-gac-monitor-viewport] table').hidden = true;
+            if (titleEl) {
+                titleEl.textContent = screenTitle;
+            }
+            renderDots(root, pages, activeId, flashing);
+            const bar = root.querySelector('[data-gac-monitor-overflow]');
+            if (bar) {
+                bar.hidden = true;
+            }
+            if (emptyEl) {
+                emptyEl.textContent = 'Esta Tela foi desativada ou não está mais disponível.';
+                emptyEl.classList.add('gac-monitor-empty-alert');
+                emptyEl.hidden = false;
+            }
+            unavailable = true;
+        }
+
         function rotate() {
             if (pages.length > 1) {
                 let index = 0;
@@ -561,6 +604,11 @@
                     clockOffsetMs = serverNow - Date.now();
                 }
                 const pollSeconds = parseInt(payload.poll_interval_seconds, 10);
+                if (response.status === 404 && payload.code === 'screen_unavailable') {
+                    clearScreen();
+                    setConnectionState(root, false, lastSuccess || new Date());
+                    return;
+                }
                 if (!Number.isNaN(pollSeconds) && pollSeconds > 0) {
                     interval = Math.max(5, pollSeconds) * 1000;
                 }
@@ -577,6 +625,13 @@
                 }
                 pages = payload.pages || [];
                 // One alert per cycle, not one per new ticket (plan "Decisões de implementação" item 8).
+                if (unavailable) {
+                    unavailable = false;
+                    if (emptyEl) {
+                        emptyEl.textContent = emptyDefaultText;
+                        emptyEl.classList.remove('gac-monitor-empty-alert');
+                    }
+                }
                 const freshRows = diffPages(pages);
                 const arrival = showActive();
                 // Restart the rotation timer only when its parameters change: restarting it on

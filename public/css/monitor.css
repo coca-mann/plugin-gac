@@ -218,6 +218,19 @@
     font-size: 1.3rem;
 }
 
+/* The Tela went away while it was open (spec M20): bigger and in the warning colour, readable from a
+   distance on a TV. */
+.gac-monitor-empty-alert {
+    padding-top: 6rem;
+    color: #ffd166;
+    font-size: clamp(1.6rem, 3vw, 3rem);
+    font-weight: 700;
+}
+
+.gac-theme-light .gac-monitor-empty.gac-monitor-empty-alert {
+    color: #8a5a00;
+}
+
 /* A long page title must never push the clock away: it truncates, the clock and the dots keep
    their size. */
 .gac-monitor-title {

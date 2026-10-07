@@ -46,7 +46,7 @@ if (!MonitorScreen::canView()) {
 $screen = new MonitorScreen();
 if (!$screen->getFromDB((int) ($_GET['id'] ?? 0)) || !$screen->fields['is_active']) {
     http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac')], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

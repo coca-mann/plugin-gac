@@ -41,14 +41,14 @@ header('Content-Type: application/json; charset=utf-8');
 $token = (string) ($_GET['token'] ?? '');
 if (!PublicToken::isWellFormed($token)) {
     http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac')], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 $screen = new MonitorScreen();
 if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])) {
     http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac')], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
