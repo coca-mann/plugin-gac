@@ -104,7 +104,7 @@ final class SsoConfigSection implements ConfigSection
             );
 
         $service = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
-            . htmlescape(__('Uma única conta de serviço do Google Cloud serve a todos os workspaces: ela precisa ter a delegação em todo o domínio, com somente o escopo admin.directory.user.readonly, autorizada no Admin Console de cada workspace. O administrador representado em cada um é definido no bloco Workspaces.', 'gac'))
+            . htmlescape(__('Uma única conta de serviço do Google Cloud serve a todos os workspaces: ela precisa ter a delegação em todo o domínio, com os escopos admin.directory.user.readonly (login) e admin.directory.orgunit.readonly (lista de OUs nos seletores), autorizados no Admin Console de cada workspace. O administrador representado em cada um é definido no bloco Workspaces.', 'gac'))
             . '</div>'
             . $this->row(
                 __('E-mail da conta de serviço', 'gac'),
@@ -124,7 +124,7 @@ final class SsoConfigSection implements ConfigSection
             . '</div>'
             . $this->row(
                 __('OUs bloqueadas', 'gac'),
-                $this->textarea('sso_blocked_ou_paths', (string) $s['sso_blocked_ou_paths'], 4),
+                $this->blockedPicker() . $this->textarea('sso_blocked_ou_paths', (string) $s['sso_blocked_ou_paths'], 4),
                 __('Um caminho por linha (ex.: /fimca.com.br/ies-pvh/docentes). Quem está nessa OU, ou abaixo dela, é negado antes de qualquer regra. Use para os docentes.', 'gac')
             )
             . $this->row(
@@ -234,7 +234,7 @@ HTML;
         $table = "<div class='table-responsive'><table class='table' id='gac-sso-workspaces'><thead><tr>"
             . $this->th(__('Nome', 'gac'), __('Só para identificar o workspace. Pode ser renomeado: a chave abaixo é o que as regras usam e nunca muda.', 'gac'))
             . $this->th(__('Domínios', 'gac'), __('Um por linha. Cada domínio só pode estar em um workspace.', 'gac'))
-            . $this->th(__('Administrador do Google', 'gac'), __('A conta de serviço age em nome dele para ler a OU dos usuários. Precisa ser super administrador; o acesso é só de leitura.', 'gac'))
+            . $this->th(__('Administrador do Google', 'gac'), __('A conta de serviço age em nome dele para ler a OU dos usuários. Pode ser um administrador delegado, com um papel que leia usuários e unidades organizacionais (Unidades organizacionais: Ler). O acesso é só de leitura.', 'gac'))
             . $this->th(__('Ativo', 'gac')) . '<th></th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
             . "<button type='button' class='btn btn-sm btn-outline-secondary' id='gac-sso-add-ws'><i class='ti ti-plus me-1'></i>"
             . htmlescape(__('Adicionar workspace', 'gac')) . '</button>';
@@ -423,6 +423,13 @@ HTML;
 
         SsoConfig::save($raw);
         Session::addMessageAfterRedirect(__('Configuração do login com Google salva.', 'gac'));
+    }
+
+    /** Where the JS (public/js/sso-ou-picker.js) puts the "Adicionar OU" selector (spec S30). */
+    private function blockedPicker(): string
+    {
+        return "<div id='gac-sso-blocked-picker' class='mb-2'></div>"
+            . "<div class='form-text mb-2'>" . htmlescape(__('A OU escolhida é acrescentada ao texto abaixo. O bloqueio vale para o caminho em todos os workspaces.', 'gac')) . '</div>';
     }
 
     private function textarea(string $name, string $value, int $rows): string

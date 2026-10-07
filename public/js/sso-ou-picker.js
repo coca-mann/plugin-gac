@@ -66,6 +66,7 @@
 
     var TEXT = {
         placeholderOu: 'Escolha uma OU ou digite o caminho',
+        placeholderBlocked: 'Adicionar uma OU à lista de bloqueio...',
         refresh: 'Atualizar a lista de OUs',
         unavailable: 'Lista de OUs indisponível agora: digite o caminho da OU.',
         chooseWorkspace: 'Escolha o workspace'
@@ -217,8 +218,38 @@
         enhancePattern(input, criterion);
     }
 
+    function initBlockedPicker() {
+        var host = root.document.getElementById('gac-sso-blocked-picker');
+        var area = root.document.querySelector('textarea[name="sso_blocked_ou_paths"]');
+        if (!host || !area || host.getAttribute('data-ready') || !hasSelect2()) { return; }
+        host.setAttribute('data-ready', '1');
+
+        fetchData(0, false)
+            .then(function (payload) {
+                var select = root.document.createElement('select');
+                select.className = 'form-select';
+                fillSelect(select, buildOptions(payload, ''), '');
+                host.appendChild(select);
+
+                var $ = root.jQuery;
+                $(select).select2({ width: '100%', placeholder: TEXT.placeholderBlocked, allowClear: false });
+                $(select).on('select2:select', function (event) {
+                    area.value = appendPathLine(area.value, event.params.data.id);
+                    area.dispatchEvent(new Event('input', { bubbles: true }));
+                    $(select).val('').trigger('change');
+                });
+            })
+            .catch(function () {
+                var note = root.document.createElement('div');
+                note.className = 'form-text';
+                note.textContent = TEXT.unavailable;
+                host.appendChild(note);
+            });
+    }
+
     function scan() {
         enhanceRuleForm();
+        initBlockedPicker();
     }
 
     if (typeof document !== 'undefined') {
