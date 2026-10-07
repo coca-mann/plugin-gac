@@ -103,7 +103,7 @@ final class DryRun
             return $finish($denied);
         }
 
-        $rules = RuleRunner::result($email, $report['ancestors']);
+        $rules = RuleRunner::result($email, $report['ancestors'], $workspace->key);
         foreach ($rules->grants as $grant) {
             $report['grants'][] = [
                 'entity'       => \Dropdown::getDropdownName('glpi_entities', $grant['entities_id']),

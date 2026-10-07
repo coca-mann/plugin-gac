@@ -39,11 +39,13 @@ namespace GlpiPlugin\Gac\Sso;
  * Adds the "OU do Google Workspace" criterion to GLPI's authorization rules (RuleRight) and feeds
  * its value to the engine (spec S4). The value is the list of ancestor paths of the user's OU, so
  * a rule "OU do Google is /a/b" matches /a/b and everything below it. Rules must use only the
- * "is" condition on this criterion (spec V15).
+ * "is" condition on this criterion (spec V15). The "Workspace do Google" criterion (spec S26) is
+ * matched against the workspace key.
  */
 final class RuleHooks
 {
-    public const CRITERION = 'GOOGLE_OU';
+    public const CRITERION           = RuleInput::OU_CRITERION;
+    public const WORKSPACE_CRITERION = RuleInput::WORKSPACE_CRITERION;
 
     /**
      * Hook getRuleCriteria. Receives ['rule_itemtype' => ..., 'values' => current criteria].
@@ -66,6 +68,15 @@ final class RuleHooks
                 'virtual'   => true,
                 'id'        => 'google_ou',
             ],
+            self::WORKSPACE_CRITERION => [
+                'name'            => __('Workspace do Google', 'gac'),
+                'field'           => '',
+                'table'           => '',
+                'linkfield'       => '',
+                'virtual'         => true,
+                'id'              => 'google_workspace',
+                'allow_condition' => [\Rule::PATTERN_IS],
+            ],
         ];
     }
 
@@ -82,8 +93,8 @@ final class RuleHooks
             return [];
         }
 
-        $ancestors = $params['values']['params']['google_ou'] ?? null;
+        $ruleParams = $params['values']['params'] ?? null;
 
-        return is_array($ancestors) ? [self::CRITERION => $ancestors] : [];
+        return RuleInput::engineInput(is_array($ruleParams) ? $ruleParams : []);
     }
 }

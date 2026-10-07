@@ -31,34 +31,62 @@
  * -------------------------------------------------------------------------
  */
 
+
 declare(strict_types=1);
 
 namespace GlpiPlugin\Gac\Sso;
 
-/** Runs GLPI's authorization rules for a Google login. */
-final class RuleRunner
+/**
+ * What the Google login hands to the authorization rules engine (spec S4, S26): the OU ancestors
+ * for the "OU do Google Workspace" criterion and the workspace key for the "Workspace do Google"
+ * criterion. Pure.
+ */
+final class RuleInput
 {
-    /**
-     * @param list<string> $ancestors    OuPath::ancestors() of the user's OU
-     * @param string       $workspaceKey Workspace::$key of the e-mail's workspace (spec S26)
-     * @return array<string, mixed> the engine's output array
-     */
-    public static function run(string $email, array $ancestors, string $workspaceKey = ''): array
-    {
-        $collection = new \RuleRightCollection();
+    public const OU_CRITERION        = 'GOOGLE_OU';
+    public const WORKSPACE_CRITERION = 'GOOGLE_WORKSPACE';
 
-        // The output is seeded with the name only: if "entities_id" shows up in it afterwards, a
-        // rule set the default entity (the _entities_id_default action).
-        return $collection->processAllRules([], ['name' => $email], [
-            'type'  => \Auth::EXTERNAL,
-            'login' => $email,
-            'email' => $email,
-        ] + RuleInput::googleParams($ancestors, $workspaceKey));
+    private const OU_PARAM        = 'google_ou';
+    private const WORKSPACE_PARAM = 'google_workspace';
+
+    /**
+     * The Google part of the params given to processAllRules(). Without a workspace key the
+     * workspace param is left out, so rules that never mention it behave as before (S26).
+     *
+     * @param list<string> $ancestors OuPath::ancestors() of the user's OU
+     * @return array<string, mixed>
+     */
+    public static function googleParams(array $ancestors, string $workspaceKey): array
+    {
+        $params = [self::OU_PARAM => $ancestors];
+        if ($workspaceKey !== '') {
+            $params[self::WORKSPACE_PARAM] = $workspaceKey;
+        }
+
+        return $params;
     }
 
-    /** @param list<string> $ancestors */
-    public static function result(string $email, array $ancestors, string $workspaceKey = ''): RuleResult
+    /**
+     * The value of each criterion, from the params of processAllRules() (hook
+     * ruleCollectionPrepareInputDataForProcess).
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public static function engineInput(array $params): array
     {
-        return RuleResult::fromOutput(self::run($email, $ancestors, $workspaceKey));
+        $input = [];
+
+        $ou = $params[self::OU_PARAM] ?? null;
+        if (is_array($ou)) {
+            $input[self::OU_CRITERION] = $ou;
+        }
+
+        $workspace = $params[self::WORKSPACE_PARAM] ?? null;
+        if (is_string($workspace) && $workspace !== '') {
+            $input[self::WORKSPACE_CRITERION] = $workspace;
+        }
+
+        return $input;
     }
 }

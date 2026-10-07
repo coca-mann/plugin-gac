@@ -31,34 +31,51 @@
  * -------------------------------------------------------------------------
  */
 
+
 declare(strict_types=1);
 
-namespace GlpiPlugin\Gac\Sso;
+namespace GlpiPlugin\Gac\Tests\Unit;
 
-/** Runs GLPI's authorization rules for a Google login. */
-final class RuleRunner
+use GlpiPlugin\Gac\Sso\RuleInput;
+use PHPUnit\Framework\TestCase;
+
+final class RuleInputTest extends TestCase
 {
-    /**
-     * @param list<string> $ancestors    OuPath::ancestors() of the user's OU
-     * @param string       $workspaceKey Workspace::$key of the e-mail's workspace (spec S26)
-     * @return array<string, mixed> the engine's output array
-     */
-    public static function run(string $email, array $ancestors, string $workspaceKey = ''): array
+    public function testGoogleParamsCarryTheAncestorsAndTheWorkspaceKey(): void
     {
-        $collection = new \RuleRightCollection();
-
-        // The output is seeded with the name only: if "entities_id" shows up in it afterwards, a
-        // rule set the default entity (the _entities_id_default action).
-        return $collection->processAllRules([], ['name' => $email], [
-            'type'  => \Auth::EXTERNAL,
-            'login' => $email,
-            'email' => $email,
-        ] + RuleInput::googleParams($ancestors, $workspaceKey));
+        $this->assertSame(
+            ['google_ou' => ['/a', '/a/b'], 'google_workspace' => 'principal'],
+            RuleInput::googleParams(['/a', '/a/b'], 'principal')
+        );
     }
 
-    /** @param list<string> $ancestors */
-    public static function result(string $email, array $ancestors, string $workspaceKey = ''): RuleResult
+    public function testNoWorkspaceKeyMeansNoWorkspaceParam(): void
     {
-        return RuleResult::fromOutput(self::run($email, $ancestors, $workspaceKey));
+        $this->assertSame(['google_ou' => ['/a']], RuleInput::googleParams(['/a'], ''));
+    }
+
+    public function testEngineInputMapsTheParamsToTheCriteria(): void
+    {
+        $input = RuleInput::engineInput(['google_ou' => ['/a'], 'google_workspace' => 'principal', 'other' => 1]);
+
+        $this->assertSame(['GOOGLE_OU' => ['/a'], 'GOOGLE_WORKSPACE' => 'principal'], $input);
+    }
+
+    public function testRulesWithoutTheWorkspaceCriterionSeeTheSameOuInputAsBefore(): void
+    {
+        $this->assertSame(['GOOGLE_OU' => ['/a']], RuleInput::engineInput(['google_ou' => ['/a']]));
+    }
+
+    public function testEngineInputIgnoresValuesOfTheWrongType(): void
+    {
+        $this->assertSame([], RuleInput::engineInput(['google_ou' => '/a', 'google_workspace' => ['x']]));
+        $this->assertSame([], RuleInput::engineInput(['google_workspace' => '']));
+        $this->assertSame([], RuleInput::engineInput([]));
+    }
+
+    public function testCriterionNamesAreTheOnesStoredInTheRules(): void
+    {
+        $this->assertSame('GOOGLE_OU', RuleInput::OU_CRITERION);
+        $this->assertSame('GOOGLE_WORKSPACE', RuleInput::WORKSPACE_CRITERION);
     }
 }
