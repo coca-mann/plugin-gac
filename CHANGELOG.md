@@ -10,6 +10,25 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Added
+
+- [f446dd8](https://github.com/coca-mann/plugin-gac/commit/f446dd8) - No Login com Google, toda coluna que mostra uma OU (Identidades, Eventos, OUs pendentes e o resultado do Teste a seco) ganhou um botão ao lado para copiar o caminho da OU, pronto para colar numa regra de autorização.
+- [7c5ca99](https://github.com/coca-mann/plugin-gac/commit/7c5ca99), [0fdd181](https://github.com/coca-mann/plugin-gac/commit/0fdd181) - Cada workspace do Google passou a ter uma chave própria, criada sozinha a partir do nome e que nunca muda. A chave aparece em cinza embaixo do nome na aba Workspaces; renomear um workspace não afeta as regras que o usam. Os workspaces já cadastrados recebem a chave automaticamente.
+- [0566992](https://github.com/coca-mann/plugin-gac/commit/0566992) - Novo critério "Workspace do Google" nas regras de autorização, que permite a uma regra valer só para um workspace (útil quando duas OUs de workspaces diferentes têm o mesmo caminho, como `/Sistemas`). Regras que usam só a OU continuam valendo em qualquer workspace, como antes; nada precisa ser convertido.
+- [fb6eea0](https://github.com/coca-mann/plugin-gac/commit/fb6eea0) - Remover um workspace que alguma regra de autorização ainda usa passou a ser recusado: nada é salvo e a mensagem lista cada regra que depende dele, com um link para abri-la. Vale também para regras desativadas.
+- [558a7e4](https://github.com/coca-mann/plugin-gac/commit/558a7e4), [f93cd9a](https://github.com/coca-mann/plugin-gac/commit/f93cd9a) - O plugin lê do Google a lista de OUs de cada workspace e a guarda por cerca de 10 minutos. Um workspace que não conseguir listar não atrapalha os outros.
+- [815cc01](https://github.com/coca-mann/plugin-gac/commit/815cc01), [57c7d7c](https://github.com/coca-mann/plugin-gac/commit/57c7d7c), [0613ce6](https://github.com/coca-mann/plugin-gac/commit/0613ce6) - Na tela de critérios das regras de autorização, o campo do critério "OU do Google Workspace" virou um seletor com busca, que mostra "Workspace - caminho" e grava só o caminho, e aceita digitar um caminho que não está na lista. O critério "Workspace do Google" virou uma lista de workspaces. Há um botão para atualizar a lista de OUs e, quando um workspace não consegue listar, aparece um aviso sem esconder os outros. Se a lista não carregar, o campo de texto de antes continua funcionando.
+- [89cf0f9](https://github.com/coca-mann/plugin-gac/commit/89cf0f9) - O campo "OUs bloqueadas" da configuração do Login com Google ganhou o seletor "Adicionar OU", que acrescenta o caminho escolhido como uma nova linha do texto, sem duplicar e sem mexer no que foi digitado à mão. O bloqueio continua valendo por caminho, em todos os workspaces.
+- [6410ebb](https://github.com/coca-mann/plugin-gac/commit/6410ebb), [f47129c](https://github.com/coca-mann/plugin-gac/commit/f47129c), [a5c9e12](https://github.com/coca-mann/plugin-gac/commit/a5c9e12), [b20634c](https://github.com/coca-mann/plugin-gac/commit/b20634c), [7e70433](https://github.com/coca-mann/plugin-gac/commit/7e70433) - Manual do usuário, roteiro de testes e especificação do Login com Google atualizados para os seletores, o critério de workspace, a chave e a trava de remoção.
+
+### Changed
+
+- [6595b3d](https://github.com/coca-mann/plugin-gac/commit/6595b3d) - Na lista de critérios das regras de autorização, "OU do Google Workspace" e "Workspace do Google" passaram a aparecer num grupo próprio, "Login com Google", em vez de ficarem misturados aos "Critérios LDAP".
+- [f93cd9a](https://github.com/coca-mann/plugin-gac/commit/f93cd9a), [89cf0f9](https://github.com/coca-mann/plugin-gac/commit/89cf0f9) - Para os seletores listarem as OUs, a delegação em todo o domínio de cada workspace precisa também do escopo `admin.directory.orgunit.readonly`, e a função do administrador representado precisa do privilégio "Unidades organizacionais: Ler" (não precisa ser super administrador). Sem isso o login continua funcionando e só a lista de OUs daquele workspace fica indisponível. Os textos de ajuda da configuração foram atualizados.
+- [1d99bc4](https://github.com/coca-mann/plugin-gac/commit/1d99bc4) - A descrição do campo "OUs bloqueadas" ficou mais curta.
+
 ## [0.8.0] - 2026-10-06
 
 ### Added
