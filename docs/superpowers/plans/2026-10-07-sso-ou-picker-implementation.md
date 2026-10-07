@@ -15,7 +15,7 @@
 - **Cabeçalho de licença:** todo arquivo PHP novo começa com `<?php`, o docblock de licença de 32 linhas copiado de `src/Sso/OuCopy.php` (linhas 1 a 32) e `declare(strict_types=1);`. Nos blocos de código abaixo isso aparece como `// <cabeçalho padrão>`: copie o docblock real, não deixe o comentário.
 - **Namespace:** classes em `GlpiPlugin\Gac\Sso`, testes em `GlpiPlugin\Gac\Tests\Unit`.
 - **Textos de tela em pt-BR**, em `__('...', 'gac')` no PHP. O JS não tem tradução: usa o objeto `TEXT` em pt-BR (o plugin não tem `locales/`).
-- **PHP:** `/c/xampp/php/php.exe`. Suíte unitária: `/c/xampp/php/php.exe var/tools/phpunit.phar -c phpunit.unit.xml` (linha de base antes deste plano: **317 testes, 898 asserções, OK**). JS: `node --test tests/js/`.
+- **PHP:** `/c/xampp/php/php.exe`. Suíte unitária: `/c/xampp/php/php.exe var/tools/phpunit.phar -c phpunit.unit.xml` (linha de base antes deste plano: **317 testes, 898 asserções, OK**). JS: `node --test "tests/js/*.test.js"`.
 - **Classes puras** (`WorkspaceKey`, `WorkspaceRemoval`, `OrgUnitList`, `RuleInput`) não podem chamar `__()`, `htmlescape()`, banco, cache nem Guzzle: o harness unitário não os tem.
 - **Commits:** só com a skill `/commit` (tipos `feat`, `fix`, `chore`; título em inglês; descrição em lista; **sem** `Co-Authored-By` nem `Claude-Session`). Todo trabalho na branch `dev`. **Quem decide o momento do commit é o dono**: onde o plano diz "Ponto de commit", pare, mostre o `git status` e deixe o dono rodar `/commit`. Nunca `git commit` à mão e nunca `git push`.
 - **GLPI local:** `http://localhost:8080/`, banco em `127.0.0.1:3307`. Depois de editar `.twig`: `bin/console cache:clear`. O JS do plugin é servido com cache de 30 dias: **Ctrl+F5** depois de editar JS.
@@ -1863,7 +1863,7 @@ test('escapeHtml neutralises quotes, angle brackets and ampersands', () => {
 
 - [ ] **Step 2: Rodar e ver falhar**
 
-Run: `node --test tests/js/`
+Run: `node --test "tests/js/*.test.js"`
 Expected: erro `Cannot find module '../../public/js/sso-ou-picker.js'`.
 
 - [ ] **Step 3: Implementar só a parte pura**
@@ -1874,7 +1874,7 @@ Expected: erro `Cannot find module '../../public/js/sso-ou-picker.js'`.
 /**
  * Pickers of Google org units and workspaces for the SSO module (spec S29, S30).
  *
- * The first half is pure (no DOM) and is unit tested with `node --test tests/js/`. The second half
+ * The first half is pure (no DOM) and is unit tested with `node --test "tests/js/*.test.js"`. The second half
  * (added in the next tasks) wires it to the GLPI authorization rule form and to the plugin
  * configuration page.
  */
@@ -1951,7 +1951,7 @@ Expected: erro `Cannot find module '../../public/js/sso-ou-picker.js'`.
 
 - [ ] **Step 4: Rodar e ver passar**
 
-Run: `node --test tests/js/`
+Run: `node --test "tests/js/*.test.js"`
 Expected: todos os testes `pass`, `fail 0`.
 
 - [ ] **Step 5: Ponto de commit**
@@ -2160,7 +2160,7 @@ Em `public/js/sso-ou-picker.js`, antes do bloco `var api = {` (e mantendo o `use
 
 - [ ] **Step 3: Os testes puros continuam passando**
 
-Run: `node --test tests/js/`
+Run: `node --test "tests/js/*.test.js"`
 Expected: `fail 0` (a cola está dentro de `if (typeof document !== 'undefined')` e `root = globalThis`, então nada dela roda no Node; se `ReferenceError` aparecer, `Option`, `MutationObserver` ou `setTimeout` estão fora dessa guarda).
 
 - [ ] **Step 4: Verificação no navegador (V17, V18)**
@@ -2282,7 +2282,7 @@ Em `src/Sso/SsoConfigSection.php`:
 
 - [ ] **Step 5: Rodar**
 
-Run: `/c/xampp/php/php.exe -l src/Sso/SsoConfigSection.php && /c/xampp/php/php.exe var/tools/phpunit.phar -c phpunit.unit.xml && node --test tests/js/`
+Run: `/c/xampp/php/php.exe -l src/Sso/SsoConfigSection.php && /c/xampp/php/php.exe var/tools/phpunit.phar -c phpunit.unit.xml && node --test "tests/js/*.test.js"`
 Expected: sintaxe OK, suíte `OK`, JS `fail 0`.
 
 - [ ] **Step 6: Verificação no navegador (V22)**
@@ -2330,7 +2330,7 @@ Na spec, em "Status das decisões", troque a linha "Decidido em 07/10/2026" para
 
 - [ ] **Step 4: Regressão completa**
 
-Run: `/c/xampp/php/php.exe var/tools/phpunit.phar -c phpunit.unit.xml && node --test tests/js/ && /c/xampp/php/php.exe tests/integration/engine_compat.php && /c/xampp/php/php.exe tests/integration/workspace_removal_guard.php && /c/xampp/php/php.exe tests/integration/orgunits.php`
+Run: `/c/xampp/php/php.exe var/tools/phpunit.phar -c phpunit.unit.xml && node --test "tests/js/*.test.js" && /c/xampp/php/php.exe tests/integration/engine_compat.php && /c/xampp/php/php.exe tests/integration/workspace_removal_guard.php && /c/xampp/php/php.exe tests/integration/orgunits.php`
 Expected: a suíte PHP `OK` (**317 testes originais + 7 + 7 + 6 + 5 + 9 + 1 = 352**; confira o número real e use o que o PHPUnit imprimir), JS `fail 0`, e os três scripts terminando em `0 falharam` (o `AVISO` da Metropolitana, se existir, não conta como falha, mas deve estar registrado na V19).
 
 Repita no navegador os cenários do roteiro do SSO que tocam o login (3, 5, 7, 8, 21 do "Testar" com um e-mail real), porque `RuleRunner` e `RuleHooks` mudaram. Se um login real do Google não puder ser feito agora, registre `—` e diga isso ao dono.

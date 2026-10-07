@@ -596,7 +596,7 @@ funções puras com `module.exports` quando existir `module` (o navegador as ign
 e valor de uma opção; filtrar por workspace e por texto; acrescentar linha ao texto sem duplicar
 (sem diferença de caixa, ignorando comentários, preservando o que existe, com e sem quebra de
 linha final); escapar nome de OU com aspas, `<`, `&` e `'` ao montar HTML. O teste roda com
-`node --test tests/js/`. Fica **fora** desta camada tudo que mexe no DOM do GLPI.
+`node --test "tests/js/*.test.js"`. Fica **fora** desta camada tudo que mexe no DOM do GLPI.
 
 **C. Roteiros contra o GLPI local (script em `tests/` ou `var/`, rodando com o PHP do XAMPP).**
 Integração com o banco real do ambiente de desenvolvimento, descartável e com dados próprios:
