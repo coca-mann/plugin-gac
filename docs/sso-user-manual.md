@@ -1,6 +1,6 @@
 > Conteúdo-base para publicação no WikiJS. Onde estiver marcado `[GIF AQUI: ...]`, grave a tela correspondente e substitua a marcação pela incorporação do GIF.
 
-O **Login com Google** é o módulo do plugin Gac que coloca o botão **Entrar com Google** na tela de login do GLPI. Quem entra por ele não digita senha no GLPI: o Google confirma quem a pessoa é, o plugin pergunta ao Google em qual **unidade organizacional (OU)** do Google Workspace ela está, e as **regras de autorização do próprio GLPI** transformam essa OU em entidade e perfil. O plugin só acrescenta às regras de autorização um critério novo, **OU do Google Workspace**; o restante (entidades, perfis, recursividade, negar login, parar o processamento) é o motor de regras nativo do GLPI.
+O **Login com Google** é o módulo do plugin Gac que coloca o botão **Entrar com Google** na tela de login do GLPI. Quem entra por ele não digita senha no GLPI: o Google confirma quem a pessoa é, o plugin pergunta ao Google em qual **unidade organizacional (OU)** do Google Workspace ela está, e as **regras de autorização do próprio GLPI** transformam essa OU em entidade e perfil. O plugin só acrescenta às regras de autorização dois critérios novos, **OU do Google Workspace** e **Workspace do Google**, reunidos num grupo próprio chamado **Login com Google** na lista de critérios; o restante (entidades, perfis, recursividade, negar login, parar o processamento) é o motor de regras nativo do GLPI.
 
 O módulo aparece no menu lateral **Plugin - DTI GAC**, na entrada **Login com Google** (identidades vinculadas, eventos e OUs pendentes), e a configuração fica em **Plugin - DTI GAC > Configurações**, no cartão **Login com Google**.
 
@@ -33,7 +33,7 @@ Este resumo ajuda a entender o resto do manual. Cada vez que alguém clica em **
 3. Se o **modo piloto** estiver ligado, confere se o e-mail está na lista do piloto.
 4. O plugin pergunta ao Google, na **Directory API**, em qual OU a pessoa está. Essa consulta é feita a **cada login**, por uma conta de serviço que age em nome de um administrador de leitura do workspace.
 5. Se a OU estiver na lista de **OUs bloqueadas**, o login é negado antes de qualquer regra.
-6. O GLPI roda as **regras de autorização** com a OU (e todas as OUs acima dela). Uma regra com a ação **Negar login**, ou nenhuma regra concedendo acesso, nega o login.
+6. O GLPI roda as **regras de autorização** com a OU (e todas as OUs acima dela) e com o workspace da pessoa. Uma regra com a ação **Negar login**, ou nenhuma regra concedendo acesso, nega o login.
 7. O plugin descobre qual usuário do GLPI é essa pessoa: o já vinculado ao Google, um existente com o mesmo e-mail (que é vinculado e convertido) ou um novo (criado).
 8. As entidades e perfis vindos das regras são aplicados, e a sessão é aberta.
 
@@ -56,7 +56,7 @@ O módulo usa **duas credenciais diferentes**, e é comum confundi-las:
 - **Cliente OAuth** (ID do cliente + segredo): é o que permite ao GLPI mandar a pessoa para a tela de login do Google e receber de volta a confirmação de quem ela é. Só existe **um** para todos os workspaces.
 - **Conta de serviço** (e-mail + chave privada): é um "robô" que o plugin usa para consultar a OU da pessoa. Ela só consegue ler dados do Workspace porque cada workspace **delega** isso a ela no Admin Console. Também existe **uma só** para todos os workspaces, mas cada workspace precisa autorizá-la separadamente.
 
-> **Alerta de segurança:** a chave da conta de serviço é uma credencial sensível. Quem tiver a chave e a delegação em vigor consegue ler os dados dos usuários do domínio (só leitura, porque o escopo é limitado, mas ainda assim dados pessoais). Não envie o arquivo JSON por e-mail ou chat, não o salve em pasta compartilhada e **apague o arquivo baixado** depois de colar a chave no GLPI. O GLPI guarda a chave **criptografada** e nunca a mostra de volta.
+> **Alerta de segurança:** a chave da conta de serviço é uma credencial sensível. Quem tiver a chave e a delegação em vigor consegue ler os dados dos usuários e a estrutura de OUs do domínio (só leitura, porque os escopos são limitados, mas ainda assim dados pessoais). Não envie o arquivo JSON por e-mail ou chat, não o salve em pasta compartilhada e **apague o arquivo baixado** depois de colar a chave no GLPI. O GLPI guarda a chave **criptografada** e nunca a mostra de volta.
 
 ## Etapa 1: Criar (ou escolher) o projeto no Google Cloud
 
@@ -141,39 +141,43 @@ O módulo usa **duas credenciais diferentes**, e é comum confundi-las:
 
 ## Etapa 7: Admin Console: criar o administrador de leitura
 
-A conta de serviço não consulta o Google "como ela mesma": ela **representa um administrador** do workspace. Para limitar o estrago, crie um administrador **dedicado**, com uma função que só **lê** usuários. Faça esta etapa **em cada workspace**, com um **super administrador**.
+A conta de serviço não consulta o Google "como ela mesma": ela **representa um administrador** do workspace. Para limitar o estrago, crie um administrador **dedicado**, com uma função que só **lê** usuários e unidades organizacionais. Faça esta etapa **em cada workspace**, com um **super administrador**.
 
 1. Acesse `https://admin.google.com` com uma conta de **super administrador** do workspace.
 2. Crie (ou escolha) a conta que será representada, por exemplo `glpi-leitor@seudominio.com.br`. Em **Diretório > Usuários**, clique em **Adicionar novo usuário**. Pode ficar em qualquer OU, mas **não** deve ser uma conta de uso pessoal e **não pode estar suspensa**.
 3. Vá em **Conta > Funções de administrador** (*Account > Admin roles*) e clique em **Criar nova função** (*Create new role*).
 4. Dê um nome, por exemplo `Leitor de usuários (GLPI)`, e uma descrição.
-5. Em privilégios, marque somente leitura de usuários: em **Privilégios do Admin Console**, **Usuários > Ler** (*Users > Read*), e em **Privilégios da API Admin** (*Admin API privileges*), **Usuários > Ler**. Se houver **Unidades organizacionais > Ler**, marque também. Não marque criar, atualizar, excluir, redefinir senha nem nada além de leitura.
+5. Em privilégios, marque somente leitura de usuários e de unidades organizacionais: em **Privilégios do Admin Console**, **Usuários > Ler** (*Users > Read*) e **Unidades organizacionais > Ler** (*Organizational units > Read*), e em **Privilégios da API Admin** (*Admin API privileges*), **Usuários > Ler** e **Unidades organizacionais > Ler**. Não marque criar, atualizar, excluir, redefinir senha nem nada além de leitura.
 6. Salve a função e use **Atribuir administradores** (*Assign admins*) para atribuí-la à conta criada no passo 2.
 
 > **Esta é a causa mais frequente de falha na primeira configuração.** Se a conta representada não tiver privilégio de administrador de leitura de usuários, o teste a seco e os logins falham com o detalhe `Directory API returned HTTP 403` (*Not Authorized to access this resource/api*). Se isso acontecer, volte a esta etapa e confira a função da conta.
 
-> Prefira uma função personalizada de **somente leitura** a usar um super administrador como conta representada. Se a delegação ou a chave vazarem, o alcance fica limitado à leitura de usuários, em vez de controle total do workspace.
+> **O privilégio de unidades organizacionais é o que alimenta as listas de OUs** dos seletores das regras e das OUs bloqueadas (ver [Regras de autorização](#regras-de-autorização)). O **login** só precisa de ler usuários, mas, sem **Unidades organizacionais > Ler**, o Google responde ao seletor com o erro `401` (*Login Required*), que não deixa claro o motivo. Um **administrador delegado** com essa função basta; não precisa ser super administrador.
+
+> Prefira uma função personalizada de **somente leitura** a usar um super administrador como conta representada. Se a delegação ou a chave vazarem, o alcance fica limitado à leitura de usuários e de unidades organizacionais, em vez de controle total do workspace.
 
 > `[GIF AQUI: criar a função de administrador personalizada de leitura e atribuí-la a uma conta]`
 
 ## Etapa 8: Admin Console: autorizar a conta de serviço (delegação em todo o domínio)
 
-É aqui que o workspace diz: "esta conta de serviço pode agir em nome dos meus administradores, e **só** para ler usuários". Também precisa de um **super administrador**, e deve ser feita **em cada workspace**.
+É aqui que o workspace diz: "esta conta de serviço pode agir em nome dos meus administradores, e **só** para ler usuários e unidades organizacionais". Também precisa de um **super administrador**, e deve ser feita **em cada workspace**.
 
 1. No Admin Console, vá em **Segurança > Acesso e controle de dados > Controles da API** (*Security > Access and data control > API controls*).
 2. Em **Delegação em todo o domínio** (*Domain-wide delegation*), clique em **Gerenciar a delegação em todo o domínio** (*Manage domain-wide delegation*).
 3. Clique em **Adicionar novo** (*Add new*).
 4. No campo **ID do cliente** (*Client ID*), cole o **ID exclusivo** (o número longo) da conta de serviço, anotado na etapa 5.
-5. No campo **Escopos do OAuth** (*OAuth scopes*), cole **exatamente** este valor, e **nenhum outro**: `https://www.googleapis.com/auth/admin.directory.user.readonly`
+5. No campo **Escopos do OAuth** (*OAuth scopes*), cole **exatamente** estes dois valores, separados por vírgula, e **nenhum outro**: `https://www.googleapis.com/auth/admin.directory.user.readonly,https://www.googleapis.com/auth/admin.directory.orgunit.readonly`
 6. Clique em **Autorizar** (*Authorize*).
 
-> **Cole somente este escopo.** Ele dá só **leitura** de usuários. Não acrescente escopos "por garantia": cada escopo a mais amplia o que uma chave vazada poderia fazer.
+> **Cole somente estes dois escopos.** Os dois dão só **leitura**: o primeiro lê o usuário (é o que o **login** usa) e o segundo lê a lista de unidades organizacionais (é o que alimenta os **seletores** de OU). Não acrescente escopos "por garantia": cada escopo a mais amplia o que uma chave vazada poderia fazer.
+
+> **Se este workspace já tinha a delegação com o escopo de usuário**, **edite a linha existente** (ela é identificada pelo mesmo ID do cliente) e acrescente o segundo escopo. **Mantenha o escopo de usuário**: ao editar, o Google troca a lista inteira, e sem o escopo de usuário o login deste workspace para de funcionar. Sem o segundo escopo o login continua funcionando; só a lista de OUs dos seletores fica indisponível para este workspace.
 
 > A delegação costuma valer em poucos minutos, mas o Google informa que pode levar **até 24 horas** para propagar. Se o teste a seco falhar logo depois de autorizar, aguarde um pouco antes de rever as etapas.
 
 > Repita as etapas 7 e 8 em **cada workspace** que vai usar o login (a conta de serviço e a chave são as mesmas; o que muda é o Admin Console onde se autoriza e o administrador representado). Um domínio de um workspace só consegue entrar se **aquele** workspace tiver feito a etapa 8.
 
-> `[GIF AQUI: adicionar a delegação em todo o domínio com o ID da conta de serviço e o escopo de leitura]`
+> `[GIF AQUI: adicionar a delegação em todo o domínio com o ID da conta de serviço e os dois escopos de leitura]`
 
 ## O que levar para o GLPI
 
@@ -225,7 +229,7 @@ Uma caixa azul mostra o **URI de redirecionamento** que precisa estar cadastrado
 
 **Conta de serviço**
 
-Uma caixa azul lembra que a conta de serviço é **única** para todos os workspaces, precisa da delegação em todo o domínio com **somente** o escopo de leitura de usuários, e que o administrador representado de cada workspace é definido na aba **Workspaces**.
+Uma caixa azul lembra que a conta de serviço é **única** para todos os workspaces, precisa da delegação em todo o domínio com **somente** os escopos de leitura de usuários e de unidades organizacionais, e que o administrador representado de cada workspace é definido na aba **Workspaces**.
 
 - **E-mail da conta de serviço**: texto, o campo `client_email` do JSON (termina em `iam.gserviceaccount.com`).
 - **Chave privada**: caixa de texto. Cole o campo `private_key` do JSON, **com** as linhas `BEGIN` e `END`. Fica criptografada. Em branco ao salvar, mantém a chave atual.
@@ -238,34 +242,49 @@ Uma caixa azul lembra que a conta de serviço é **única** para todos os worksp
 
 Lista os workspaces do Google aceitos. A linha vazia no final é para acrescentar um novo; o botão **Adicionar workspace** cria mais linhas. Cada linha tem:
 
-- **Nome**: texto livre, só para identificar o workspace.
+- **Nome**: texto livre, só para identificar o workspace. Pode ser renomeado a qualquer momento. Logo abaixo do campo aparece a **Chave** do workspace (ver abaixo).
 - **Domínios**: um domínio de e-mail por linha (por exemplo `fimca.com.br`). **Cada domínio só pode estar em um workspace.**
-- **Administrador do Google**: o e-mail do administrador de leitura (etapa 7 da Parte 1). A conta de serviço age em nome dele para ler a OU dos usuários.
+- **Administrador do Google**: o e-mail do administrador de leitura (etapa 7 da Parte 1). A conta de serviço age em nome dele para ler a OU dos usuários e a lista de OUs dos seletores. Pode ser um administrador delegado, desde que a função dele leia usuários e unidades organizacionais.
 - **Ativo**: Sim/Não. Workspaces inativos não entram na lista de domínios aceitos.
-- **Limpar**: esvazia a linha. Para remover um workspace, use **Limpar** e **Salvar**.
+- **Limpar**: esvazia a linha. Para remover um workspace, use **Limpar** e **Salvar**. Se alguma regra de autorização ainda usa o workspace, o salvamento é recusado (ver abaixo).
+
+A **Chave** é um identificador curto, em minúsculas e sem acentos (por exemplo `principal`), mostrado em texto cinza embaixo do nome. O módulo a cria sozinho quando o workspace é salvo pela primeira vez, a partir do nome, e ela **nunca muda**, nem quando o nome é alterado. É a chave, e não o nome, que as regras de autorização guardam no critério **Workspace do Google**; por isso renomear um workspace não quebra nenhuma regra. Os workspaces que já existiam antes desse recurso recebem a chave automaticamente.
+
+> A chave não é editável. Se alguém tentar enviar outra no formulário, o servidor a ignora e mantém a que já estava gravada.
 
 Regras que o módulo aplica ao salvar:
 
 - Os domínios aceitos no login são a **união dos domínios dos workspaces ativos**. Um e-mail de domínio que nenhum workspace ativo tem é negado (`domain_denied`).
 - Se o mesmo domínio estiver em dois workspaces, **nada é salvo** e uma mensagem aponta o domínio repetido.
 - Um workspace ativo **sem domínio ou sem administrador** é salvo, mas aparece um aviso e ele **não é usado** até ser completado.
+- Se você **remover** um workspace (com **Limpar**) que alguma regra de autorização ainda usa no critério **Workspace do Google**, **nada é salvo**. Uma mensagem de erro lista cada regra que depende dele, com um **link** para abri-la, e o formulário continua como estava. A trava vale para regras ativas **e desativadas** (uma regra desativada pode ser ligada de novo), e para qualquer condição do critério. Tire o critério dessas regras, ou mantenha o workspace, e salve de novo.
+- **Desativar** um workspace (**Ativo = Não**) não é remover: não há trava, porque os logins daquele domínio já passam a ser negados.
 
 > Quando o primeiro workspace for um e só, dê um nome simples, como `Principal`. Quando um segundo workspace for adicionado, lembre de refazer as etapas 7 e 8 da Parte 1 **nele**; sem a delegação, os logins daquele domínio falham com `api_error`.
 
 > `[GIF AQUI: adicionar um segundo workspace com domínio e administrador e salvar]`
 
+> `[GIF AQUI: tentar remover um workspace usado por uma regra e ver a mensagem com o link da regra]`
+
 ## Aba "Regras e bloqueios"
 
-Uma caixa amarela lembra que o mapeamento de OU para entidade e perfil é feito em **Administração > Regras > Regras de autorização**, com o critério **OU do Google Workspace**, e que se usa **somente a condição "é"** (ver [Regras de autorização](#regras-de-autorização)).
+Uma caixa amarela lembra que o mapeamento de OU para entidade e perfil é feito em **Administração > Regras > Regras de autorização**, com os critérios do grupo **Login com Google** (**OU do Google Workspace** e **Workspace do Google**), e que se usa **somente a condição "é"** (ver [Regras de autorização](#regras-de-autorização)).
 
-- **OUs bloqueadas**: texto, um caminho de OU por linha (por exemplo `/fimca.com.br/ies-pvh/docentes`). Quem estiver nessa OU, **ou em qualquer OU abaixo dela**, é negado (`ou_blocked`) **antes** de qualquer regra de autorização. Não diferencia maiúsculas e minúsculas. Use para manter os professores de fora.
+- **OUs bloqueadas**: texto, um caminho de OU por linha (por exemplo `/fimca.com.br/ies-pvh/docentes`). Quem estiver nessa OU, **ou em qualquer OU abaixo dela**, é negado (`ou_blocked`) **antes** de qualquer regra de autorização. Não diferencia maiúsculas e minúsculas. Linhas em branco e linhas que começam com `#` (comentários) são ignoradas. Acima do texto há o seletor **Adicionar OU** (ver abaixo).
 - **Criar o usuário no primeiro login**: Sim/Não, padrão **Sim**. Com **Sim**, quem entra e ainda não existe no GLPI é criado automaticamente. Com **Não**, só entra quem já tem usuário (senão: `create_disabled`).
 - **Retirar o acesso de quem for bloqueado**: Sim/Não, padrão **Sim**. Com **Sim**, se uma pessoa já vinculada passar a cair numa OU bloqueada ou numa regra de negar, os perfis que o login do Google deu a ela são **removidos** (evento `revoked`). Perfis dados à mão no GLPI não são tocados.
 - **Conferir o domínio no caminho da OU**: número, padrão **0** (desligado). É uma segurança extra para estruturas em que o domínio é uma das pastas do caminho da OU. Exemplo: em `/FIMCA/fimca.com.br/ies-pvh`, o domínio é a pasta de **posição 2**. Informando `2`, o login só passa se o domínio do e-mail for igual a essa pasta; se não for, o resultado é `domain_mismatch`. Com `0`, não confere.
 
 > **Atenção com o bloqueio de professores:** o bloqueio vale **por caminho de OU**, e cada workspace tem os seus caminhos. Cadastre a OU de docentes **de cada workspace** (por exemplo `/fimca.com.br/ies-pvh/docentes` e `/pvh/docentes`). Uma OU de docentes que ficar de fora não é bloqueada.
 
-> `[GIF AQUI: cadastrar as OUs bloqueadas e salvar]`
+**Adicionar OU (seletor):** logo acima do texto das OUs bloqueadas há uma caixa com busca, **Adicionar uma OU à lista de bloqueio**. Ela traz as OUs de **todos os workspaces ativos**, lidas do Google, cada uma com o nome do workspace na frente (por exemplo `Principal - /fimca.com.br/IES-PVH`). Ao escolher uma OU, o **caminho** é acrescentado ao texto como uma **nova linha**, a caixa volta a ficar vazia e nada do que já estava escrito (inclusive os comentários com `#`) é alterado. Escolher uma OU que já está no texto, mesmo com maiúsculas diferentes, **não duplica** a linha. Como antes, **só vale o que for salvo**: depois de escolher, clique em **Salvar**.
+
+- O texto continua sendo a **única fonte de verdade**. Você pode digitar, apagar ou editar as linhas à mão, inclusive caminhos que não estão na lista (uma OU recém-criada, por exemplo).
+- O bloqueio compara **só o caminho**, não o workspace. Escolher `Principal - /Sistemas` bloqueia o caminho `/Sistemas` em **todos** os workspaces que tiverem uma OU com esse caminho. Isso erra para o lado seguro (bloqueia mais, nunca menos). Não existe bloqueio por workspace.
+- Se um workspace não conseguir listar as OUs, aparece um aviso em amarelo embaixo da caixa ("Sem lista de OUs para: ..."), com o erro ao passar o mouse, e as OUs dos outros workspaces continuam disponíveis. Se **nenhuma** lista puder ser lida, a caixa mostra "Lista de OUs indisponível agora" e resta digitar o caminho no texto (ver [Solução de problemas](#solução-de-problemas)).
+- A lista de OUs fica guardada por alguns minutos (cerca de 10) para não consultar o Google a cada vez. Uma OU criada agora no Google pode demorar a aparecer. Este seletor não tem botão de atualizar, mas o do seletor da tela de regras (ver [Regras de autorização](#regras-de-autorização)) renova a mesma lista guardada; depois recarregue a configuração.
+
+> `[GIF AQUI: cadastrar as OUs bloqueadas escolhendo no seletor Adicionar OU e salvar]`
 
 ## Aba "Teste a seco"
 
@@ -273,7 +292,7 @@ Simula um login para um e-mail, **sem criar sessão, usuário nem evento de logi
 
 ## O botão Salvar
 
-Grava os campos de **todas** as abas. Depois de salvar, a página é recarregada e uma mensagem confirma. Um aviso à parte aparece se algum workspace ficou incompleto, e uma mensagem de erro aparece (sem salvar nada) se houver domínio repetido.
+Grava os campos de **todas** as abas. Depois de salvar, a página é recarregada e uma mensagem confirma. Um aviso à parte aparece se algum workspace ficou incompleto, e uma mensagem de erro aparece (sem salvar nada) se houver domínio repetido ou se um workspace removido ainda for usado por regras de autorização.
 
 > **O teste a seco usa o que está salvo, não o que está digitado na tela.** Salve antes de testar.
 
@@ -293,14 +312,39 @@ Consequência: uma regra com **OU do Google Workspace é `/fimca/fimca.com.br/ie
 
 > **Use somente a condição "é".** As outras condições do GLPI (como "começa com") não funcionam com caminhos de OU, por causa das barras. Use sempre **OU do Google Workspace > é > o caminho**. A comparação não diferencia maiúsculas e minúsculas.
 
-> O critério aparece no GLPI sob o grupo de critérios do LDAP. Isso é apenas aparência.
+## Os critérios do plugin
+
+O módulo acrescenta dois critérios às regras de autorização. Na lista de critérios (**Administração > Regras > Regras de autorização > a regra > aba Critérios > Adicionar novo critério**) eles aparecem num grupo próprio, **Login com Google**; o grupo **Critérios LDAP** continua só com os critérios do LDAP.
+
+- **OU do Google Workspace**: o caminho da OU da pessoa, com a regra valendo também para as OUs abaixo (ver acima). Aceita **só a condição "é"**.
+- **Workspace do Google**: o workspace do e-mail da pessoa, identificado pela **chave** (ver [Aba "Workspaces"](#aba-workspaces)). Aceita **só a condição "é"**. Serve para fazer uma regra valer **apenas** para um workspace (ver [Limitar uma regra a um workspace](#limitar-uma-regra-a-um-workspace)).
+
+> O critério de workspace é **opcional**. Uma regra que usa só o critério de OU, como as que já existiam, continua valendo **em qualquer workspace**, exatamente como antes. Nada precisa ser convertido para o login continuar funcionando.
+
+## O seletor de OU e de workspace
+
+Ao escolher um dos dois critérios, o campo do valor deixa de ser um texto simples e vira um seletor, alimentado pelo Google. Quem tem o direito de ler as regras de autorização vê o seletor ao criar ou editar o critério.
+
+- **Workspace do Google**: uma lista com os workspaces ativos, no formato `Principal (principal)` (nome e chave), de escolha **obrigatória**. O que fica gravado na regra é a **chave**.
+- **OU do Google Workspace**: uma caixa com busca. Digite parte do nome para filtrar e escolha uma OU. Cada opção mostra o workspace e o caminho, por exemplo `Principal - /fimca.com.br/IES-PVH`, para evitar confusão entre workspaces, mas o que fica gravado na regra é **somente o caminho** (`/fimca.com.br/IES-PVH`). Um caminho que existe nos dois workspaces aparece com o aviso **(repetida)**.
+- **Texto livre**: você também pode **digitar um caminho que não está na lista** (por exemplo, uma OU criada há pouco) e confirmar com **Enter**. O que for digitado é gravado exatamente como foi digitado: o seletor **não valida** se a OU existe.
+- **Atualizar a lista de OUs**: o botão com o ícone de setas, ao lado da caixa, lê as OUs de novo no Google na hora. Sem ele, a lista é guardada por cerca de 10 minutos.
+- **Editar um critério já gravado**: o seletor abre com o valor que estava salvo, mesmo que ele não esteja mais na lista.
+- **Filtro pelo workspace da regra**: se a regra **já tem** um critério **Workspace do Google**, a lista de OUs mostra só as OUs **daquele** workspace.
+- **Quando a lista não carrega**: se nenhum workspace conseguir listar as OUs, o campo continua sendo o **texto simples** de antes, com o aviso "Lista de OUs indisponível agora". Se **só um** workspace falhar, a caixa funciona com os outros e mostra, em amarelo, "Sem lista de OUs para: ..." (o erro aparece ao passar o mouse).
+
+> Os critérios de outros tipos de regra, e os demais critérios desta tela (como **E-mail**), não são alterados: continuam com o campo de texto normal.
+
+> `[GIF AQUI: escolher o critério OU do Google Workspace, buscar uma OU no seletor, salvar e ver só o caminho na lista de critérios]`
+
+> `[GIF AQUI: escolher o critério Workspace do Google e salvar com a chave do workspace]`
 
 ## Criando uma regra
 
 1. Vá em **Administração > Regras > Regras de autorização** e clique em **Adicionar** (o sinal de **+**).
 2. Informe um **nome** que mostre a origem, por exemplo `SSO Google - DTI`. Um prefixo comum, como `SSO Google - `, ajuda a separar essas regras das regras do AD que já existem na mesma lista.
 3. Deixe a regra **ativa** e salve.
-4. Abra a regra e, na aba **Critérios**, adicione: **OU do Google Workspace** > **é** > `/fimca.com.br/ies-pvh/dti` (o caminho que o teste a seco ou a tela de OUs pendentes mostra).
+4. Abra a regra e, na aba **Critérios**, adicione: **OU do Google Workspace** > **é** > `/fimca.com.br/ies-pvh/dti`. Escolha a OU no seletor ou digite o caminho que o teste a seco ou a tela de OUs pendentes mostra (use o botão de copiar ao lado da OU nessas telas).
 5. Na aba **Ações**, adicione, nesta ordem: **Entidade** (a que a pessoa vai receber), **Perfil** (o que ela terá) e, se quiser, **Recursivo**. Opcionalmente, **Entidade padrão** (a entidade em que ela cai ao entrar).
 6. Se esta regra deve ser a única a valer para a OU, adicione também a ação **Parar o processamento das regras** (veja abaixo).
 
@@ -331,11 +375,23 @@ Para barrar uma OU por regra (como segunda barreira, além das **OUs bloqueadas*
 
 Para dar um perfil diferente a pessoas específicas, crie uma regra com o critério **E-mail > é >** o e-mail da pessoa (critério nativo do GLPI) e as ações de entidade, perfil e recursivo. Coloque essa regra **acima** das regras por OU na lista.
 
+## Limitar uma regra a um workspace
+
+Duas OUs de workspaces diferentes podem ter o **mesmo caminho** (por exemplo `/Sistemas`). Uma regra só com o critério de OU vale para as duas. Para que valha **só para um workspace**:
+
+1. Na regra, adicione o critério **OU do Google Workspace** > **é** > o caminho.
+2. Adicione também o critério **Workspace do Google** > **é** > o workspace (escolhido na lista).
+3. Deixe o **operador lógico** da regra em **E** (o padrão): a regra só casa quando **os dois** critérios forem verdadeiros.
+
+> **Não use o operador OU quando a regra tem o critério de workspace.** Com **OU**, basta **um** dos critérios ser verdadeiro, e a regra passaria a valer para **todas** as pessoas daquele workspace, seja qual for a OU. Para a mesma permissão em dois workspaces, crie **uma regra para cada**, cada uma com o seu critério de workspace.
+
+> A chave do workspace não muda ao renomeá-lo. Mas **remover** um workspace que uma regra usa é bloqueado: o módulo recusa o salvamento e lista as regras (ver [Aba "Workspaces"](#aba-workspaces)).
+
 ## Uma regra para OUs de mais de um workspace
 
-Uma mesma regra pode atender a vários workspaces: ajuste o **operador lógico** da regra para **OU** (em vez de **E**) e adicione **um critério por OU** (um com a OU de um workspace e outro com a OU do outro).
+Uma mesma regra pode atender a vários workspaces sem o critério de workspace: ajuste o **operador lógico** da regra para **OU** (em vez de **E**) e adicione **um critério por OU** (um com a OU de um workspace e outro com a OU do outro).
 
-> **Cuidado com caminhos iguais entre workspaces.** As regras e o bloqueio de OUs enxergam somente o **caminho**, não o workspace. Se dois workspaces tiverem uma OU com o mesmo caminho (por exemplo `/dti`), uma regra ou um bloqueio para uma vale para a outra. Antes de abrir o login, confira se os caminhos de OU usados pelos workspaces não colidem.
+> **Cuidado com caminhos iguais entre workspaces.** O bloqueio de OUs enxerga somente o **caminho**, não o workspace, e as regras também, **a menos que tenham o critério Workspace do Google**. Se dois workspaces tiverem uma OU com o mesmo caminho (por exemplo `/Sistemas`), um bloqueio para uma vale para a outra, e uma regra **sem** o critério de workspace também. O seletor marca esses caminhos com **(repetida)**. Antes de abrir o login, confira quais caminhos se repetem entre os workspaces.
 
 ---
 
@@ -347,7 +403,7 @@ O resultado mostra:
 
 - Uma faixa **verde** ("Login permitido") ou **vermelha** com o motivo da negação.
 - O **workspace** que cuida daquele domínio.
-- A **OU** lida no Google.
+- A **OU** lida no Google, com um botão de **copiar** ao lado (veja [Copiar o caminho de uma OU](#copiar-o-caminho-de-uma-ou)).
 - Uma tabela com as **autorizações** que a pessoa receberia: entidade, perfil e se é recursivo.
 - A **entidade padrão**, se alguma regra definir.
 
@@ -390,7 +446,7 @@ Colunas:
   - **Convertido do AD** ou **Convertido**: o usuário já existia (por exemplo, importado do AD) e foi vinculado pelo e-mail, passando a entrar pelo Google.
   - **Inativo**: selo vermelho extra, quando o usuário está desativado ou excluído no GLPI.
 - **Vinculado em** e **Último login**: data, com a hora embaixo.
-- **Última OU**: a OU lida no último login.
+- **Última OU**: a OU lida no último login, com o botão de **copiar** ao lado.
 - **Ação** (só para quem tem o direito **Configurar**): **Desfazer conversão** (para os convertidos) ou **Desfazer vínculo** (para os criados pelo Google), com confirmação.
 
 ## Desfazer a conversão ou o vínculo
@@ -408,7 +464,7 @@ Acessível por **Plugin - DTI GAC > Login com Google > Eventos**. Registra **cad
 
 O **número do evento** é o **código** que o usuário vê na tela de login quando uma tentativa falha (ver [O que o usuário vê](#o-que-o-usuário-vê-quando-algo-dá-errado)). Com ele, a TI acha na hora o que aconteceu.
 
-Colunas: **#** (o número do evento), **Data**, **E-mail**, **OU**, **Resultado** (um selo colorido com o código e a explicação em português embaixo) e **Detalhe** (informação extra, como o motivo de uma falha na API do Google).
+Colunas: **#** (o número do evento), **Data**, **E-mail**, **OU** (com o botão de **copiar** ao lado), **Resultado** (um selo colorido com o código e a explicação em português embaixo) e **Detalhe** (informação extra, como o motivo de uma falha na API do Google).
 
 Cores do selo: **verde** (login permitido), **laranja** (negado por regra do GLPI ou do módulo), **vermelho** (falha técnica) e **azul** (revogação ou desfazer).
 
@@ -446,7 +502,13 @@ Os eventos mais antigos que o prazo de retenção (padrão 180 dias) são apagad
 
 Acessível por **Plugin - DTI GAC > Login com Google > OUs pendentes**. Lista as OUs em que alguém **tentou entrar** e o resultado foi `ou_unmapped` (nenhuma regra concedeu acesso), com o número de **tentativas** e a **data da última**. É a lista de trabalho do administrador: cada OU que aparece aqui precisa de uma regra (ou, se for de professores, de entrar no bloqueio).
 
-O botão **Abrir as regras de autorização**, no topo do cartão, leva direto à tela de regras. Para liberar uma OU, crie uma regra com **OU do Google Workspace > é >** o caminho mostrado ali (ver [Regras de autorização](#regras-de-autorização)).
+O botão **Abrir as regras de autorização**, no topo do cartão, leva direto à tela de regras. Para liberar uma OU, crie uma regra com **OU do Google Workspace > é >** o caminho mostrado ali (ver [Regras de autorização](#regras-de-autorização)). Ao lado de cada OU há o botão de **copiar** o caminho, para colar no critério da regra.
+
+## Copiar o caminho de uma OU
+
+Em toda coluna que mostra uma OU (**Última OU** em Identidades, **OU** em Eventos e em OUs pendentes, e a OU do resultado do **Teste a seco**) há, ao lado do caminho, um botão pequeno com o ícone de **copiar**. Ao clicar, o **caminho puro** da OU (por exemplo `/fimca.com.br/IES-PVH`) vai para a área de transferência, sem espaços extras, e o ícone vira um **✓ verde** por cerca de um segundo e meio. Depois é só colar no critério da regra ou no texto das OUs bloqueadas. Se o GLPI estiver aberto por `http` (sem HTTPS), o navegador não oferece a cópia moderna e o módulo usa um método alternativo, que funciona do mesmo jeito.
+
+> `[GIF AQUI: clicar no botão de copiar ao lado de uma OU pendente e colar no critério de uma regra]`
 
 ---
 
@@ -500,11 +562,11 @@ Qualquer falha mostra a mesma mensagem, sem detalhes técnicos: **"Não foi poss
 O módulo tem uma linha própria, **Login com Google**, na aba de perfil **Plugin - DTI GAC**. Um perfil pode combinar qualquer conjunto delas.
 
 - **Ler**: ver as telas **Identidades**, **Eventos** e **OUs pendentes**. Sem essa permissão, a entrada **Login com Google** nem aparece no menu do plugin.
-- **Configurar**: abre o cartão **Login com Google** em **Plugin - DTI GAC > Configurações** (credenciais, workspaces, bloqueios, piloto), libera o **Teste a seco** e o botão **Desfazer conversão** / **Desfazer vínculo** nas Identidades.
+- **Configurar**: abre o cartão **Login com Google** em **Plugin - DTI GAC > Configurações** (credenciais, workspaces, bloqueios, piloto), libera o **Teste a seco**, o seletor **Adicionar OU** das OUs bloqueadas e o botão **Desfazer conversão** / **Desfazer vínculo** nas Identidades. Também é o direito que permite remover um workspace (sujeito à trava das regras).
 
 **Permissão nativa do GLPI necessária à parte** (não é do plugin):
 
-- **Regras de autorização** (tela **Administração > Regras**): necessária para criar e editar as regras que mapeiam OU para entidade e perfil. O direito **Configurar** do módulo não a substitui.
+- **Regras de autorização** (tela **Administração > Regras**): necessária para criar e editar as regras que mapeiam OU para entidade e perfil. O direito **Configurar** do módulo não a substitui. Para **ver os seletores de OU e de workspace** nas regras basta poder **ler** as regras de autorização; quem tem só o direito **Configurar** do módulo vê o seletor da configuração (OUs bloqueadas), mas não o das regras.
 
 > Quem tem **Configurar** pode alterar as credenciais do Google, ligar e desligar o login e desfazer vínculos. Dê esse direito a poucas pessoas de confiança. Sem o direito, o cartão sequer aparece nas Configurações.
 
@@ -520,7 +582,11 @@ O módulo tem uma linha própria, **Login com Google**, na aba de perfil **Plugi
 
 > O usuário novo é criado **antes** de a sessão abrir. Se a abertura da sessão falhar (raro), o usuário já existe, mas o evento `created` não é gravado; o próximo login aparece como `login`.
 
-> Os caminhos de OU de **workspaces diferentes dividem o mesmo espaço de nomes**: as regras e o bloqueio de OUs só enxergam o caminho. Evite OUs com o mesmo caminho em workspaces diferentes.
+> Os caminhos de OU de **workspaces diferentes dividem o mesmo espaço de nomes**. O **bloqueio de OUs** só enxerga o caminho e não tem como separar por workspace. As **regras de autorização** também, **a menos que tenham o critério Workspace do Google** (ver [Limitar uma regra a um workspace](#limitar-uma-regra-a-um-workspace)). No ambiente atual, caminhos como `/Sistemas` e `/[desativados]` existem nos dois workspaces.
+
+> A **lista de OUs** dos seletores vem do Google (escopo `admin.directory.orgunit.readonly`) e fica guardada por cerca de **10 minutos**. Uma OU criada ou renomeada agora pode demorar a aparecer: use o botão de atualizar do seletor da tela de regras. A lista é só uma ajuda para digitar; o login **não** depende dela, e a falha dela não bloqueia ninguém.
+
+> O seletor **não valida** o que é digitado: um caminho com erro de digitação é gravado como está e a regra simplesmente nunca casa. Confira o resultado no **Teste a seco**.
 
 > Uma regra com **perfil alto** para uma OU vale para **toda** a OU e as abaixo dela. Use o menor perfil possível nas regras de OU e dê perfis maiores por regra de e-mail.
 
@@ -540,13 +606,28 @@ O módulo tem uma linha própria, **Login com Google**, na aba de perfil **Plugi
 
 Abra a tela de [Eventos](#tela-eventos), ache o número e leia o **Resultado** e o **Detalhe**.
 
-- **`api_error` com `Directory API returned HTTP 403`**: a conta de serviço foi aceita, mas o administrador representado **não tem privilégio** para ler usuários, ou o escopo não foi autorizado. Confira, no Admin Console, a **função** do administrador (etapa 7) e a **delegação** com o escopo `admin.directory.user.readonly` (etapa 8). O detalhe pode trazer `Not Authorized to access this resource/api`.
+- **`api_error` com `Directory API returned HTTP 403`**: a conta de serviço foi aceita, mas o administrador representado **não tem privilégio** para ler usuários, ou o escopo não foi autorizado. Confira, no Admin Console, a **função** do administrador (etapa 7) e a **delegação** com o escopo `admin.directory.user.readonly` (etapa 8, que também leva o escopo de OUs usado só pelos seletores). O detalhe pode trazer `Not Authorized to access this resource/api`.
 - **`api_error` com `unauthorized_client`** (ou 401): a delegação em todo o domínio **não existe** ou está com o **ID exclusivo errado** (etapa 8). Confira que foi colado o número da conta de serviço, e não o e-mail nem o ID do cliente OAuth. Se acabou de autorizar, aguarde a propagação.
 - **`api_error` com `invalid_grant`**: o **administrador representado** não existe, está suspenso, ou o e-mail dele foi digitado com erro na aba **Workspaces**.
 - **`api_error` quando o domínio é de outro workspace**: aquele workspace ainda não autorizou a conta de serviço (etapas 7 e 8 não foram feitas nele), ou o domínio está no workspace errado na aba **Workspaces**.
 - **`api_error` genérico** ou erro de chave: a **chave privada** foi colada incompleta (faltam as linhas `BEGIN`/`END`) ou com `\n` literal. Cole a chave de novo (ver aba **Google**).
 - **`ou_unmapped`**: falta a regra de autorização. Veja a [OU pendente](#tela-ous-pendentes) e crie a regra.
 - **`domain_denied`**: o domínio não está em nenhum workspace **ativo**.
+
+## Os seletores de OU não listam as OUs
+
+Os seletores usam a lista de OUs do Google, que depende de **um escopo e de um privilégio a mais** além do login. O **login não é afetado** por nenhum destes problemas. Quando um workspace não consegue listar, o seletor mostra em amarelo "Sem lista de OUs para: nome-do-workspace", e o erro aparece ao passar o mouse sobre o aviso.
+
+- **`unauthorized_client`** (`Client is unauthorized to retrieve access tokens using this method, or client not authorized for any of the scopes requested`): o escopo `admin.directory.orgunit.readonly` **não foi autorizado** na delegação em todo o domínio **daquele** workspace. Edite a linha existente no Admin Console e acrescente o segundo escopo, mantendo o de usuário (etapa 8). Se acabou de autorizar, aguarde a propagação e use o botão de atualizar do seletor.
+- **`Directory API returned HTTP 401`** (*Login Required*): o escopo está autorizado, mas a **função** do administrador representado não tem **Unidades organizacionais > Ler** (etapa 7). Este erro costuma aparecer como 401 e não como 403, o que confunde. Acrescente o privilégio à função e tente de novo.
+- **`invalid_grant`**: o administrador representado não existe, está suspenso, ou o e-mail dele está errado na aba **Workspaces**.
+- **"Lista de OUs indisponível agora" e campo de texto simples** nas regras: nenhum workspace conseguiu listar, ou o endereço de consulta não respondeu. Confira os avisos acima; o campo continua funcionando digitando o caminho.
+- **O seletor nem aparece, só o campo de texto** (sem aviso nenhum): o navegador pode estar com a versão antiga do script em cache. Recarregue a página com **Ctrl+F5**. Também só aparece para o critério **OU do Google Workspace** ou **Workspace do Google**, e para quem pode ler as regras de autorização.
+- **Uma OU recém-criada não aparece**: a lista fica guardada por cerca de 10 minutos. Use o botão de atualizar da tela de regras, ou digite o caminho.
+
+## Não consigo remover um workspace
+
+Se **Limpar** + **Salvar** mostra "Nada foi salvo: há regras de autorização que usam um workspace que seria removido", abra cada regra listada (o nome é um link) e **exclua o critério Workspace do Google** que aponta para ele, ou troque-o por outro workspace. Regras **desativadas** também contam. Depois salve a configuração de novo. Se a ideia era só impedir logins daquele domínio, use **Ativo = Não** em vez de remover.
 
 ## O botão do Google não aparece na tela de login
 

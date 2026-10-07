@@ -41,7 +41,6 @@ namespace GlpiPlugin\Gac\Sso;
  */
 final class DirectoryClient
 {
-    private const TOKEN_URI = 'https://oauth2.googleapis.com/token';
     private const USERS_URI = 'https://admin.googleapis.com/admin/directory/v1/users/';
     private const SCOPES    = ['https://www.googleapis.com/auth/admin.directory.user.readonly'];
 
@@ -94,7 +93,7 @@ final class DirectoryClient
      * to access this resource/api" or "accessNotConfigured"). They never carry tokens or keys, and
      * they are what tells a missing admin privilege from a disabled API.
      */
-    private static function errorDetail(mixed $body): string
+    public static function errorDetail(mixed $body): string
     {
         $error = is_array($body) ? ($body['error'] ?? null) : null;
         if (!is_array($error)) {
@@ -111,36 +110,6 @@ final class DirectoryClient
     /** @throws SsoException */
     private function accessToken(\GuzzleHttp\Client $client): string
     {
-        $jwt = ServiceAccountJwt::build(
-            SsoSettings::saClientEmail($this->settings),
-            SsoSettings::saPrivateKey($this->settings),
-            $this->adminSubject,
-            self::SCOPES,
-            time()
-        );
-        if ($jwt === null) {
-            throw new SsoException('Invalid service account private key');
-        }
-
-        try {
-            $response = $client->post(self::TOKEN_URI, [
-                'form_params' => [
-                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                    'assertion'  => $jwt,
-                ],
-                'timeout'     => 10,
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            throw new SsoException('Service account token endpoint unreachable: ' . $e->getMessage());
-        }
-
-        $body = json_decode((string) $response->getBody(), true);
-        if ($response->getStatusCode() !== 200 || !is_array($body) || !is_string($body['access_token'] ?? null)) {
-            $error = is_array($body) ? (string) ($body['error'] ?? '') . ' ' . (string) ($body['error_description'] ?? '') : '';
-            throw new SsoException('Service account token request failed: HTTP ' . $response->getStatusCode() . ' ' . trim($error));
-        }
-
-        return $body['access_token'];
+        return GoogleServiceToken::fetch($client, $this->settings, $this->adminSubject, self::SCOPES);
     }
 }

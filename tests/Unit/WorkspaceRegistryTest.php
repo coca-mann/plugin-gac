@@ -161,4 +161,63 @@ final class WorkspaceRegistryTest extends TestCase
         $this->assertNull(WorkspaceRegistry::fromLegacy([]));
         $this->assertNull(WorkspaceRegistry::fromLegacy(['sso_allowed_domains' => '  ', 'sso_sa_admin_subject' => 'a@b.com']));
     }
+
+    public function testKeysAreGeneratedFromTheNames(): void
+    {
+        $registry = WorkspaceRegistry::fromRows(self::twoWorkspaces());
+
+        $this->assertSame(['fimca', 'metropolitana'], $registry->keys());
+        $this->assertSame('Metropolitana', $registry->byKey('metropolitana')?->name);
+        $this->assertNull($registry->byKey('nada'));
+    }
+
+    public function testAGivenKeyWinsOverTheNameSoRenamingKeepsIt(): void
+    {
+        $registry = WorkspaceRegistry::fromRows([
+            ['key' => 'principal', 'name' => 'Fimca Matriz', 'domains' => 'a.com', 'admin_subject' => 'x@a.com'],
+        ]);
+
+        $this->assertSame(['principal'], $registry->keys());
+        $this->assertSame('Fimca Matriz', $registry->byKey('principal')?->name);
+    }
+
+    public function testAKeyThatIsNotTrustedIsReplaced(): void
+    {
+        $registry = WorkspaceRegistry::fromRows([
+            ['key' => 'invented', 'name' => 'Principal', 'domains' => 'a.com', 'admin_subject' => 'x@a.com'],
+            ['key' => 'principal', 'name' => 'Outro', 'domains' => 'b.com', 'admin_subject' => 'x@b.com'],
+        ], ['principal']);
+
+        $this->assertSame(['principal-2', 'principal'], $registry->keys(), 'untrusted key regenerated; the trusted one is kept');
+    }
+
+    public function testInvalidAndDuplicatedKeysAreReplaced(): void
+    {
+        $registry = WorkspaceRegistry::fromRows([
+            ['key' => 'Bad Key!', 'name' => 'Alfa', 'domains' => 'a.com', 'admin_subject' => 'x@a.com'],
+            ['key' => 'same', 'name' => 'Beta', 'domains' => 'b.com', 'admin_subject' => 'x@b.com'],
+            ['key' => 'same', 'name' => 'Gama', 'domains' => 'c.com', 'admin_subject' => 'x@c.com'],
+        ]);
+
+        $this->assertSame(['alfa', 'same', 'gama'], $registry->keys());
+    }
+
+    public function testStoredWorkspacesWithoutKeyGetOneAndItIsStable(): void
+    {
+        $legacy = '[{"name":"Principal","domains":["a.com"],"admin_subject":"x@a.com","is_active":true}]';
+
+        $first  = WorkspaceRegistry::fromJson($legacy);
+        $second = WorkspaceRegistry::fromJson($first->toJson());
+
+        $this->assertSame(['principal'], $first->keys());
+        $this->assertSame($first->toJson(), $second->toJson());
+        $this->assertStringStartsWith('[{"key":"principal","name":"Principal"', $first->toJson());
+    }
+
+    public function testRowWithoutNameUsesItsFirstDomainForTheKey(): void
+    {
+        $registry = WorkspaceRegistry::fromRows([['name' => '', 'domains' => 'fimca.com.br', 'admin_subject' => '']]);
+
+        $this->assertSame(['fimca-com-br'], $registry->keys());
+    }
 }

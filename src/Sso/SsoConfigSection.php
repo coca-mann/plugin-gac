@@ -104,7 +104,7 @@ final class SsoConfigSection implements ConfigSection
             );
 
         $service = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
-            . htmlescape(__('Uma única conta de serviço do Google Cloud serve a todos os workspaces: ela precisa ter a delegação em todo o domínio, com somente o escopo admin.directory.user.readonly, autorizada no Admin Console de cada workspace. O administrador representado em cada um é definido no bloco Workspaces.', 'gac'))
+            . htmlescape(__('Uma única conta de serviço do Google Cloud serve a todos os workspaces: ela precisa ter a delegação em todo o domínio, com os escopos admin.directory.user.readonly (login) e admin.directory.orgunit.readonly (lista de OUs nos seletores), autorizados no Admin Console de cada workspace. O administrador representado em cada um é definido no bloco Workspaces.', 'gac'))
             . '</div>'
             . $this->row(
                 __('E-mail da conta de serviço', 'gac'),
@@ -124,8 +124,8 @@ final class SsoConfigSection implements ConfigSection
             . '</div>'
             . $this->row(
                 __('OUs bloqueadas', 'gac'),
-                $this->textarea('sso_blocked_ou_paths', (string) $s['sso_blocked_ou_paths'], 4),
-                __('Um caminho por linha (ex.: /fimca.com.br/ies-pvh/docentes). Quem está nessa OU, ou abaixo dela, é negado antes de qualquer regra. Use para os docentes.', 'gac')
+                $this->blockedPicker() . $this->textarea('sso_blocked_ou_paths', (string) $s['sso_blocked_ou_paths'], 4),
+                __('Um caminho por linha (ex.: /fimca.com.br/ies-pvh/docentes). Quem está nessa OU, ou abaixo dela, é negado antes de qualquer regra.', 'gac')
             )
             . $this->row(
                 __('Criar o usuário no primeiro login', 'gac'),
@@ -220,7 +220,7 @@ HTML;
     private function workspacesBlock(array $s): string
     {
         $workspaces   = SsoSettings::workspaces($s)->all();
-        $workspaces[] = new Workspace('', [], '', true); // one empty row to add a workspace
+        $workspaces[] = new Workspace('', '', [], '', true); // one empty row to add a workspace
 
         $rows = '';
         foreach ($workspaces as $workspace) {
@@ -228,13 +228,13 @@ HTML;
         }
 
         $note = "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>"
-            . htmlescape(__('Cada workspace do Google que o GLPI aceita. Os domínios aceitos no login são os dos workspaces ativos, e a OU do usuário é lida com o administrador do workspace dele. Um domínio só pode estar em um workspace. Para remover um, use "Limpar" e salve. Um workspace sem domínio ou sem administrador fica inutilizável.', 'gac'))
+            . htmlescape(__('Cada workspace do Google que o GLPI aceita. Os domínios aceitos no login são os dos workspaces ativos, e a OU do usuário é lida com o administrador do workspace dele. Um domínio só pode estar em um workspace. Para remover um, use "Limpar" e salve; se alguma regra de autorização ainda usa o workspace, o GLPI recusa e lista as regras. Um workspace sem domínio ou sem administrador fica inutilizável.', 'gac'))
             . '</div>';
 
         $table = "<div class='table-responsive'><table class='table' id='gac-sso-workspaces'><thead><tr>"
-            . $this->th(__('Nome', 'gac'), __('Só para identificar o workspace.', 'gac'))
+            . $this->th(__('Nome', 'gac'), __('Só para identificar o workspace. Pode ser renomeado: a chave abaixo é o que as regras usam e nunca muda.', 'gac'))
             . $this->th(__('Domínios', 'gac'), __('Um por linha. Cada domínio só pode estar em um workspace.', 'gac'))
-            . $this->th(__('Administrador do Google', 'gac'), __('A conta de serviço age em nome dele para ler a OU dos usuários. Precisa ser super administrador; o acesso é só de leitura.', 'gac'))
+            . $this->th(__('Administrador do Google', 'gac'), __('A conta de serviço age em nome dele para ler a OU dos usuários. Pode ser um administrador delegado, com um papel que leia usuários e unidades organizacionais (Unidades organizacionais: Ler). O acesso é só de leitura.', 'gac'))
             . $this->th(__('Ativo', 'gac')) . '<th></th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
             . "<button type='button' class='btn btn-sm btn-outline-secondary' id='gac-sso-add-ws'><i class='ti ti-plus me-1'></i>"
             . htmlescape(__('Adicionar workspace', 'gac')) . '</button>';
@@ -248,6 +248,7 @@ HTML;
     function clearRow(row) {
         row.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
         row.querySelectorAll('select').forEach(function (el) { el.value = '1'; });
+        row.querySelectorAll('.gac-ws-key').forEach(function (el) { el.textContent = ''; });
     }
     table.addEventListener('click', function (event) {
         var button = event.target.closest('.gac-ws-clear');
@@ -273,7 +274,9 @@ HTML;
             . "<option value='0'" . ($workspace->active ? '' : ' selected') . '>' . htmlescape(__('Não', 'gac')) . '</option></select>';
 
         return '<tr>'
-            . "<td><input class='form-control' name='ws_name[]' value='" . htmlescape($workspace->name) . "'></td>"
+            . "<td><input class='form-control' name='ws_name[]' value='" . htmlescape($workspace->name) . "'>"
+            . "<input type='hidden' name='ws_key[]' value='" . htmlescape($workspace->key) . "'>"
+            . "<div class='form-text font-monospace'>" . htmlescape(__('Chave:', 'gac')) . " <span class='gac-ws-key'>" . htmlescape($workspace->key) . '</span></div></td>'
             . '<td>' . $this->textarea('ws_domains[]', implode("\n", $workspace->domains), 3) . '</td>'
             . "<td><input class='form-control' type='email' name='ws_admin[]' value='" . htmlescape($workspace->adminSubject) . "'></td>"
             . '<td>' . $active . '</td>'
@@ -291,6 +294,7 @@ HTML;
             . "<div class='input-group mb-3'><input type='email' class='form-control' id='gac-sso-dry-email' placeholder='nome@dominio.com.br'>"
             . "<button type='button' class='btn btn-outline-primary' id='gac-sso-dry-run'>" . htmlescape(__('Testar', 'gac')) . '</button></div>'
             . "<div id='gac-sso-dry-result'></div>"
+            . OuCopy::script()
             . <<<HTML
 <script>
 (function () {
@@ -312,7 +316,7 @@ HTML;
                 var ok = d.outcome === 'ok';
                 var html = '<div class="alert alert-' + (ok ? 'success' : 'danger') + '">' + esc(d.message || (ok ? 'Login permitido.' : d.outcome)) + '</div>';
                 if (d.workspace) { html += '<div><strong>Workspace:</strong> ' + esc(d.workspace) + '</div>'; }
-                if (d.ou) { html += '<div><strong>OU:</strong> <code>' + esc(d.ou) + '</code></div>'; }
+                if (d.ou) { html += '<div><strong>OU:</strong> <code>' + esc(d.ou) + '</code>' + window.gacOuCopyButton(d.ou) + '</div>'; }
                 if (d.grants && d.grants.length) {
                     html += '<table class="table table-sm mt-2"><thead><tr><th>Entidade</th><th>Perfil</th><th>Recursivo</th></tr></thead><tbody>';
                     d.grants.forEach(function (g) {
@@ -340,17 +344,20 @@ HTML;
 
         $raw = SsoConfig::load();
         // The workspaces come as parallel arrays, one entry per table row (spec S24).
-        $rows  = [];
-        $names = is_array($post['ws_name'] ?? null) ? array_values($post['ws_name']) : [];
+        $current = SsoSettings::workspaces($raw);
+        $rows    = [];
+        $names   = is_array($post['ws_name'] ?? null) ? array_values($post['ws_name']) : [];
         foreach ($names as $i => $name) {
             $rows[] = [
+                'key'           => (string) ($post['ws_key'][$i] ?? ''),
                 'name'          => (string) $name,
                 'domains'       => (string) ($post['ws_domains'][$i] ?? ''),
                 'admin_subject' => (string) ($post['ws_admin'][$i] ?? ''),
                 'is_active'     => ($post['ws_active'][$i] ?? '1') === '1',
             ];
         }
-        $registry   = WorkspaceRegistry::fromRows($rows);
+        // Only a key the stored workspaces already have is kept; anything else is regenerated (S25).
+        $registry   = WorkspaceRegistry::fromRows($rows, $current->keys());
         $duplicated = $registry->duplicatedDomains();
         if ($duplicated !== []) {
             Session::addMessageAfterRedirect(
@@ -361,6 +368,30 @@ HTML;
 
             return;
         }
+
+        // A workspace that authorization rules still use cannot be removed (spec S27): saving is
+        // refused as a whole, so nothing is written halfway.
+        $using = WorkspaceRuleUsage::rulesUsing(WorkspaceRemoval::removedKeys($current, $registry));
+        if ($using !== []) {
+            $lines = [];
+            foreach ($using as $rule) {
+                $lines[] = sprintf(
+                    '<a href="%s">%s</a> (%s)',
+                    htmlescape(\RuleRight::getFormURLWithID($rule['rule_id'])),
+                    htmlescape($rule['name']),
+                    htmlescape($rule['key'])
+                );
+            }
+            Session::addMessageAfterRedirect(
+                htmlescape(__('Nada foi salvo: há regras de autorização que usam um workspace que seria removido. Tire o critério "Workspace do Google" delas, ou mantenha o workspace:', 'gac'))
+                    . '<br>' . implode('<br>', $lines),
+                false,
+                ERROR
+            );
+
+            return;
+        }
+
         foreach ($registry->all() as $workspace) {
             if ($workspace->active && !$workspace->isUsable()) {
                 Session::addMessageAfterRedirect(
@@ -392,6 +423,13 @@ HTML;
 
         SsoConfig::save($raw);
         Session::addMessageAfterRedirect(__('Configuração do login com Google salva.', 'gac'));
+    }
+
+    /** Where the JS (public/js/sso-ou-picker.js) puts the "Adicionar OU" selector (spec S30). */
+    private function blockedPicker(): string
+    {
+        return "<div id='gac-sso-blocked-picker' class='mb-2'></div>"
+            . "<div class='form-text mb-2'>" . htmlescape(__('A OU escolhida é acrescentada ao texto abaixo. O bloqueio vale para o caminho em todos os workspaces.', 'gac')) . '</div>';
     }
 
     private function textarea(string $name, string $value, int $rows): string

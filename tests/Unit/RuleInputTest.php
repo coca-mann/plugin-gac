@@ -31,46 +31,51 @@
  * -------------------------------------------------------------------------
  */
 
+
 declare(strict_types=1);
 
-namespace GlpiPlugin\Gac\Sso;
+namespace GlpiPlugin\Gac\Tests\Unit;
 
-/**
- * One Google Workspace the login accepts (spec S24): its domains and the read-only admin the
- * service account impersonates to read org units there. Pure value object. The key (spec S25) is
- * the stable identifier the authorization rules refer to; the name can be edited.
- */
-final class Workspace
+use GlpiPlugin\Gac\Sso\RuleInput;
+use PHPUnit\Framework\TestCase;
+
+final class RuleInputTest extends TestCase
 {
-    /** @param list<string> $domains lowercase */
-    public function __construct(
-        public readonly string $key,
-        public readonly string $name,
-        public readonly array $domains,
-        public readonly string $adminSubject,
-        public readonly bool $active
-    ) {}
-
-    public function hasDomain(string $domain): bool
+    public function testGoogleParamsCarryTheAncestorsAndTheWorkspaceKey(): void
     {
-        return in_array(mb_strtolower($domain), $this->domains, true);
+        $this->assertSame(
+            ['google_ou' => ['/a', '/a/b'], 'google_workspace' => 'principal'],
+            RuleInput::googleParams(['/a', '/a/b'], 'principal')
+        );
     }
 
-    /** Active and complete: it has at least one domain and an admin to impersonate. */
-    public function isUsable(): bool
+    public function testNoWorkspaceKeyMeansNoWorkspaceParam(): void
     {
-        return $this->active && $this->domains !== [] && $this->adminSubject !== '';
+        $this->assertSame(['google_ou' => ['/a']], RuleInput::googleParams(['/a'], ''));
     }
 
-    /** @return array{key: string, name: string, domains: list<string>, admin_subject: string, is_active: bool} */
-    public function toArray(): array
+    public function testEngineInputMapsTheParamsToTheCriteria(): void
     {
-        return [
-            'key'           => $this->key,
-            'name'          => $this->name,
-            'domains'       => $this->domains,
-            'admin_subject' => $this->adminSubject,
-            'is_active'     => $this->active,
-        ];
+        $input = RuleInput::engineInput(['google_ou' => ['/a'], 'google_workspace' => 'principal', 'other' => 1]);
+
+        $this->assertSame(['GOOGLE_OU' => ['/a'], 'GOOGLE_WORKSPACE' => 'principal'], $input);
+    }
+
+    public function testRulesWithoutTheWorkspaceCriterionSeeTheSameOuInputAsBefore(): void
+    {
+        $this->assertSame(['GOOGLE_OU' => ['/a']], RuleInput::engineInput(['google_ou' => ['/a']]));
+    }
+
+    public function testEngineInputIgnoresValuesOfTheWrongType(): void
+    {
+        $this->assertSame([], RuleInput::engineInput(['google_ou' => '/a', 'google_workspace' => ['x']]));
+        $this->assertSame([], RuleInput::engineInput(['google_workspace' => '']));
+        $this->assertSame([], RuleInput::engineInput([]));
+    }
+
+    public function testCriterionNamesAreTheOnesStoredInTheRules(): void
+    {
+        $this->assertSame('GOOGLE_OU', RuleInput::OU_CRITERION);
+        $this->assertSame('GOOGLE_WORKSPACE', RuleInput::WORKSPACE_CRITERION);
     }
 }

@@ -48,11 +48,16 @@ final class WorkspaceRegistry
      * Normalizes raw rows (from a form or from JSON). Domains may be a text (one per line) or a
      * list; rows with neither a name nor a domain are dropped; a missing "is_active" means active.
      *
+     * Keys (spec S25): a row keeps its "key" when it is valid, not used by a previous row and, when
+     * $trustedKeys is a list (a form post), one of those keys; every other row gets a new key from
+     * its name. Stored JSON is read with $trustedKeys = null (it is trusted).
+     *
      * @param array<int|string, mixed> $rows
+     * @param ?list<string>            $trustedKeys
      */
-    public static function fromRows(array $rows): self
+    public static function fromRows(array $rows, ?array $trustedKeys = null): self
     {
-        $workspaces = [];
+        $parsed = [];
         foreach ($rows as $row) {
             if (!is_array($row)) {
                 continue;
@@ -65,8 +70,37 @@ final class WorkspaceRegistry
                 continue;
             }
 
-            $active       = !array_key_exists('is_active', $row) || self::truthy($row['is_active']);
-            $workspaces[] = new Workspace($name, $domains, mb_strtolower(trim((string) ($row['admin_subject'] ?? ''))), $active);
+            $parsed[] = [
+                'key'     => trim((string) ($row['key'] ?? '')),
+                'name'    => $name,
+                'domains' => $domains,
+                'admin'   => mb_strtolower(trim((string) ($row['admin_subject'] ?? ''))),
+                'active'  => !array_key_exists('is_active', $row) || self::truthy($row['is_active']),
+            ];
+        }
+
+        // Pass 1 reserves the keys that can be kept, so a generated key never takes one of them.
+        $taken = [];
+        foreach ($parsed as $i => $p) {
+            $key        = $p['key'];
+            $acceptable = $key !== ''
+                && WorkspaceKey::isValid($key)
+                && !in_array($key, $taken, true)
+                && ($trustedKeys === null || in_array($key, $trustedKeys, true));
+            $parsed[$i]['key'] = $acceptable ? $key : '';
+            if ($acceptable) {
+                $taken[] = $key;
+            }
+        }
+
+        $workspaces = [];
+        foreach ($parsed as $p) {
+            $key = $p['key'];
+            if ($key === '') {
+                $key     = WorkspaceKey::unique(WorkspaceKey::fromName($p['name'] !== '' ? $p['name'] : $p['domains'][0]), $taken);
+                $taken[] = $key;
+            }
+            $workspaces[] = new Workspace($key, $p['name'], $p['domains'], $p['admin'], $p['active']);
         }
 
         return new self($workspaces);
@@ -118,6 +152,23 @@ final class WorkspaceRegistry
     public function all(): array
     {
         return $this->workspaces;
+    }
+
+    /** @return list<string> */
+    public function keys(): array
+    {
+        return array_map(static fn (Workspace $w): string => $w->key, $this->workspaces);
+    }
+
+    public function byKey(string $key): ?Workspace
+    {
+        foreach ($this->workspaces as $workspace) {
+            if ($workspace->key === $key) {
+                return $workspace;
+            }
+        }
+
+        return null;
     }
 
     /** @return list<Workspace> */

@@ -31,46 +31,62 @@
  * -------------------------------------------------------------------------
  */
 
+
 declare(strict_types=1);
 
 namespace GlpiPlugin\Gac\Sso;
 
 /**
- * One Google Workspace the login accepts (spec S24): its domains and the read-only admin the
- * service account impersonates to read org units there. Pure value object. The key (spec S25) is
- * the stable identifier the authorization rules refer to; the name can be edited.
+ * What the Google login hands to the authorization rules engine (spec S4, S26): the OU ancestors
+ * for the "OU do Google Workspace" criterion and the workspace key for the "Workspace do Google"
+ * criterion. Pure.
  */
-final class Workspace
+final class RuleInput
 {
-    /** @param list<string> $domains lowercase */
-    public function __construct(
-        public readonly string $key,
-        public readonly string $name,
-        public readonly array $domains,
-        public readonly string $adminSubject,
-        public readonly bool $active
-    ) {}
+    public const OU_CRITERION        = 'GOOGLE_OU';
+    public const WORKSPACE_CRITERION = 'GOOGLE_WORKSPACE';
 
-    public function hasDomain(string $domain): bool
+    private const OU_PARAM        = 'google_ou';
+    private const WORKSPACE_PARAM = 'google_workspace';
+
+    /**
+     * The Google part of the params given to processAllRules(). Without a workspace key the
+     * workspace param is left out, so rules that never mention it behave as before (S26).
+     *
+     * @param list<string> $ancestors OuPath::ancestors() of the user's OU
+     * @return array<string, mixed>
+     */
+    public static function googleParams(array $ancestors, string $workspaceKey): array
     {
-        return in_array(mb_strtolower($domain), $this->domains, true);
+        $params = [self::OU_PARAM => $ancestors];
+        if ($workspaceKey !== '') {
+            $params[self::WORKSPACE_PARAM] = $workspaceKey;
+        }
+
+        return $params;
     }
 
-    /** Active and complete: it has at least one domain and an admin to impersonate. */
-    public function isUsable(): bool
+    /**
+     * The value of each criterion, from the params of processAllRules() (hook
+     * ruleCollectionPrepareInputDataForProcess).
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public static function engineInput(array $params): array
     {
-        return $this->active && $this->domains !== [] && $this->adminSubject !== '';
-    }
+        $input = [];
 
-    /** @return array{key: string, name: string, domains: list<string>, admin_subject: string, is_active: bool} */
-    public function toArray(): array
-    {
-        return [
-            'key'           => $this->key,
-            'name'          => $this->name,
-            'domains'       => $this->domains,
-            'admin_subject' => $this->adminSubject,
-            'is_active'     => $this->active,
-        ];
+        $ou = $params[self::OU_PARAM] ?? null;
+        if (is_array($ou)) {
+            $input[self::OU_CRITERION] = $ou;
+        }
+
+        $workspace = $params[self::WORKSPACE_PARAM] ?? null;
+        if (is_string($workspace) && $workspace !== '') {
+            $input[self::WORKSPACE_CRITERION] = $workspace;
+        }
+
+        return $input;
     }
 }

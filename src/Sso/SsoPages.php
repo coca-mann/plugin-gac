@@ -123,16 +123,14 @@ final class SsoPages
             $html .= '<tr><td>' . $user . '</td><td>' . $badge . '</td>'
                 . '<td>' . self::dateCell((string) $row['linked_at']) . '</td>'
                 . '<td>' . self::dateCell((string) $row['last_login_at']) . '</td>'
-                . '<td>' . ($row['last_ou_path'] === '' || $row['last_ou_path'] === null
-                    ? "<span class='text-muted'>-</span>"
-                    : "<span class='badge bg-secondary-lt font-monospace'>" . htmlescape((string) $row['last_ou_path']) . '</span>') . '</td>';
+                . '<td class="text-nowrap">' . self::ouBadge((string) $row['last_ou_path']) . '</td>';
             if ($canUndo) {
                 $html .= "<td class='text-end'>" . self::undoForm((int) $row['id'], IdentityOrigin::isConversion($origin)) . '</td>';
             }
             $html .= '</tr>';
         }
 
-        return $html . '</tbody></table></div></div>';
+        return $html . '</tbody></table></div></div>' . OuCopy::script();
     }
 
     /** The date on top and the time, muted, below. */
@@ -224,7 +222,7 @@ final class SsoPages
                 . "<td class='text-muted'>" . htmlescape((string) $row['detail']) . '</td></tr>';
         }
 
-        return $html . '</tbody></table></div></div>';
+        return $html . '</tbody></table></div></div>' . OuCopy::script();
     }
 
     public static function pending(): string
@@ -256,7 +254,7 @@ final class SsoPages
                 . '<td>' . self::dateCell((string) $row['last_at']) . '</td></tr>';
         }
 
-        return $html . '</tbody></table></div></div>';
+        return $html . '</tbody></table></div></div>' . OuCopy::script();
     }
 
     /** The header of every list card: icon, title, counter and a short explanation, plus an optional action. */
@@ -277,6 +275,6 @@ final class SsoPages
     {
         return $ou === ''
             ? "<span class='text-muted'>-</span>"
-            : "<span class='badge bg-secondary-lt font-monospace'>" . htmlescape($ou) . '</span>';
+            : "<span class='badge bg-secondary-lt font-monospace'>" . htmlescape($ou) . '</span>' . OuCopy::button($ou);
     }
 }

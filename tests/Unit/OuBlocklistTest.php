@@ -79,4 +79,13 @@ final class OuBlocklistTest extends TestCase
 
         $this->assertSame(['/a/b'], $list->paths());
     }
+
+    public function testTextWithLinesAppendedByTheOuPickerGivesTheSameSet(): void
+    {
+        $byHand = OuBlocklist::fromText("/Fimca/Docentes\n# professores da Metropolitana\n/Metro/Professores");
+        $picker = OuBlocklist::fromText("/Fimca/Docentes\n# professores da Metropolitana\n/Metro/Professores\n/fimca/docentes\n/Sistemas");
+
+        $this->assertSame(['/fimca/docentes', '/metro/professores'], $byHand->paths());
+        $this->assertSame(['/fimca/docentes', '/metro/professores', '/sistemas'], $picker->paths(), 'a repeated line in another case is one path');
+    }
 }

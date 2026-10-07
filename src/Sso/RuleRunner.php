@@ -39,26 +39,26 @@ namespace GlpiPlugin\Gac\Sso;
 final class RuleRunner
 {
     /**
-     * @param list<string> $ancestors OuPath::ancestors() of the user's OU
+     * @param list<string> $ancestors    OuPath::ancestors() of the user's OU
+     * @param string       $workspaceKey Workspace::$key of the e-mail's workspace (spec S26)
      * @return array<string, mixed> the engine's output array
      */
-    public static function run(string $email, array $ancestors): array
+    public static function run(string $email, array $ancestors, string $workspaceKey = ''): array
     {
         $collection = new \RuleRightCollection();
 
         // The output is seeded with the name only: if "entities_id" shows up in it afterwards, a
         // rule set the default entity (the _entities_id_default action).
         return $collection->processAllRules([], ['name' => $email], [
-            'type'      => \Auth::EXTERNAL,
-            'login'     => $email,
-            'email'     => $email,
-            'google_ou' => $ancestors,
-        ]);
+            'type'  => \Auth::EXTERNAL,
+            'login' => $email,
+            'email' => $email,
+        ] + RuleInput::googleParams($ancestors, $workspaceKey));
     }
 
     /** @param list<string> $ancestors */
-    public static function result(string $email, array $ancestors): RuleResult
+    public static function result(string $email, array $ancestors, string $workspaceKey = ''): RuleResult
     {
-        return RuleResult::fromOutput(self::run($email, $ancestors));
+        return RuleResult::fromOutput(self::run($email, $ancestors, $workspaceKey));
     }
 }

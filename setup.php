@@ -39,7 +39,7 @@ use GlpiPlugin\Gac\Ltbp\AssetUpdateGuard;
 use GlpiPlugin\Gac\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.8.0');
+define('PLUGIN_GAC_VERSION', '0.9.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
@@ -70,7 +70,7 @@ function plugin_init_gac(): void
         $PLUGIN_HOOKS['config_page']['gac'] = 'front/config.php';
 
         // Value has no "public/" prefix: GLPI's router adds it for plugin assets.
-        $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['gac'] = 'js/pre.js';
+        $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['gac'] = ['js/pre.js', 'js/sso-ou-picker.js'];
 
         // Plugin rights are invisible in Perfis unless the plugin adds its own tab.
         Plugin::registerClass(ProfileRights::class, ['addtabon' => Profile::class]);

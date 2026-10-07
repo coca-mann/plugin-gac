@@ -31,46 +31,27 @@
  * -------------------------------------------------------------------------
  */
 
+
 declare(strict_types=1);
 
 namespace GlpiPlugin\Gac\Sso;
 
-/**
- * One Google Workspace the login accepts (spec S24): its domains and the read-only admin the
- * service account impersonates to read org units there. Pure value object. The key (spec S25) is
- * the stable identifier the authorization rules refer to; the name can be edited.
- */
-final class Workspace
+/** Which workspaces a configuration save would remove (spec S27). Pure. */
+final class WorkspaceRemoval
 {
-    /** @param list<string> $domains lowercase */
-    public function __construct(
-        public readonly string $key,
-        public readonly string $name,
-        public readonly array $domains,
-        public readonly string $adminSubject,
-        public readonly bool $active
-    ) {}
-
-    public function hasDomain(string $domain): bool
+    /**
+     * The keys that are stored but missing from the submitted list. Renaming, deactivating and
+     * adding never remove a key.
+     *
+     * @return list<string>
+     */
+    public static function removedKeys(WorkspaceRegistry $stored, WorkspaceRegistry $submitted): array
     {
-        return in_array(mb_strtolower($domain), $this->domains, true);
-    }
+        $kept = $submitted->keys();
 
-    /** Active and complete: it has at least one domain and an admin to impersonate. */
-    public function isUsable(): bool
-    {
-        return $this->active && $this->domains !== [] && $this->adminSubject !== '';
-    }
-
-    /** @return array{key: string, name: string, domains: list<string>, admin_subject: string, is_active: bool} */
-    public function toArray(): array
-    {
-        return [
-            'key'           => $this->key,
-            'name'          => $this->name,
-            'domains'       => $this->domains,
-            'admin_subject' => $this->adminSubject,
-            'is_active'     => $this->active,
-        ];
+        return array_values(array_filter(
+            $stored->keys(),
+            static fn (string $key): bool => !in_array($key, $kept, true)
+        ));
     }
 }

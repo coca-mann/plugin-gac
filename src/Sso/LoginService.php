@@ -135,7 +135,7 @@ final class LoginService
             }
 
             // 5. The authorization rules.
-            $ruleOutput = RuleRunner::run($email, OuPath::ancestors($ou));
+            $ruleOutput = RuleRunner::run($email, OuPath::ancestors($ou), $workspace->key);
             $rules      = RuleResult::fromOutput($ruleOutput);
             $denied     = LoginDecision::afterRules($rules->denied, $rules->hasGrants());
             if ($denied !== null) {
