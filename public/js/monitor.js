@@ -336,6 +336,7 @@
         let priorityColors = {};
         let activeId = null;
         let rotationTimer = null;
+        let fading = false;
         let rotationKey = '';
         const previousIds = {}; // page id => Set of ticket ids seen at the last poll
         const newIds = {};      // page id => Set of ids that appeared at the last poll
@@ -356,6 +357,10 @@
         const emptyEl = root.querySelector('[data-gac-monitor-empty]');
         const emptyDefaultText = emptyEl ? emptyEl.textContent : '';
         const BANNER_QUEUE_MAX = 6;
+        // Keep in step with the transition time of .gac-monitor-viewport in monitor.css.
+        const PAGE_FADE_MS = 300;
+        const reducedMotion = typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         // Returns the tickets the page ON SCREEN got that it did not have at the previous poll (to be
         // announced now). A hidden page only keeps them as pending until the rotation brings it to the
@@ -557,7 +562,11 @@
             unavailable = true;
         }
 
-        function rotate() {
+        // Moves to the next page and announces what arrived on it while it was hidden (banner and
+        // sound). Looked up when it runs, not when the fade starts: a poll may change the pages
+        // meanwhile.
+        function goToNextPage() {
+            fading = false;
             if (pages.length > 1) {
                 let index = 0;
                 for (let i = 0; i < pages.length; i += 1) {
@@ -566,9 +575,23 @@
                     }
                 }
                 activeId = String(pages[(index + 1) % pages.length].id);
-                // What arrived while this page was hidden is announced now (banner and sound).
                 const arrival = showActive();
                 announceArrivals(arrival.rows, arrival.alert);
+            }
+            root.classList.remove('gac-page-fading');
+        }
+
+        // A short fade out, the swap, then the fade in (the CSS transition does both). Skipped for
+        // people who asked their system for less motion.
+        function rotate() {
+            if (pages.length > 1) {
+                if (reducedMotion || fading) {
+                    goToNextPage();
+                } else {
+                    fading = true;
+                    root.classList.add('gac-page-fading');
+                    setTimeout(goToNextPage, PAGE_FADE_MS);
+                }
             }
             scheduleRotation();
         }

@@ -209,6 +209,17 @@
     min-height: 0;
     overflow: hidden;
     position: relative;
+    transition: opacity 0.3s ease;
+}
+
+/* Page change of the rotation: fade out, swap, fade in (the class is set around the swap). */
+.gac-monitor-title {
+    transition: opacity 0.3s ease;
+}
+
+.gac-page-fading .gac-monitor-viewport,
+.gac-page-fading .gac-monitor-title {
+    opacity: 0;
 }
 
 .gac-monitor-empty {
