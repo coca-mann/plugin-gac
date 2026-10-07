@@ -36,18 +36,21 @@ declare(strict_types=1);
 namespace GlpiPlugin\Gac\Monitor;
 
 /**
- * Pure: the "priority" row order a Tela can opt into — ported from the Django app's
- * get_panel_data() (apps/dbcom/glpi_queries.py), which already solved this for the ticket
- * monitoring panel being replaced. Urgency (highest first), then status in a hand-picked
- * priority (not GLPI's numeric status value), then opening date (newest first).
+ * Pure: the row orders a Tela can opt into. "priority" comes from the Django app's
+ * get_panel_data() (apps/dbcom/glpi_queries.py): GLPI priority (highest first), then status in
+ * a hand-picked priority (not GLPI's numeric status value), then opening date (newest first).
+ * It sorts on the ticket's *priority* (the column and colour the board shows), not on its
+ * urgency: priority also depends on impact, so tickets of equal urgency can differ in priority.
+ * "elapsed" puts the oldest open ticket first.
  */
 final class TicketSortOrder
 {
     public const MODE_PRIORITY = 'priority';
     public const MODE_ID       = 'id';
+    public const MODE_ELAPSED  = 'elapsed';
 
     /** @var list<string> */
-    public const MODES = [self::MODE_PRIORITY, self::MODE_ID];
+    public const MODES = [self::MODE_PRIORITY, self::MODE_ELAPSED, self::MODE_ID];
 
     public const DEFAULT_MODE = self::MODE_PRIORITY;
 
@@ -66,21 +69,47 @@ final class TicketSortOrder
         return in_array($mode, self::MODES, true);
     }
 
+    /**
+     * The order a page uses: its own when it has a valid one, else the Tela's, else the default.
+     * An empty page value means "follow the Tela".
+     */
+    public static function resolve(?string $page, ?string $screen): string
+    {
+        foreach ([$page, $screen] as $mode) {
+            if ($mode !== null && self::isValidMode($mode)) {
+                return $mode;
+            }
+        }
+        return self::DEFAULT_MODE;
+    }
+
     public static function statusPriority(int $status): int
     {
         return self::STATUS_PRIORITY[$status] ?? 999;
     }
 
     /**
-     * Comparator for usort(): urgency DESC, then status priority ASC, then opening date DESC.
+     * Comparator for usort(): priority DESC, then status priority ASC, then opening date DESC.
      *
-     * @param array{urgency: int, status: int, date: string} $a
-     * @param array{urgency: int, status: int, date: string} $b
+     * @param array{priority: int, status: int, date: string} $a
+     * @param array{priority: int, status: int, date: string} $b
      */
     public static function compare(array $a, array $b): int
     {
-        return ($b['urgency'] <=> $a['urgency'])
+        return ($b['priority'] <=> $a['priority'])
             ?: (self::statusPriority($a['status']) <=> self::statusPriority($b['status']))
             ?: ($b['date'] <=> $a['date']);
+    }
+
+    /**
+     * Comparator for usort(): opening date ASC (longest elapsed first), then priority DESC.
+     *
+     * @param array{priority: int, status: int, date: string} $a
+     * @param array{priority: int, status: int, date: string} $b
+     */
+    public static function compareElapsed(array $a, array $b): int
+    {
+        return ($a['date'] <=> $b['date'])
+            ?: ($b['priority'] <=> $a['priority']);
     }
 }

@@ -31,41 +31,42 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, sem Session::checkCSRF() — somente leitura, GET.
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
-use GlpiPlugin\Gac\Monitor\PublicToken;
-use GlpiPlugin\Gac\Monitor\ScreenQuery;
+declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
+namespace GlpiPlugin\Gac\Monitor;
 
-// Before anything else, so that a flood of junk requests is cut off as cheaply as possible.
-$settings = MonitorConfig::load();
-PublicRateLimiter::enforceIp($settings);
+/** Pure: limits and normalization of a Tela's page rotation (spec M11, M12). */
+final class PageRotation
+{
+    public const MAX_PAGES = 8;
 
-$token = (string) ($_GET['token'] ?? '');
-if (!PublicToken::isWellFormed($token)) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+    public const MIN_ROTATION_SECONDS     = 5;
+    public const DEFAULT_ROTATION_SECONDS = 20;
 
-$screen = new MonitorScreen();
-if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+    public static function canAddPage(int $currentCount): bool
+    {
+        return $currentCount < self::MAX_PAGES;
+    }
 
-// The token exists: now it may be counted on its own (see PublicRateLimiter::enforceToken()).
-PublicRateLimiter::enforceToken($settings, $token);
+    /** A Tela's own rotation override; null (use the global default) stays null. */
+    public static function clampRotation(?int $seconds): ?int
+    {
+        if ($seconds === null) {
+            return null;
+        }
+        return max(self::MIN_ROTATION_SECONDS, $seconds);
+    }
 
-try {
-    $result = ScreenQuery::run($screen, true);
-    echo json_encode($result + ['generated_at' => date('c')], JSON_UNESCAPED_UNICODE);
-} catch (\Throwable $e) {
-    Toolbox::logInFile('gac', 'monitor public_data.php: ' . $e->getMessage() . "\n");
-    http_response_code(500);
-    echo json_encode(['error' => __('Erro ao buscar os tickets.', 'gac')], JSON_UNESCAPED_UNICODE);
+    /** @param list<int> $positions positions already used by the Tela's pages */
+    public static function nextPosition(array $positions): int
+    {
+        return $positions === [] ? 1 : max($positions) + 1;
+    }
+
+    /** The label shown in the page selector: the page's own title, else its saved search's name. */
+    public static function pageTitle(string $title, string $savedSearchName): string
+    {
+        $title = trim($title);
+        return $title !== '' ? $title : $savedSearchName;
+    }
 }

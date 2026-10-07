@@ -31,15 +31,19 @@
  * -------------------------------------------------------------------------
  */
 
+use GlpiPlugin\Gac\Monitor\AlertSound;
 use GlpiPlugin\Gac\Monitor\BoardAppearance;
 use GlpiPlugin\Gac\Monitor\MonitorConfig;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\MonitorSettings;
+use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
 use GlpiPlugin\Gac\Monitor\PublicToken;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Exception\Http\NotFoundHttpException;
 
 global $CFG_GLPI;
+
+$settings = MonitorConfig::load();
+PublicRateLimiter::enforceIp($settings, false);
 
 $token  = (string) ($_GET['token'] ?? '');
 $screen = new MonitorScreen();
@@ -50,7 +54,6 @@ if (
     throw new NotFoundHttpException();
 }
 
-$settings = MonitorConfig::load();
 $version  = Plugin::getPluginFilesVersion('gac');
 
 TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig', [
@@ -59,7 +62,7 @@ TemplateRenderer::getInstance()->display('@gac/monitor/public_display.html.twig'
     'poll_interval'   => $screen->pollIntervalSeconds($settings),
     'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
     // Empty when not configured: see the note in front/monitor/display.php.
-    'alert_sound_url' => MonitorSettings::alertSoundUrl($settings),
+    'alert_sound_url' => AlertSound::urlFor($settings, $screen),
     'theme'           => $screen->fields['theme'],
     'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
     'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,

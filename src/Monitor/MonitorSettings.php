@@ -43,12 +43,29 @@ final class MonitorSettings
 {
     private const MIN_POLL_INTERVAL_SECONDS = 5;
 
+    public const MIN_BANNER_SECONDS     = 3;
+    public const MAX_BANNER_SECONDS     = 120;
+    public const DEFAULT_BANNER_SECONDS = 10;
+
+    public const DEFAULT_RATE_IP    = 120;
+    public const DEFAULT_RATE_TOKEN = 240;
+    public const MAX_RATE           = 100000;
+
     /** @return array<string, string> */
     public static function defaults(): array
     {
         return [
             'monitor_default_poll_interval_seconds' => '15',
+            'monitor_default_rotation_seconds'      => (string) PageRotation::DEFAULT_ROTATION_SECONDS,
+            'monitor_sla_warning_minutes'             => '60',
+            'monitor_banner_seconds'                  => (string) self::DEFAULT_BANNER_SECONDS,
+            'monitor_banner_show_description'         => '1',
+            'monitor_public_rate_ip'                  => (string) self::DEFAULT_RATE_IP,
+            'monitor_public_rate_token'               => (string) self::DEFAULT_RATE_TOKEN,
+            'monitor_trusted_proxies'                 => '',
             'monitor_alert_sound_url'                 => '',
+            'monitor_alert_sound_file'                => '',
+            'monitor_alert_sound_name'                => '',
             'monitor_service_username'                => '',
             'monitor_service_password'                => '',
         ];
@@ -71,8 +88,49 @@ final class MonitorSettings
             $out['monitor_default_poll_interval_seconds'] = (string) max(self::MIN_POLL_INTERVAL_SECONDS, $seconds);
         }
 
+        if (array_key_exists('monitor_default_rotation_seconds', $raw)) {
+            $seconds = is_numeric($raw['monitor_default_rotation_seconds'])
+                ? (int) $raw['monitor_default_rotation_seconds']
+                : PageRotation::DEFAULT_ROTATION_SECONDS;
+            $out['monitor_default_rotation_seconds'] = (string) max(PageRotation::MIN_ROTATION_SECONDS, $seconds);
+        }
+
+        if (array_key_exists('monitor_sla_warning_minutes', $raw)) {
+            $minutes = is_numeric($raw['monitor_sla_warning_minutes']) ? (int) $raw['monitor_sla_warning_minutes'] : 60;
+            $out['monitor_sla_warning_minutes'] = (string) max(1, $minutes);
+        }
+
+        // New-ticket banner (spec M18): how long each banner stays, and whether it may show the
+        // ticket's free-text description (which a public TV would display to anyone looking at it).
+        if (array_key_exists('monitor_banner_seconds', $raw)) {
+            $seconds = is_numeric($raw['monitor_banner_seconds']) ? (int) $raw['monitor_banner_seconds'] : self::DEFAULT_BANNER_SECONDS;
+            $out['monitor_banner_seconds'] = (string) min(self::MAX_BANNER_SECONDS, max(self::MIN_BANNER_SECONDS, $seconds));
+        }
+        if (array_key_exists('monitor_banner_show_description', $raw)) {
+            $out['monitor_banner_show_description'] = ((string) $raw['monitor_banner_show_description']) === '0' ? '0' : '1';
+        }
+
+        // Rate limit of the public endpoints (spec M21): requests per minute per client address and per
+        // public link; 0 turns a limit off. Trusted proxies are the addresses whose X-Forwarded-For is believed.
+        foreach (['monitor_public_rate_ip' => self::DEFAULT_RATE_IP, 'monitor_public_rate_token' => self::DEFAULT_RATE_TOKEN] as $key => $default) {
+            if (array_key_exists($key, $raw)) {
+                $value = is_numeric($raw[$key]) ? (int) $raw[$key] : $default;
+                $out[$key] = (string) min(self::MAX_RATE, max(0, $value));
+            }
+        }
+        if (array_key_exists('monitor_trusted_proxies', $raw)) {
+            $out['monitor_trusted_proxies'] = implode(', ', ClientIp::parseTrusted((string) $raw['monitor_trusted_proxies']));
+        }
+
         if (array_key_exists('monitor_alert_sound_url', $raw)) {
             $out['monitor_alert_sound_url'] = trim((string) $raw['monitor_alert_sound_url']);
+        }
+
+        // The uploaded sound (spec M17): the stored name is only trusted when it is one AlertSoundFile
+        // could have produced, so a tampered setting can never point outside the sound directory.
+        if (array_key_exists('monitor_alert_sound_file', $raw) && AlertSoundFile::isValidStoredName((string) $raw['monitor_alert_sound_file'])) {
+            $out['monitor_alert_sound_file'] = (string) $raw['monitor_alert_sound_file'];
+            $out['monitor_alert_sound_name'] = AlertSoundFile::displayName(trim((string) ($raw['monitor_alert_sound_name'] ?? '')));
         }
 
         if (array_key_exists('monitor_service_username', $raw)) {
@@ -96,9 +154,63 @@ final class MonitorSettings
     }
 
     /** @param array<string, string> $s */
+    public static function defaultRotationSeconds(array $s): int
+    {
+        return (int) ($s['monitor_default_rotation_seconds'] ?? PageRotation::DEFAULT_ROTATION_SECONDS);
+    }
+
+    /** @param array<string, string> $s */
+    public static function slaWarningMinutes(array $s): int
+    {
+        return (int) ($s['monitor_sla_warning_minutes'] ?? 60);
+    }
+
+    /** @param array<string, string> $s */
     public static function alertSoundUrl(array $s): string
     {
         return (string) ($s['monitor_alert_sound_url'] ?? '');
+    }
+
+    /** @param array<string, string> $s */
+    public static function publicRateIp(array $s): int
+    {
+        return (int) ($s['monitor_public_rate_ip'] ?? self::DEFAULT_RATE_IP);
+    }
+
+    /** @param array<string, string> $s */
+    public static function publicRateToken(array $s): int
+    {
+        return (int) ($s['monitor_public_rate_token'] ?? self::DEFAULT_RATE_TOKEN);
+    }
+
+    /** @param array<string, string> $s the trusted proxies as a normalized, comma-separated text */
+    public static function trustedProxies(array $s): string
+    {
+        return (string) ($s['monitor_trusted_proxies'] ?? '');
+    }
+
+    /** @param array<string, string> $s */
+    public static function bannerSeconds(array $s): int
+    {
+        return (int) ($s['monitor_banner_seconds'] ?? self::DEFAULT_BANNER_SECONDS);
+    }
+
+    /** @param array<string, string> $s */
+    public static function bannerShowDescription(array $s): bool
+    {
+        return ($s['monitor_banner_show_description'] ?? '1') !== '0';
+    }
+
+    /** @param array<string, string> $s the stored name of the uploaded sound, '' when none */
+    public static function alertSoundFile(array $s): string
+    {
+        return (string) ($s['monitor_alert_sound_file'] ?? '');
+    }
+
+    /** @param array<string, string> $s the original name of the uploaded sound, for display only */
+    public static function alertSoundFileName(array $s): string
+    {
+        return (string) ($s['monitor_alert_sound_name'] ?? '');
     }
 
     /** @param array<string, string> $s */

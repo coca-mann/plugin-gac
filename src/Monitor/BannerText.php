@@ -31,41 +31,44 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, sem Session::checkCSRF() — somente leitura, GET.
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
-use GlpiPlugin\Gac\Monitor\PublicToken;
-use GlpiPlugin\Gac\Monitor\ScreenQuery;
+declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
+namespace GlpiPlugin\Gac\Monitor;
 
-// Before anything else, so that a flood of junk requests is cut off as cheaply as possible.
-$settings = MonitorConfig::load();
-PublicRateLimiter::enforceIp($settings);
+/**
+ * Pure: turns a ticket's description (rich text HTML, which GLPI usually stores HTML-encoded)
+ * into the short plain text the new-ticket banner shows (spec M18). The result is meant for
+ * textContent, never for innerHTML.
+ */
+final class BannerText
+{
+    /** Block-level tags become a space, so "<p>a</p><p>b</p>" reads "a b" and not "ab". */
+    private const BLOCK_TAGS = '#</?(?:p|br|div|li|ul|ol|h[1-6]|tr|td|th|table|blockquote|hr)\b[^>]*>#i';
 
-$token = (string) ($_GET['token'] ?? '');
-if (!PublicToken::isWellFormed($token)) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+    public static function summarize(string $html, int $max): string
+    {
+        if ($max < 2) {
+            return '';
+        }
 
-$screen = new MonitorScreen();
-if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+        // GLPI keeps the content as "&lt;p&gt;...", so decode once to get back to real tags.
+        $text = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('#<(script|style)\b.*?</\1>#is', ' ', $text) ?? '';
+        $text = preg_replace(self::BLOCK_TAGS, ' ', $text) ?? '';
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
 
-// The token exists: now it may be counted on its own (see PublicRateLimiter::enforceToken()).
-PublicRateLimiter::enforceToken($settings, $token);
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
 
-try {
-    $result = ScreenQuery::run($screen, true);
-    echo json_encode($result + ['generated_at' => date('c')], JSON_UNESCAPED_UNICODE);
-} catch (\Throwable $e) {
-    Toolbox::logInFile('gac', 'monitor public_data.php: ' . $e->getMessage() . "\n");
-    http_response_code(500);
-    echo json_encode(['error' => __('Erro ao buscar os tickets.', 'gac')], JSON_UNESCAPED_UNICODE);
+        // Leaves room for the ellipsis and prefers to end on a whole word.
+        $cut   = mb_substr($text, 0, $max - 1);
+        $space = mb_strrpos($cut, ' ');
+        if ($space !== false && $space > 0) {
+            $cut = mb_substr($cut, 0, $space);
+        }
+        return rtrim($cut) . '…';
+    }
 }

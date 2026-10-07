@@ -31,45 +31,48 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\GacMenu;
-use GlpiPlugin\Gac\Monitor\AlertSound;
-use GlpiPlugin\Gac\Monitor\BoardAppearance;
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
+use GlpiPlugin\Gac\Monitor\MonitorPage;
 use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use Glpi\Application\View\TemplateRenderer;
 
-if (!MonitorScreen::canView()) {
-    Html::displayRightError();
+$item = new MonitorPage();
+
+// The form itself is rendered inside the Tela's "Páginas" tab (MonitorPage::displayTabContentForItem),
+// which keeps the Tela's side menu and GLPI's standard form footer. This script only handles the
+// actions and, for a plain GET, hands over to that tab.
+if (isset($_POST['add'])) {
+    $item->check(-1, CREATE, $_POST);
+    $screenId = (int) $_POST[MonitorPage::$items_id];
+    if (!$item->add($_POST)) {
+        MonitorPage::requestForm(-1, $screenId);
+    }
+    Html::redirect(MonitorPage::tabUrl($screenId));
+} elseif (isset($_POST['update'])) {
+    $item->check($_POST['id'], UPDATE);
+    $screenId = (int) $item->fields[MonitorPage::$items_id];
+    if (!$item->update($_POST)) {
+        MonitorPage::requestForm((int) $_POST['id'], $screenId);
+    }
+    Html::redirect(MonitorPage::tabUrl($screenId));
+} elseif (isset($_POST['purge'])) {
+    $item->check($_POST['id'], PURGE);
+    $screenId = (int) $item->fields[MonitorPage::$items_id];
+    $item->delete($_POST, 1);
+    Html::redirect(MonitorPage::tabUrl($screenId));
+} else {
+    $id       = (int) ($_GET['id'] ?? -1);
+    $screenId = (int) ($_GET[MonitorPage::$items_id] ?? 0);
+    if ($id > 0) {
+        if (!$item->getFromDB($id)) {
+            Html::displayNotFoundError();
+        }
+        $screenId = (int) $item->fields[MonitorPage::$items_id];
+    }
+    if ($screenId <= 0) {
+        Html::displayNotFoundError();
+    }
+    if (!MonitorScreen::canView()) {
+        Html::displayRightError();
+    }
+    MonitorPage::requestForm($id > 0 ? $id : -1, $screenId);
+    Html::redirect(MonitorPage::tabUrl($screenId));
 }
-
-$screen = new MonitorScreen();
-if (!$screen->getFromDB((int) ($_GET['id'] ?? 0)) || !$screen->fields['is_active']) {
-    Html::displayNotFoundError();
-}
-
-Html::header(
-    $screen->fields['name'],
-    $_SERVER['PHP_SELF'],
-    GacMenu::SECTOR,
-    GacMenu::ITEM_MONITOR
-);
-
-global $CFG_GLPI;
-$settings = MonitorConfig::load();
-$version  = Plugin::getPluginFilesVersion('gac');
-
-TemplateRenderer::getInstance()->display('@gac/monitor/display.html.twig', [
-    'screen'          => $screen,
-    'ajax_url'        => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/data.php?id=' . $screen->getID(),
-    'poll_interval'   => $screen->pollIntervalSeconds($settings),
-    'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
-    // Empty when not configured: public/sounds/ is not guaranteed to have a bundled file (Task
-    // 9, Step 3). The JS's play() call already swallows a missing/empty source silently.
-    'alert_sound_url' => AlertSound::urlFor($settings, $screen),
-    'theme'           => $screen->fields['theme'],
-    'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
-    'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,
-    'asset_css'       => $CFG_GLPI['root_doc'] . '/plugins/gac/css/monitor.css?v=' . $version,
-]);
-
-Html::footer();

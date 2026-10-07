@@ -1,0 +1,63 @@
+{% extends 'generic_show_form.html.twig' %}
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+{% block form_fields %}
+    <input type="hidden" name="plugin_gac_monitorscreens_id" value="{{ screen_id }}">
+
+    <div class="mb-3">
+        <a href="{{ back_url }}"><i class="ti ti-arrow-left"></i> {{ __('Voltar para as páginas da Tela', 'gac') }}</a>
+    </div>
+
+    {# Where the data comes from. #}
+    <div class="card border mb-4">
+        <div class="card-header">
+            <h4 class="card-title mb-0"><i class="ti ti-filter me-2"></i>{{ __('Origem dos dados', 'gac') }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {{ fields.dropdownArrayField('savedsearches_id', item.fields['savedsearches_id'], saved_searches, __('Pesquisa salva (Ticket, compartilhada)', 'gac'), {
+                    required: true,
+                }) }}
+
+                {{ fields.textField('title', item.fields['title'], __('Título da página (opcional)', 'gac'), {
+                    placeholder: __('Em branco usa o nome da pesquisa salva', 'gac'),
+                }) }}
+
+                {{ fields.dropdownArrayField('sort_mode', item.fields['sort_mode']|default(''), sort_choices, __('Ordem das linhas', 'gac'), {
+                    helper: __('Em que ordem os tickets aparecem nesta página.', 'gac'),
+                }) }}
+
+                {{ fields.numberField('position', item.fields['position']|default(next_position), __('Posição no rodízio', 'gac'), {
+                    min: 1,
+                }) }}
+            </div>
+
+            {% if search %}
+                <div class="alert alert-info d-flex flex-wrap align-items-center gap-3 mb-0 mt-3">
+                    <span><i class="ti ti-search me-1"></i>{{ __('Pesquisa atual', 'gac') }}: <strong>{{ search.name }}</strong></span>
+                    <a href="{{ search.url }}" target="_blank" rel="noopener">
+                        <i class="ti ti-external-link"></i> {{ __('Abrir pesquisa salva', 'gac') }}
+                    </a>
+                    {% if search.count is not null %}
+                        <span class="ms-auto">
+                            <i class="ti ti-ticket me-1"></i>
+                            {{ __('Retorna hoje %d ticket(s) na entidade da Tela', 'gac')|format(search.count) }}
+                        </span>
+                    {% endif %}
+                </div>
+            {% elseif not item.isNewItem() %}
+                <div class="alert alert-warning mb-0 mt-3">{{ __('Esta página não tem uma pesquisa salva válida.', 'gac') }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Which columns, in which order. #}
+    <div class="card border mb-4">
+        <div class="card-header">
+            <h4 class="card-title mb-0"><i class="ti ti-columns-3 me-2"></i>{{ __('Colunas exibidas', 'gac') }}</h4>
+        </div>
+        <div class="card-body">
+            {% include '@gac/monitor/_column_picker.html.twig' %}
+        </div>
+    </div>
+{% endblock %}

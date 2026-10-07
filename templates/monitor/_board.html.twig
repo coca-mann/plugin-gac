@@ -1,12 +1,17 @@
-<div class="gac-monitor-board{{ theme == 'light' ? ' gac-theme-light' : '' }}"
+<div class="gac-monitor-board{{ theme == 'light' ? ' gac-theme-light' : '' }}{{ embedded|default(false) ? ' gac-monitor-embedded' : '' }}"
      style="--gac-table-font-size: {{ font_size_rem }};"
      data-gac-monitor
      data-ajax-url="{{ ajax_url }}"
      data-poll-interval="{{ poll_interval }}"
      data-alert-enabled="{{ alert_enabled ? '1' : '0' }}">
     <div class="gac-monitor-topbar">
-        <h1 class="gac-monitor-title">{{ screen.fields.name }}</h1>
+        <h1 class="gac-monitor-title" data-gac-monitor-title>{{ screen.fields.name }}</h1>
         <div class="gac-monitor-topbar-right">
+            <span class="gac-monitor-sound" data-gac-monitor-sound hidden
+                  title="{{ __('Som bloqueado pelo navegador: clique na tela para liberar', 'gac') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M3 3l18 18"/></svg>
+            </span>
+            <div class="gac-monitor-dots" data-gac-monitor-dots hidden></div>
             <div class="gac-monitor-clock" data-gac-monitor-clock>00:00:00</div>
             <div class="gac-monitor-countdown" data-gac-monitor-status title="">
                 <svg viewBox="0 0 36 36" class="gac-countdown-ring">
@@ -16,9 +21,14 @@
             </div>
         </div>
     </div>
-    <table>
-        <thead><tr data-gac-monitor-head></tr></thead>
-        <tbody data-gac-monitor-body></tbody>
-    </table>
+    <div class="gac-monitor-viewport" data-gac-monitor-viewport>
+        <table>
+            <thead><tr data-gac-monitor-head></tr></thead>
+            <tbody data-gac-monitor-body></tbody>
+        </table>
+        <div class="gac-monitor-empty" data-gac-monitor-empty hidden>{{ __('Nenhuma página configurada para esta tela.', 'gac') }}</div>
+    </div>
+    <div class="gac-monitor-overflow" data-gac-monitor-overflow hidden></div>
+    <div class="gac-monitor-banner" data-gac-monitor-banner hidden aria-live="polite"></div>
     <audio data-gac-monitor-audio src="{{ alert_sound_url }}" preload="auto"></audio>
 </div>

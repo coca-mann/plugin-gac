@@ -39,7 +39,7 @@ use GlpiPlugin\Gac\Ltbp\AssetUpdateGuard;
 use GlpiPlugin\Gac\ProfileRights;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.7.0');
+define('PLUGIN_GAC_VERSION', '0.8.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
@@ -84,6 +84,8 @@ function plugin_init_gac(): void
         // só estes dois arquivos; display.php e data.php autenticados continuam exigindo login.
         SessionManager::registerPluginStatelessPath('gac', '#^/front/monitor/public\.php$#');
         SessionManager::registerPluginStatelessPath('gac', '#^/ajax/monitor/public_data\.php$#');
+        // The board's alert sound (spec M17): the public display has no login to fetch it with.
+        SessionManager::registerPluginStatelessPath('gac', '#^/ajax/monitor/alert_sound\.php$#');
 
         // The Monitor service account's password (glpi_configs, plugin:gac) is encrypted at
         // rest with GLPI's own key, same mechanism as the native SMTP secret.

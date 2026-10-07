@@ -57,9 +57,21 @@ final class MonitorLabels
     public static function sortMode(string $mode): string
     {
         return match ($mode) {
-            TicketSortOrder::MODE_PRIORITY => __('Urgência, status e data (recomendado)', 'gac'),
+            TicketSortOrder::MODE_PRIORITY => __('Prioridade, status e data (recomendado)', 'gac'),
+            TicketSortOrder::MODE_ELAPSED  => __('Tempo decorrido (mais antigo primeiro)', 'gac'),
             TicketSortOrder::MODE_ID       => __('Padrão do GLPI (ID crescente)', 'gac'),
             default                        => $mode,
+        };
+    }
+
+    public static function rowColorMode(string $mode): string
+    {
+        return match ($mode) {
+            RowTone::MODE_NONE     => __('Sem cor', 'gac'),
+            RowTone::MODE_STATUS   => __('Status do chamado', 'gac'),
+            RowTone::MODE_PRIORITY => __('Prioridade do chamado (recomendado)', 'gac'),
+            RowTone::MODE_SLA      => __('Prazo do SLA (vencido, perto de vencer, no prazo)', 'gac'),
+            default                => $mode,
         };
     }
 

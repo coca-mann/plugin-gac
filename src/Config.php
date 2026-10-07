@@ -78,7 +78,7 @@ final class Config
             }
             $key  = htmlescape($section->key());
             $body = 'gac-config-' . $key;
-            echo "<form method='post' action='" . htmlescape(self::pageUrl()) . "' class='card mb-4'>";
+            echo "<form method='post' action='" . htmlescape(self::pageUrl()) . "' enctype='multipart/form-data' class='card mb-4'>";
             // The whole section can be collapsed; the choice is remembered in the browser.
             echo "<div class='card-header d-flex align-items-center'>";
             echo "<h3 class='card-title mb-0 flex-grow-1'>" . htmlescape($section->title()) . '</h3>';

@@ -31,41 +31,40 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, sem Session::checkCSRF() — somente leitura, GET.
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
-use GlpiPlugin\Gac\Monitor\PublicToken;
-use GlpiPlugin\Gac\Monitor\ScreenQuery;
+declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
+namespace GlpiPlugin\Gac\Tests\Unit;
 
-// Before anything else, so that a flood of junk requests is cut off as cheaply as possible.
-$settings = MonitorConfig::load();
-PublicRateLimiter::enforceIp($settings);
+use GlpiPlugin\Gac\Monitor\AlertSoundChoice;
+use PHPUnit\Framework\TestCase;
 
-$token = (string) ($_GET['token'] ?? '');
-if (!PublicToken::isWellFormed($token)) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+final class AlertSoundChoiceTest extends TestCase
+{
+    public function testTheScreenFileWinsOverEverything(): void
+    {
+        $this->assertSame(AlertSoundChoice::SCREEN_FILE, AlertSoundChoice::choose('alert-aaaaaaaaaaaa.mp3', 'alert-bbbbbbbbbbbb.mp3', 'https://x/y.mp3'));
+        $this->assertSame(AlertSoundChoice::SCREEN_FILE, AlertSoundChoice::choose('alert-aaaaaaaaaaaa.mp3', '', ''));
+    }
 
-$screen = new MonitorScreen();
-if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+    public function testThePluginFileComesNext(): void
+    {
+        $this->assertSame(AlertSoundChoice::PLUGIN_FILE, AlertSoundChoice::choose('', 'alert-bbbbbbbbbbbb.mp3', 'https://x/y.mp3'));
+        $this->assertSame(AlertSoundChoice::PLUGIN_FILE, AlertSoundChoice::choose('', 'alert-bbbbbbbbbbbb.mp3', ''));
+    }
 
-// The token exists: now it may be counted on its own (see PublicRateLimiter::enforceToken()).
-PublicRateLimiter::enforceToken($settings, $token);
+    public function testThePluginUrlIsTheLastResort(): void
+    {
+        $this->assertSame(AlertSoundChoice::PLUGIN_URL, AlertSoundChoice::choose('', '', 'https://x/y.mp3'));
+    }
 
-try {
-    $result = ScreenQuery::run($screen, true);
-    echo json_encode($result + ['generated_at' => date('c')], JSON_UNESCAPED_UNICODE);
-} catch (\Throwable $e) {
-    Toolbox::logInFile('gac', 'monitor public_data.php: ' . $e->getMessage() . "\n");
-    http_response_code(500);
-    echo json_encode(['error' => __('Erro ao buscar os tickets.', 'gac')], JSON_UNESCAPED_UNICODE);
+    public function testNoSoundWhenNothingIsConfigured(): void
+    {
+        $this->assertSame(AlertSoundChoice::NONE, AlertSoundChoice::choose('', '', ''));
+    }
+
+    public function testBlankValuesCountAsMissing(): void
+    {
+        $this->assertSame(AlertSoundChoice::NONE, AlertSoundChoice::choose('  ', "\t", ' '));
+        $this->assertSame(AlertSoundChoice::PLUGIN_URL, AlertSoundChoice::choose('  ', '', ' https://x/y.mp3 '));
+    }
 }

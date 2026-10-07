@@ -31,45 +31,23 @@
  * -------------------------------------------------------------------------
  */
 
-use GlpiPlugin\Gac\GacMenu;
+// Rota stateless (setup.php): sem sessão GLPI, somente leitura, GET. O som de um alerta não é
+// sensível e a exibição pública (TV) não tem login para buscá-lo. `f` é o nome gravado do arquivo
+// (só nomes no formato validado e que existam); sem `f` serve o som do plugin, como antes.
 use GlpiPlugin\Gac\Monitor\AlertSound;
-use GlpiPlugin\Gac\Monitor\BoardAppearance;
 use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use Glpi\Application\View\TemplateRenderer;
+use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
 
-if (!MonitorScreen::canView()) {
-    Html::displayRightError();
-}
-
-$screen = new MonitorScreen();
-if (!$screen->getFromDB((int) ($_GET['id'] ?? 0)) || !$screen->fields['is_active']) {
-    Html::displayNotFoundError();
-}
-
-Html::header(
-    $screen->fields['name'],
-    $_SERVER['PHP_SELF'],
-    GacMenu::SECTOR,
-    GacMenu::ITEM_MONITOR
-);
-
-global $CFG_GLPI;
 $settings = MonitorConfig::load();
-$version  = Plugin::getPluginFilesVersion('gac');
+PublicRateLimiter::enforceIp($settings, false);
 
-TemplateRenderer::getInstance()->display('@gac/monitor/display.html.twig', [
-    'screen'          => $screen,
-    'ajax_url'        => $CFG_GLPI['root_doc'] . '/plugins/gac/ajax/monitor/data.php?id=' . $screen->getID(),
-    'poll_interval'   => $screen->pollIntervalSeconds($settings),
-    'alert_enabled'   => (bool) $screen->fields['alert_enabled'],
-    // Empty when not configured: public/sounds/ is not guaranteed to have a bundled file (Task
-    // 9, Step 3). The JS's play() call already swallows a missing/empty source silently.
-    'alert_sound_url' => AlertSound::urlFor($settings, $screen),
-    'theme'           => $screen->fields['theme'],
-    'font_size_rem'   => BoardAppearance::fontSizeRem((int) $screen->fields['font_size']),
-    'asset_js'        => $CFG_GLPI['root_doc'] . '/plugins/gac/js/monitor.js?v=' . $version,
-    'asset_css'       => $CFG_GLPI['root_doc'] . '/plugins/gac/css/monitor.css?v=' . $version,
-]);
+$name = (string) ($_GET['f'] ?? '');
+$path = $name !== ''
+    ? AlertSound::pathOf($name)
+    : AlertSound::path(MonitorConfig::load());
+if ($path === null) {
+    http_response_code(404);
+    exit;
+}
 
-Html::footer();
+AlertSound::send($path);

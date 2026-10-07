@@ -31,41 +31,41 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, sem Session::checkCSRF() — somente leitura, GET.
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
-use GlpiPlugin\Gac\Monitor\PublicToken;
-use GlpiPlugin\Gac\Monitor\ScreenQuery;
+declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
+namespace GlpiPlugin\Gac\Monitor;
 
-// Before anything else, so that a flood of junk requests is cut off as cheaply as possible.
-$settings = MonitorConfig::load();
-PublicRateLimiter::enforceIp($settings);
+/**
+ * Pure: the arithmetic of the fixed one-minute window the public endpoints are rate limited by
+ * (spec M21). Nothing here touches the cache or the clock: the caller passes the time in.
+ */
+final class FixedWindow
+{
+    public const WINDOW_SECONDS = 60;
 
-$token = (string) ($_GET['token'] ?? '');
-if (!PublicToken::isWellFormed($token)) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+    public static function windowStart(int $now): int
+    {
+        return $now - ($now % self::WINDOW_SECONDS);
+    }
 
-$screen = new MonitorScreen();
-if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
+    /**
+     * The cache key of one counter. The subject (an address, a token) is user-controlled, so it is
+     * hashed: PSR-16 keys cannot hold {}()/\@: and a hash also keeps the key short.
+     */
+    public static function key(string $scope, string $subject, int $now): string
+    {
+        return 'gac_rl_' . sha1($scope . '|' . $subject) . '_' . self::windowStart($now);
+    }
 
-// The token exists: now it may be counted on its own (see PublicRateLimiter::enforceToken()).
-PublicRateLimiter::enforceToken($settings, $token);
+    /** @param int $countAfterHit the counter value including the request being judged */
+    public static function isLimited(int $countAfterHit, int $limit): bool
+    {
+        return $limit > 0 && $countAfterHit > $limit;
+    }
 
-try {
-    $result = ScreenQuery::run($screen, true);
-    echo json_encode($result + ['generated_at' => date('c')], JSON_UNESCAPED_UNICODE);
-} catch (\Throwable $e) {
-    Toolbox::logInFile('gac', 'monitor public_data.php: ' . $e->getMessage() . "\n");
-    http_response_code(500);
-    echo json_encode(['error' => __('Erro ao buscar os tickets.', 'gac')], JSON_UNESCAPED_UNICODE);
+    /** Seconds until the window ends and the counter starts over; never less than one. */
+    public static function retryAfter(int $now): int
+    {
+        return max(1, self::windowStart($now) + self::WINDOW_SECONDS - $now);
+    }
 }

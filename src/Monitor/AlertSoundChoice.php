@@ -31,41 +31,33 @@
  * -------------------------------------------------------------------------
  */
 
-// Rota stateless (setup.php): sem sessão GLPI, sem Session::checkCSRF() — somente leitura, GET.
-use GlpiPlugin\Gac\Monitor\MonitorConfig;
-use GlpiPlugin\Gac\Monitor\MonitorScreen;
-use GlpiPlugin\Gac\Monitor\PublicRateLimiter;
-use GlpiPlugin\Gac\Monitor\PublicToken;
-use GlpiPlugin\Gac\Monitor\ScreenQuery;
+declare(strict_types=1);
 
-header('Content-Type: application/json; charset=utf-8');
+namespace GlpiPlugin\Gac\Monitor;
 
-// Before anything else, so that a flood of junk requests is cut off as cheaply as possible.
-$settings = MonitorConfig::load();
-PublicRateLimiter::enforceIp($settings);
+/**
+ * Pure: which alert sound a Tela uses (spec M19). The caller passes, for each source, the value
+ * only when it is really usable (a stored file name only when the file exists on disk), and gets
+ * back which source wins: the Tela's own file, then the plugin's file, then the plugin's URL.
+ */
+final class AlertSoundChoice
+{
+    public const SCREEN_FILE = 'screen_file';
+    public const PLUGIN_FILE = 'plugin_file';
+    public const PLUGIN_URL  = 'plugin_url';
+    public const NONE        = 'none';
 
-$token = (string) ($_GET['token'] ?? '');
-if (!PublicToken::isWellFormed($token)) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-$screen = new MonitorScreen();
-if (!$screen->getFromDBByCrit(['public_token' => $token, 'is_public' => 1, 'is_active' => 1])) {
-    http_response_code(404);
-    echo json_encode(['error' => __('Tela não encontrada.', 'gac'), 'code' => 'screen_unavailable'], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-// The token exists: now it may be counted on its own (see PublicRateLimiter::enforceToken()).
-PublicRateLimiter::enforceToken($settings, $token);
-
-try {
-    $result = ScreenQuery::run($screen, true);
-    echo json_encode($result + ['generated_at' => date('c')], JSON_UNESCAPED_UNICODE);
-} catch (\Throwable $e) {
-    Toolbox::logInFile('gac', 'monitor public_data.php: ' . $e->getMessage() . "\n");
-    http_response_code(500);
-    echo json_encode(['error' => __('Erro ao buscar os tickets.', 'gac')], JSON_UNESCAPED_UNICODE);
+    public static function choose(string $screenFile, string $pluginFile, string $pluginUrl): string
+    {
+        if (trim($screenFile) !== '') {
+            return self::SCREEN_FILE;
+        }
+        if (trim($pluginFile) !== '') {
+            return self::PLUGIN_FILE;
+        }
+        if (trim($pluginUrl) !== '') {
+            return self::PLUGIN_URL;
+        }
+        return self::NONE;
+    }
 }
