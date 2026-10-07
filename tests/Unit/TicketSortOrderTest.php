@@ -44,6 +44,7 @@ final class TicketSortOrderTest extends TestCase
     {
         $this->assertTrue(TicketSortOrder::isValidMode('priority'));
         $this->assertTrue(TicketSortOrder::isValidMode('id'));
+        $this->assertTrue(TicketSortOrder::isValidMode('elapsed'));
         $this->assertFalse(TicketSortOrder::isValidMode('bogus'));
     }
 
@@ -58,42 +59,58 @@ final class TicketSortOrderTest extends TestCase
         $this->assertSame(999, TicketSortOrder::statusPriority(6)); // unlisted (e.g. Fechado)
     }
 
-    public function testHigherUrgencySortsFirst(): void
+    public function testHigherPrioritySortsFirst(): void
     {
-        $low  = ['urgency' => 1, 'status' => 1, 'date' => '2026-10-01 10:00:00'];
-        $high = ['urgency' => 5, 'status' => 1, 'date' => '2026-10-01 10:00:00'];
+        $low  = ['priority' => 1, 'status' => 1, 'date' => '2026-10-01 10:00:00'];
+        $high = ['priority' => 6, 'status' => 1, 'date' => '2026-10-01 10:00:00'];
         $this->assertSame(1, TicketSortOrder::compare($low, $high));
         $this->assertSame(-1, TicketSortOrder::compare($high, $low));
     }
 
-    public function testSameUrgencyOrdersByStatusPriority(): void
+    public function testSamePriorityOrdersByStatusPriority(): void
     {
-        $novo         = ['urgency' => 3, 'status' => 1, 'date' => '2026-10-01 10:00:00'];
-        $emAtendimento = ['urgency' => 3, 'status' => 2, 'date' => '2026-10-01 10:00:00'];
+        $novo          = ['priority' => 3, 'status' => 1, 'date' => '2026-10-01 10:00:00'];
+        $emAtendimento = ['priority' => 3, 'status' => 2, 'date' => '2026-10-01 10:00:00'];
         $this->assertLessThan(0, TicketSortOrder::compare($novo, $emAtendimento));
         $this->assertGreaterThan(0, TicketSortOrder::compare($emAtendimento, $novo));
     }
 
-    public function testSameUrgencyAndStatusOrdersByNewestDateFirst(): void
+    public function testSamePriorityAndStatusOrdersByNewestDateFirst(): void
     {
-        $older = ['urgency' => 3, 'status' => 2, 'date' => '2026-09-01 10:00:00'];
-        $newer = ['urgency' => 3, 'status' => 2, 'date' => '2026-10-01 10:00:00'];
+        $older = ['priority' => 3, 'status' => 2, 'date' => '2026-09-01 10:00:00'];
+        $newer = ['priority' => 3, 'status' => 2, 'date' => '2026-10-01 10:00:00'];
         $this->assertGreaterThan(0, TicketSortOrder::compare($older, $newer));
         $this->assertLessThan(0, TicketSortOrder::compare($newer, $older));
     }
 
-    public function testFullSortMatchesTheDjangoRule(): void
+    public function testFullSortPutsTheHighestPriorityOnTop(): void
     {
         $tickets = [
-            'A' => ['urgency' => 3, 'status' => 5, 'date' => '2026-10-01 10:00:00'], // solved, medium
-            'B' => ['urgency' => 5, 'status' => 2, 'date' => '2026-09-01 10:00:00'], // very high, in progress
-            'C' => ['urgency' => 5, 'status' => 1, 'date' => '2026-10-01 10:00:00'], // very high, new, newest
-            'D' => ['urgency' => 1, 'status' => 1, 'date' => '2026-10-01 10:00:00'], // very low, new
+            'A' => ['priority' => 3, 'status' => 5, 'date' => '2026-10-01 10:00:00'], // solved, medium
+            'B' => ['priority' => 6, 'status' => 2, 'date' => '2026-09-01 10:00:00'], // critical, in progress
+            'C' => ['priority' => 6, 'status' => 1, 'date' => '2026-10-01 10:00:00'], // critical, new
+            'D' => ['priority' => 1, 'status' => 1, 'date' => '2026-10-01 10:00:00'], // very low, new
+            'E' => ['priority' => 4, 'status' => 2, 'date' => '2026-10-01 10:00:00'], // high
         ];
 
         $order = array_keys($tickets);
         usort($order, static fn(string $a, string $b): int => TicketSortOrder::compare($tickets[$a], $tickets[$b]));
 
-        $this->assertSame(['C', 'B', 'A', 'D'], $order);
+        $this->assertSame(['C', 'B', 'E', 'A', 'D'], $order);
+    }
+
+    public function testElapsedModeOrdersOldestFirst(): void
+    {
+        $older = ['priority' => 1, 'status' => 2, 'date' => '2026-09-01 10:00:00'];
+        $newer = ['priority' => 6, 'status' => 1, 'date' => '2026-10-01 10:00:00'];
+        $this->assertLessThan(0, TicketSortOrder::compareElapsed($older, $newer));
+        $this->assertGreaterThan(0, TicketSortOrder::compareElapsed($newer, $older));
+    }
+
+    public function testElapsedModeBreaksTiesByPriority(): void
+    {
+        $low  = ['priority' => 2, 'status' => 2, 'date' => '2026-09-01 10:00:00'];
+        $high = ['priority' => 5, 'status' => 2, 'date' => '2026-09-01 10:00:00'];
+        $this->assertGreaterThan(0, TicketSortOrder::compareElapsed($low, $high));
     }
 }

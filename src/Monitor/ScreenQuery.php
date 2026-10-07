@@ -176,10 +176,10 @@ final class ScreenQuery
 
         // Priority (3) is always fetched, regardless of whether "priority" is a chosen display
         // column: it drives the row tone and the badge, a visual cue independent of the text
-        // column. Urgency (10), status (12) and opening date (15) are likewise always needed to
+        // column. Status (12) and opening date (15) are likewise always needed to
         // sort even when the page does not display them. The SLA deadlines are only fetched for
         // the "sla" colour mode.
-        $forcedisplay = [...ColumnCatalog::searchOptionIdsFor($columns), 3, 10, 12, 15];
+        $forcedisplay = [...ColumnCatalog::searchOptionIdsFor($columns), 3, 12, 15];
         if ($colorMode === RowTone::MODE_SLA) {
             $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_RESOLVE;
             $forcedisplay[] = self::SEARCH_OPTION_TIME_TO_OWN;
@@ -257,7 +257,7 @@ final class ScreenQuery
             );
             $entries[] = [
                 'out'     => $out,
-                'urgency' => (int) (self::cellParts($row, 10)[0] ?? 0),
+                'priority' => $priorityRaw,
                 'status'  => $status,
                 'date'    => (string) (self::cellParts($row, 15)[0] ?? ''),
             ];
@@ -265,6 +265,8 @@ final class ScreenQuery
 
         if ($sortMode === TicketSortOrder::MODE_PRIORITY) {
             usort($entries, static fn(array $a, array $b): int => TicketSortOrder::compare($a, $b));
+        } elseif ($sortMode === TicketSortOrder::MODE_ELAPSED) {
+            usort($entries, static fn(array $a, array $b): int => TicketSortOrder::compareElapsed($a, $b));
         }
         $rows = array_map(static fn(array $entry): array => $entry['out'], $entries);
 
