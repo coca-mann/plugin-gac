@@ -23,10 +23,12 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - [c510478](https://github.com/coca-mann/plugin-gac/commit/c510478) - A troca de uma página para outra na exibição da Tela de Monitoramento agora tem um efeito suave de desaparecer e reaparecer.
 - [a021696](https://github.com/coca-mann/plugin-gac/commit/a021696) - Quando uma Tela de Monitoramento é desativada (ou o link público é desligado) enquanto está aberta, a tabela é esvaziada e aparece uma mensagem avisando, em vez de continuar mostrando tickets antigos. A exibição volta sozinha se a Tela for reativada.
 - [e76d1af](https://github.com/coca-mann/plugin-gac/commit/e76d1af), [fe06d94](https://github.com/coca-mann/plugin-gac/commit/fe06d94) - Manuais do usuário dos módulos de Laudo Técnico de Baixa Patrimonial e de Login com Google (SSO).
+- [14ef4bb](https://github.com/coca-mann/plugin-gac/commit/14ef4bb) - Com vários banners de ticket novo na tela, o rodízio de páginas espera: a página só troca depois que o último banner termina, em vez de trocar no meio de um banner.
 
 ### Changed
 
 - [fa5c3cc](https://github.com/coca-mann/plugin-gac/commit/fa5c3cc) - As margens da exibição da Tela de Monitoramento ficaram menores, dando mais espaço à tabela na TV.
+- [6111489](https://github.com/coca-mann/plugin-gac/commit/6111489) - A coluna "Prioridade" da exibição da Tela de Monitoramento, a única com selo colorido, agora fica centralizada, com o título e o selo alinhados.
 
 ### Fixed
 
