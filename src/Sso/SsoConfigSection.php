@@ -220,7 +220,7 @@ HTML;
     private function workspacesBlock(array $s): string
     {
         $workspaces   = SsoSettings::workspaces($s)->all();
-        $workspaces[] = new Workspace('', [], '', true); // one empty row to add a workspace
+        $workspaces[] = new Workspace('', '', [], '', true); // one empty row to add a workspace
 
         $rows = '';
         foreach ($workspaces as $workspace) {
@@ -232,7 +232,7 @@ HTML;
             . '</div>';
 
         $table = "<div class='table-responsive'><table class='table' id='gac-sso-workspaces'><thead><tr>"
-            . $this->th(__('Nome', 'gac'), __('Só para identificar o workspace.', 'gac'))
+            . $this->th(__('Nome', 'gac'), __('Só para identificar o workspace. Pode ser renomeado: a chave abaixo é o que as regras usam e nunca muda.', 'gac'))
             . $this->th(__('Domínios', 'gac'), __('Um por linha. Cada domínio só pode estar em um workspace.', 'gac'))
             . $this->th(__('Administrador do Google', 'gac'), __('A conta de serviço age em nome dele para ler a OU dos usuários. Precisa ser super administrador; o acesso é só de leitura.', 'gac'))
             . $this->th(__('Ativo', 'gac')) . '<th></th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
@@ -248,6 +248,7 @@ HTML;
     function clearRow(row) {
         row.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
         row.querySelectorAll('select').forEach(function (el) { el.value = '1'; });
+        row.querySelectorAll('.gac-ws-key').forEach(function (el) { el.textContent = ''; });
     }
     table.addEventListener('click', function (event) {
         var button = event.target.closest('.gac-ws-clear');
@@ -273,7 +274,9 @@ HTML;
             . "<option value='0'" . ($workspace->active ? '' : ' selected') . '>' . htmlescape(__('Não', 'gac')) . '</option></select>';
 
         return '<tr>'
-            . "<td><input class='form-control' name='ws_name[]' value='" . htmlescape($workspace->name) . "'></td>"
+            . "<td><input class='form-control' name='ws_name[]' value='" . htmlescape($workspace->name) . "'>"
+            . "<input type='hidden' name='ws_key[]' value='" . htmlescape($workspace->key) . "'>"
+            . "<div class='form-text font-monospace'>" . htmlescape(__('Chave:', 'gac')) . " <span class='gac-ws-key'>" . htmlescape($workspace->key) . '</span></div></td>'
             . '<td>' . $this->textarea('ws_domains[]', implode("\n", $workspace->domains), 3) . '</td>'
             . "<td><input class='form-control' type='email' name='ws_admin[]' value='" . htmlescape($workspace->adminSubject) . "'></td>"
             . '<td>' . $active . '</td>'
@@ -341,17 +344,20 @@ HTML;
 
         $raw = SsoConfig::load();
         // The workspaces come as parallel arrays, one entry per table row (spec S24).
-        $rows  = [];
-        $names = is_array($post['ws_name'] ?? null) ? array_values($post['ws_name']) : [];
+        $current = SsoSettings::workspaces($raw);
+        $rows    = [];
+        $names   = is_array($post['ws_name'] ?? null) ? array_values($post['ws_name']) : [];
         foreach ($names as $i => $name) {
             $rows[] = [
+                'key'           => (string) ($post['ws_key'][$i] ?? ''),
                 'name'          => (string) $name,
                 'domains'       => (string) ($post['ws_domains'][$i] ?? ''),
                 'admin_subject' => (string) ($post['ws_admin'][$i] ?? ''),
                 'is_active'     => ($post['ws_active'][$i] ?? '1') === '1',
             ];
         }
-        $registry   = WorkspaceRegistry::fromRows($rows);
+        // Only a key the stored workspaces already have is kept; anything else is regenerated (S25).
+        $registry   = WorkspaceRegistry::fromRows($rows, $current->keys());
         $duplicated = $registry->duplicatedDomains();
         if ($duplicated !== []) {
             Session::addMessageAfterRedirect(

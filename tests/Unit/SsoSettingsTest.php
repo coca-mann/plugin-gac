@@ -134,9 +134,18 @@ final class SsoSettingsTest extends TestCase
         $this->assertSame([], SsoSettings::allowedDomains($s));
         $this->assertSame('[]', SsoSettings::defaults()['sso_workspaces']);
         $this->assertSame(
-            '[{"name":"A","domains":["a.com"],"admin_subject":"","is_active":true}]',
+            '[{"key":"a","name":"A","domains":["a.com"],"admin_subject":"","is_active":true}]',
             $s['sso_workspaces']
         );
+    }
+
+    public function testNormalizingTwiceGivesTheSameWorkspaces(): void
+    {
+        $once  = SsoSettings::normalize(['sso_workspaces' => [['name' => 'Fimca', 'domains' => 'fimca.com.br', 'admin_subject' => 'a@fimca.com.br']]]);
+        $twice = SsoSettings::normalize($once);
+
+        $this->assertSame($once['sso_workspaces'], $twice['sso_workspaces']);
+        $this->assertSame(['fimca'], SsoSettings::workspaces($twice)->keys());
     }
 
     public function testTwoWorkspacesGiveTheUnionOfDomainsAndTheRightAdminPerEmail(): void

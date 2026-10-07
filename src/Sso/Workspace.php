@@ -37,12 +37,14 @@ namespace GlpiPlugin\Gac\Sso;
 
 /**
  * One Google Workspace the login accepts (spec S24): its domains and the read-only admin the
- * service account impersonates to read org units there. Pure value object.
+ * service account impersonates to read org units there. Pure value object. The key (spec S25) is
+ * the stable identifier the authorization rules refer to; the name can be edited.
  */
 final class Workspace
 {
     /** @param list<string> $domains lowercase */
     public function __construct(
+        public readonly string $key,
         public readonly string $name,
         public readonly array $domains,
         public readonly string $adminSubject,
@@ -60,10 +62,11 @@ final class Workspace
         return $this->active && $this->domains !== [] && $this->adminSubject !== '';
     }
 
-    /** @return array{name: string, domains: list<string>, admin_subject: string, is_active: bool} */
+    /** @return array{key: string, name: string, domains: list<string>, admin_subject: string, is_active: bool} */
     public function toArray(): array
     {
         return [
+            'key'           => $this->key,
             'name'          => $this->name,
             'domains'       => $this->domains,
             'admin_subject' => $this->adminSubject,
