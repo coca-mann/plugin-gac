@@ -219,7 +219,7 @@ Com a opção **Banner de ticket novo** ligada na Tela, cada ticket que aparece 
 
 - **Mais de um ticket novo ao mesmo tempo**: os banners saem **um de cada vez**, o mais urgente primeiro. No máximo 3 por vez: o último avisa "e mais N tickets novos" para os que não couberam.
 - **Som**: com o banner ligado, o som de alerta toca **junto com cada banner**, no instante em que ele aparece (se o alerta sonoro da Tela estiver ligado e houver som configurado). Com o banner desligado, o som continua tocando uma vez por atualização.
-- **Telas com várias páginas**: se o ticket novo é de uma página que não está na tela, o banner (e o som) esperam o rodízio levar essa página à tela. Enquanto isso só a bolinha da página pisca.
+- **Telas com várias páginas**: se o ticket novo é de uma página que não está na tela, o banner (e o som) esperam o rodízio levar essa página à tela. Enquanto isso só a bolinha da página pisca. Enquanto houver banner na tela ou na fila, o rodízio espera: a troca de página só acontece depois que o último banner da página atual termina.
 - **A descrição aparece para quem olhar a TV**: ela é o texto livre do solicitante. Se a TV fica à vista de quem não deve ler os chamados, desmarque **Descrição no banner** na configuração do plugin.
 - O banner cobre a tabela enquanto está na tela. Com o tempo padrão de 10 segundos e até 3 banners seguidos, a tabela pode ficar coberta por cerca de 30 segundos.
 

@@ -337,6 +337,8 @@
         let activeId = null;
         let rotationTimer = null;
         let fading = false;
+        // A rotation step that came due while banners were on screen; made when the last one ends.
+        let rotationPending = false;
         let rotationKey = '';
         const previousIds = {}; // page id => Set of ticket ids seen at the last poll
         const newIds = {};      // page id => Set of ids that appeared at the last poll
@@ -490,6 +492,9 @@
                 await showBanner(bannerQueue.shift());
             }
             bannerBusy = false;
+            if (rotationPending) {
+                rotate();
+            }
         }
 
         async function showBanner(item) {
@@ -531,6 +536,7 @@
             clearTimeout(rotationTimer);
             rotationTimer = null;
             rotationKey = '';
+            rotationPending = false;
             pages = [];
             activeId = null;
             priorityColors = {};
@@ -584,6 +590,12 @@
         // A short fade out, the swap, then the fade in (the CSS transition does both). Skipped for
         // people who asked their system for less motion.
         function rotate() {
+            // The banners belong to the page on screen: the page stays until they are all shown.
+            if (bannerBusy || bannerQueue.length > 0) {
+                rotationPending = true;
+                return;
+            }
+            rotationPending = false;
             if (pages.length > 1) {
                 if (reducedMotion || fading) {
                     goToNextPage();
