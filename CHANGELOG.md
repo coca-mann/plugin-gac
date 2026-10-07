@@ -10,6 +10,14 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [0.10.0] - 2026-10-07
+
+### Added
+
+- [4c5b165](https://github.com/coca-mann/plugin-gac/commit/4c5b165) - Quando o e-mail de uma conta do Google muda, o usuário do GLPI passa a acompanhar no próximo login: o e-mail do usuário e o e-mail guardado na identidade são atualizados e, se o login era o e-mail antigo (usuário criado pelo Google), o login também vira o novo e-mail. Usuários convertidos do AD mantêm o login do AD, e o login não é renomeado se outro usuário já o tiver. O que mudou aparece no detalhe do evento do login. Uma conta nova do Google com um e-mail antigo que ainda é de um usuário vinculado continua sendo negada (`api_error`), sem acesso ao usuário antigo.
+- [c3b32cb](https://github.com/coca-mann/plugin-gac/commit/c3b32cb) - No login, a foto da conta do Google (a foto de perfil do Workspace) é copiada para o usuário do GLPI, no campo Imagens do cadastro. A foto só é baixada quando o Google informa que ela mudou, nunca substitui uma foto escolhida no GLPI, não volta depois de removida pelo usuário e não é apagada se for removida no Google. Só entram imagens JPEG ou PNG de até 1 MB, e uma falha na cópia nunca impede o login. Não exige permissão nova no Google, mas cria duas colunas na tabela de identidades, o que acontece quando o plugin é atualizado para a versão que as traz.
+- [8cf986b](https://github.com/coca-mann/plugin-gac/commit/8cf986b) - Manual do usuário, roteiro de testes e especificação do Login com Google atualizados para a sincronização do e-mail e a foto.
+
 ## [0.9.1] - 2026-10-07
 
 ### Fixed

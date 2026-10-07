@@ -114,7 +114,9 @@ final class LoginService
             }
 
             try {
-                $ou = OuPath::normalize((new DirectoryClient($settings, $workspace->adminSubject))->orgUnitPath($email));
+                $directory = new DirectoryClient($settings, $workspace->adminSubject);
+                $lookup    = $directory->lookup($email);
+                $ou        = OuPath::normalize($lookup['ou']);
             } catch (SsoException $e) {
                 return $fail(Outcome::API_ERROR, $e->getMessage());
             }
@@ -179,11 +181,28 @@ final class LoginService
                     UserProvisioner::convertExisting($user, $sub, $email);
                     $detail = 'linked';
                 }
+                // The e-mail of a linked account may have changed in Google (spec S32).
+                if ($match->action === IdentityMatch::USE_LINKED && $identity !== null) {
+                    $synced = UserProvisioner::syncEmail($user, $identity, $email);
+                    if ($synced !== '') {
+                        $detail .= '; ' . $synced;
+                    }
+                }
             }
             $usersId = $user->getID();
 
             UserProvisioner::applyRules($user, $ruleOutput);
             SsoIdentity::touch($sub, $ou);
+
+            // The Google photo (spec S33). A failure here is logged and never stops the login.
+            try {
+                $current = SsoIdentity::findBySub($sub);
+                if ($current !== null && UserPhoto::sync($user, $current, $directory, $email, $lookup['photoEtag'])) {
+                    $detail .= '; photo updated';
+                }
+            } catch (\Throwable $e) {
+                \Toolbox::logInFile('gac', 'sso photo: ' . $e::class . ': ' . $e->getMessage() . "\n");
+            }
 
             // 8. Session.
             if (!SessionStarter::start($user)) {

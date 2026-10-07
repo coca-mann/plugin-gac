@@ -561,6 +561,8 @@ function plugin_gac_install(): bool
             `linked_at` TIMESTAMP NULL DEFAULT NULL,
             `last_login_at` TIMESTAMP NULL DEFAULT NULL,
             `last_ou_path` VARCHAR(500) NOT NULL DEFAULT '',
+            `photo_etag` VARCHAR(255) NOT NULL DEFAULT '',
+            `photo_path` VARCHAR(255) NOT NULL DEFAULT '',
             PRIMARY KEY (`id`),
             UNIQUE KEY `users_id` (`users_id`),
             UNIQUE KEY `google_sub` (`google_sub`)
@@ -571,6 +573,15 @@ function plugin_gac_install(): bool
     // CREATE TABLE above is skipped once the table exists, so an existing install needs it added.
     if (!$DB->fieldExists($ssoIdentities, 'prev_entities_id')) {
         $DB->doQuery("ALTER TABLE `$ssoIdentities` ADD COLUMN `prev_entities_id` INT {$sign} NOT NULL DEFAULT '0' AFTER `prev_auths_id`");
+    }
+
+    // The Google photo copied to the GLPI user (spec S33): the etag of the last copy and the path the
+    // module wrote, so a photo chosen by hand is never replaced.
+    if (!$DB->fieldExists($ssoIdentities, 'photo_etag')) {
+        $DB->doQuery("ALTER TABLE `$ssoIdentities` ADD COLUMN `photo_etag` VARCHAR(255) NOT NULL DEFAULT '' AFTER `last_ou_path`");
+    }
+    if (!$DB->fieldExists($ssoIdentities, 'photo_path')) {
+        $DB->doQuery("ALTER TABLE `$ssoIdentities` ADD COLUMN `photo_path` VARCHAR(255) NOT NULL DEFAULT '' AFTER `photo_etag`");
     }
 
     $ssoEvents = 'glpi_plugin_gac_ssoevents';
