@@ -10,6 +10,16 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 > Versões anteriores (se houver) não foram reconstruídas retroativamente;
 > consulte o histórico de PRs no Git caso precise dessa informação.
 
+## [Unreleased]
+
+### Added
+
+- [7130812](https://github.com/coca-mann/plugin-gac/commit/7130812) - Na tela de monitoramento, a coluna Status passou a mostrar o status do ticket como uma pílula colorida, centralizada como a Prioridade, para ficar mais destacada à distância. A pílula aparece em qualquer modo de cor de linha da Tela e acompanha o tamanho da fonte; um status sem cor própria (como Fechado) fica em cinza.
+
+### Changed
+
+- [7130812](https://github.com/coca-mann/plugin-gac/commit/7130812) - O status "Em atendimento (atribuído)" passa a aparecer só como "Em atendimento" no painel. Para que Planejado e Pendente não se confundam com Em atendimento e Aguardando aprovação, Planejado passou de verde-água para índigo e Pendente de âmbar para amarelo, tanto na pílula quanto na cor das linhas por status.
+
 ## [0.10.0] - 2026-10-07
 
 ### Added
