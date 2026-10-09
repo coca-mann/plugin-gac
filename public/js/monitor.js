@@ -53,7 +53,7 @@
         columns.forEach(function (col) {
             const th = document.createElement('th');
             th.textContent = col.label;
-            if (col.key === 'priority') {
+            if (col.key === 'priority' || col.key === 'status') {
                 th.classList.add('gac-col-center');
             }
             headRow.appendChild(th);
@@ -93,10 +93,16 @@
             const badgeColor = priorityColors && priorityColors[row.priority_raw];
             page.columns.forEach(function (col) {
                 const td = document.createElement('td');
-                if (col.key === 'priority') {
+                if (col.key === 'priority' || col.key === 'status') {
                     td.classList.add('gac-col-center');
                 }
-                if (col.key === 'priority' && badgeColor) {
+                if (col.key === 'status' && row[col.key]) {
+                    // The colour comes from the status id, never from the label (which is translated).
+                    const pill = document.createElement('span');
+                    pill.className = 'gac-status-pill gac-status-' + (parseInt(row.status_raw, 10) || 0);
+                    pill.textContent = row[col.key];
+                    td.appendChild(pill);
+                } else if (col.key === 'priority' && badgeColor) {
                     const badge = document.createElement('span');
                     badge.className = 'gac-priority-badge';
                     badge.style.backgroundColor = badgeColor;

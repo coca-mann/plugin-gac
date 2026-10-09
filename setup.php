@@ -40,7 +40,7 @@ use GlpiPlugin\Gac\ProfileRights;
 use GlpiPlugin\Gac\Sso\SsoIdentity;
 
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */
-define('PLUGIN_GAC_VERSION', '0.10.0');
+define('PLUGIN_GAC_VERSION', '0.11.0');
 
 // Minimal GLPI version, inclusive
 /** @phpstan-ignore theCodingMachineSafe.function (safe to assume this isn't already defined) */

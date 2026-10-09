@@ -210,7 +210,7 @@ final class ScreenQuery
             $id          = $idParts[0];
             $status      = (int) (self::cellParts($row, 12)[0] ?? 0);
             $priorityRaw = (int) (self::cellParts($row, 3)[0] ?? 0);
-            $out         = ['id' => $id, 'priority_raw' => $priorityRaw];
+            $out         = ['id' => $id, 'priority_raw' => $priorityRaw, 'status_raw' => $status];
             foreach ($columns as $key) {
                 if ($key === 'elapsed') {
                     $openedParts = self::cellParts($row, 15);
@@ -341,7 +341,13 @@ final class ScreenQuery
             return '';
         }
         if ($key === 'status') {
-            return (string) Ticket::getStatus((int) $parts[0]);
+            $label = (string) Ticket::getStatus((int) $parts[0]);
+            // GLPI names status 2 "Em atendimento (atribuído)"; the board shows just "Em atendimento".
+            // Status 3 keeps its "(planejado)" so the two pills stay distinguishable.
+            if ((int) $parts[0] === 2) {
+                $label = trim((string) preg_replace('/\s*\([^)]*\)\s*$/u', '', $label));
+            }
+            return $label;
         }
         if ($key === 'priority') {
             return (string) Ticket::getPriorityName((int) $parts[0]);
