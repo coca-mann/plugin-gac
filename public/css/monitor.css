@@ -131,7 +131,7 @@
     background: #121d38;
 }
 
-/* The priority column (the only one with a badge) is centred, header and cells. */
+/* The priority and status columns (the ones with a pill) are centred, header and cells. */
 .gac-monitor-board thead th.gac-col-center,
 .gac-monitor-board tbody td.gac-col-center {
     text-align: center;
@@ -148,6 +148,26 @@
     font-weight: 600;
     white-space: nowrap;
 }
+
+/* Status pill: same shape as the priority badge. Colours are the row-tone palette below (kept in
+   sync on purpose); a status without its own colour (Closed, custom) falls back to neutral grey. */
+.gac-status-pill {
+    display: inline-block;
+    padding: 0.2em 0.75em;
+    border-radius: 999px;
+    font-size: 0.85em;
+    font-weight: 600;
+    white-space: nowrap;
+    background: #7f8c8d;
+    color: #0b1220;
+}
+
+.gac-status-pill.gac-status-1  { background: #3498db; color: #0b1220; }
+.gac-status-pill.gac-status-2  { background: #2ecc71; color: #0b1220; }
+.gac-status-pill.gac-status-3  { background: #5c6bc0; color: #ffffff; }
+.gac-status-pill.gac-status-4  { background: #f1c40f; color: #0b1220; }
+.gac-status-pill.gac-status-5  { background: #9b59b6; color: #ffffff; }
+.gac-status-pill.gac-status-10 { background: #e67e22; color: #0b1220; }
 
 .gac-monitor-row-new {
     animation: gac-monitor-flash 2s ease-out 1;
@@ -426,8 +446,8 @@
 
 .gac-tone-status-new        { --gac-row-accent: #3498db; --gac-row-tint: rgba(52, 152, 219, 0.22); }
 .gac-tone-status-processing { --gac-row-accent: #2ecc71; --gac-row-tint: rgba(46, 204, 113, 0.22); }
-.gac-tone-status-planned    { --gac-row-accent: #1abc9c; --gac-row-tint: rgba(26, 188, 156, 0.22); }
-.gac-tone-status-pending    { --gac-row-accent: #f39c12; --gac-row-tint: rgba(243, 156, 18, 0.22); }
+.gac-tone-status-planned    { --gac-row-accent: #5c6bc0; --gac-row-tint: rgba(92, 107, 192, 0.26); }
+.gac-tone-status-pending    { --gac-row-accent: #f1c40f; --gac-row-tint: rgba(241, 196, 15, 0.22); }
 .gac-tone-status-solved     { --gac-row-accent: #9b59b6; --gac-row-tint: rgba(155, 89, 182, 0.22); }
 .gac-tone-status-approval   { --gac-row-accent: #e67e22; --gac-row-tint: rgba(230, 126, 34, 0.22); }
 
